@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "vite",
     "server": "node index.mjs",
-    "server:backup": "node server/scripts/backup.mjs",
+    "server:backup": "node scripts/backup.mjs",
     "server:restore": "node server/scripts/restore.mjs",
     "server:reset": "node server/scripts/reset.mjs",
     "server:smoke": "node server/scripts/smoke.mjs",
