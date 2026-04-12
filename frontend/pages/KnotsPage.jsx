@@ -159,13 +159,6 @@ function getSubmissionModeLabel(mode) {
   return 'uten feed';
 }
 
-function getStatusDotClass(status) {
-  if (status === 'Godkjent') return 'is-approved';
-  if (status === 'Sendt inn') return 'is-pending';
-  if (isRejectedStatus(status)) return 'is-rejected';
-  return 'is-available';
-}
-
 function getStatusKey(status) {
   if (status === 'Godkjent') return 'approved';
   if (status === 'Sendt inn') return 'pending';
@@ -373,7 +366,6 @@ function KnotRow({
   const effectiveMode = activeFeedBan ? SUBMISSION_MODE.REVIEW : submissionMode;
   const wordCount = getWordCount(draft.note ?? '');
   const isOverWordLimit = wordCount > 100;
-  const dotClass = getStatusDotClass(knot.status);
   const isCompletedKnot = knot.status === 'Godkjent' || knot.status === 'Fullført';
 
   return (
@@ -383,16 +375,16 @@ function KnotRow({
       data-status={getStatusKey(knot.status)}
     >
       <div className="knot-row__header">
-        <span className={`knot-row__dot ${dotClass}`} aria-hidden="true" />
-
         <div className="knot-row__info">
-          <span className="knot-row__title">{knot.title}</span>
+          <div className="knot-row__title-line">
+            <span className={`knot-row__points${isCompletedKnot ? ' is-completed' : ''}`}>
+              P{knot.points}
+            </span>
+            <span className="knot-row__title">{knot.title}</span>
+          </div>
         </div>
 
         <div className="knot-row__cta">
-          <span className={`knot-row__cta-points${isCompletedKnot ? ' is-completed' : ''}`}>
-            P{knot.points}
-          </span>
           {canSubmit ? (
             <button
               type="button"
@@ -409,7 +401,7 @@ function KnotRow({
             aria-expanded={isDetailOpen}
             onClick={onToggleDetail}
           >
-            {isDetailOpen ? 'Skjul' : (isMobile ? '?' : 'Hvordan')}
+            {isDetailOpen ? 'Skjul' : '+'}
           </button>
         </div>
       </div>

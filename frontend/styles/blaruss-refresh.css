@@ -452,8 +452,14 @@
 }
 
 .app-theme .knots-page__points span,
+.app-theme .knot-row__points,
 .app-theme .knot-row__cta-points {
   color: var(--accent-strong) !important;
+}
+
+.app-theme .knot-row__points.is-completed,
+.app-theme .knot-row__cta-points.is-completed {
+  color: var(--success) !important;
 }
 
 .app-theme .knot-row__doc-btn,
