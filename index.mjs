@@ -29,9 +29,9 @@ import {
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-const APP_ROOT = path.resolve(__dirname, '..');
-const DATA_DIR = path.join(APP_ROOT, 'server', 'data');
-const UPLOADS_DIR = path.join(APP_ROOT, 'server', 'uploads');
+const APP_ROOT = __dirname;
+const DATA_DIR = path.join(APP_ROOT, 'backend', 'data');
+const UPLOADS_DIR = path.join(APP_ROOT, 'backend', 'uploads');
 const DB_FILE = path.join(DATA_DIR, 'app-db.json');
 const PORT = Number(process.env.PORT) || 3001;
 const execAsync = promisify(exec);

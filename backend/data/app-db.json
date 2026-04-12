@@ -2217,14 +2217,14 @@
   },
   "sessions": [
     {
-      "token": "b7c26420-b317-4bd6-bf39-8f8eac80d4dd",
-      "userId": 2,
-      "createdAt": "2026-04-12T15:56:50.410Z"
-    },
-    {
       "token": "4f50d83e-59c6-4761-9eb9-e08f12ee9896",
       "userId": 1,
       "createdAt": "2026-04-12T17:07:19.875Z"
+    },
+    {
+      "token": "3498e083-cb5f-44d8-b233-0cd33de6bce6",
+      "userId": 2,
+      "createdAt": "2026-04-12T17:36:23.442Z"
     }
   ],
   "reports": [
