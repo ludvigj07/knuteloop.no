@@ -3671,7 +3671,7 @@
   }
 
   .swipe-tabs-shell__page {
-    min-height: calc(100dvh - 132px);
+    min-height: 0;
   }
 
   .status-hub-grid,
