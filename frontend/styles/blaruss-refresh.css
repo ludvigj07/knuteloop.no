@@ -1,0 +1,609 @@
+/* Blåruss UI Refresh v1 (safe override layer) */
+
+.app-theme,
+.app-theme[data-theme],
+.app-theme[data-theme='blue'],
+.app-theme[data-theme='friendly'],
+.app-theme[data-theme='red'] {
+  --primary: #2e5fa8;
+  --primary-strong: #214b87;
+  --primary-soft: rgba(46, 95, 168, 0.12);
+  --secondary: #2e5fa8;
+  --accent: #ff8a1f;
+  --accent-strong: #b45309;
+  --accent-bg: rgba(255, 138, 31, 0.12);
+  --accent-border: rgba(255, 138, 31, 0.34);
+  --accent-cyan: #2e5fa8;
+  --brand-primary: #2e5fa8;
+  --energy: #ff8a1f;
+  --cta: #ff4d2e;
+  --cta-strong: #e84226;
+  --cta-soft: rgba(255, 77, 46, 0.14);
+
+  --gold: #f59e0b;
+  --gold-soft: rgba(245, 158, 11, 0.16);
+  --gold-border: rgba(180, 83, 9, 0.34);
+  --highlight-soft: rgba(255, 138, 31, 0.12);
+  --badge-soft: rgba(245, 158, 11, 0.12);
+
+  --success: #16a34a;
+  --success-bg: rgba(22, 163, 74, 0.13);
+  --warning: #f97316;
+  --warning-bg: rgba(249, 115, 22, 0.14);
+  --danger: #dc2626;
+  --danger-strong: #b91c1c;
+  --danger-bg: rgba(220, 38, 38, 0.14);
+  --danger-muted: rgba(220, 38, 38, 0.45);
+
+  --bg: #f7f5f2;
+  --surface-0: #f7f5f2;
+  --surface-1: #ffffff;
+  --surface-2: #ffffff;
+  --surface-3: #f4f1ec;
+  --surface: #ffffff;
+  --surface-elevated: #ffffff;
+  --surface-soft: #f4f1ec;
+  --surface-media: #f0ebe4;
+  --card: #ffffff;
+  --feature-soft: #faf8f5;
+  --feature-strong: #f5f1ea;
+
+  --text: #111827;
+  --text-strong: #111827;
+  --text-soft: #1f2937;
+  --text-muted: #667085;
+  --text-secondary: #667085;
+
+  --surface-border: #d9dde3;
+  --surface-border-strong: rgba(255, 138, 31, 0.34);
+  --border: #d9dde3;
+  --line-color: #d9dde3;
+
+  --shadow: 0 12px 28px rgba(17, 24, 39, 0.07);
+  --shadow-soft: 0 3px 10px rgba(17, 24, 39, 0.06);
+
+  --lavender-soft: rgba(46, 95, 168, 0.08);
+  --lavender-border: rgba(46, 95, 168, 0.24);
+}
+
+.app-theme {
+  background: var(--bg) !important;
+  color: var(--text);
+}
+
+.app-theme .app-shell {
+  width: min(1120px, calc(100% - 20px));
+  margin: 0 auto;
+  padding: 20px 0 44px;
+}
+
+/* Core surfaces */
+.app-theme .section-card,
+.app-theme .hero-panel,
+.app-theme .daily-knot-card,
+.app-theme .dashboard-hero,
+.app-theme .info-card,
+.app-theme .stat-card,
+.app-theme .leaderboard-row,
+.app-theme .status-hub-card,
+.app-theme .status-inline-summary__item,
+.app-theme .status-list-row,
+.app-theme .dashboard-progress-card,
+.app-theme .dashboard-recommendation-card,
+.app-theme .dashboard-message-card,
+.app-theme .dashboard-rival-row,
+.app-theme .dashboard-activity-row,
+.app-theme .folder-button,
+.app-theme .knot-status-card,
+.app-theme .badge-summary-card,
+.app-theme .badge-token,
+.app-theme .badge-card,
+.app-theme .profile-selector,
+.app-theme .profile-knot-row,
+.app-theme .duel-summary-bar,
+.app-theme .duel-history-row,
+.app-theme .inline-feedback,
+.app-theme .upload-field,
+.app-theme .evidence-card,
+.app-theme .filter-empty-state,
+.app-theme .folder-empty,
+.app-theme .feed-card-v3,
+.app-theme .feed-card-desktop,
+.app-theme .profile-cover,
+.app-theme .profile-detail-card,
+.app-theme .admin-task-button,
+.app-theme .admin-quick-card,
+.app-theme .admin-subsection,
+.app-theme .config-row,
+.app-theme .submission-row,
+.app-theme .knot-row,
+.app-theme .knot-sheet,
+.app-theme .db-hero,
+.app-theme .db-top3,
+.app-theme .db-rivals,
+.app-theme .db-recommend,
+.app-theme .db-weekly-post,
+.app-theme .db-messages,
+.app-theme .db-daily-strip {
+  background: var(--surface) !important;
+  border: 1px solid var(--border) !important;
+  box-shadow: var(--shadow-soft) !important;
+}
+
+.app-theme .hero-panel,
+.app-theme .hero-panel--page,
+.app-theme .db-hero {
+  background: linear-gradient(140deg, #ffffff 0%, #fff8ef 100%) !important;
+  border-color: var(--surface-border-strong) !important;
+}
+
+.app-theme .section-card,
+.app-theme .hero-panel,
+.app-theme .hero-panel--page,
+.app-theme .db-hero {
+  border-radius: var(--radius-xl) !important;
+}
+
+.app-theme .hero-panel::after,
+.app-theme .daily-knot-card::before {
+  display: none !important;
+}
+
+/* Typography and readable copy */
+.app-theme .hero-copy,
+.app-theme .page-intro p,
+.app-theme .section-card__header p,
+.app-theme .status-section-toolbar p,
+.app-theme .duel-summary-bar p,
+.app-theme .submission-note,
+.app-theme .profile-real-name,
+.app-theme .profile-bio-copy,
+.app-theme .profile-quote,
+.app-theme .leaderboard-row__duel-hint,
+.app-theme .leaderboard-row__duel-note,
+.app-theme .feed-card-v3__meta,
+.app-theme .feed-card-v3__note,
+.app-theme .feed-card-v3__profile-copy p,
+.app-theme .feed-report-modal__subtitle,
+.app-theme .knot-row__sub,
+.app-theme .knot-row__desc,
+.app-theme .knot-hint,
+.app-theme .word-counter {
+  color: var(--text-muted) !important;
+}
+
+/* Navigation */
+.app-theme .desktop-segmented-nav,
+.app-theme .bottom-swipe-nav {
+  background: #ffffff !important;
+  border: 1px solid var(--border) !important;
+  box-shadow: var(--shadow-soft) !important;
+}
+
+.app-theme .desktop-segmented-nav__button,
+.app-theme .bottom-swipe-nav__button,
+.app-theme .nav-button {
+  min-height: 44px;
+  border-radius: 999px;
+  border: 1px solid var(--border) !important;
+  background: #ffffff !important;
+  color: var(--text-soft) !important;
+  box-shadow: none !important;
+}
+
+.app-theme .desktop-segmented-nav__button.is-active,
+.app-theme .bottom-swipe-nav__button.is-active,
+.app-theme .nav-button.is-active {
+  background: var(--primary) !important;
+  border-color: var(--primary) !important;
+  color: #ffffff !important;
+  opacity: 1;
+}
+
+/* Primary actions must be unmistakably clickable */
+.app-theme .action-button {
+  min-height: 44px;
+  padding: 0 18px;
+  border-radius: 999px;
+  border: 1px solid var(--cta-strong) !important;
+  background: var(--cta) !important;
+  color: #ffffff !important;
+  box-shadow: 0 8px 18px rgba(255, 77, 46, 0.26) !important;
+}
+
+.app-theme .action-button:hover {
+  background: var(--cta-strong) !important;
+  border-color: #c73720 !important;
+  box-shadow: 0 10px 20px rgba(255, 77, 46, 0.3) !important;
+}
+
+.app-theme .action-button:disabled {
+  background: #f8b8aa !important;
+  border-color: #f8b8aa !important;
+  color: #fff7f5 !important;
+  box-shadow: none !important;
+}
+
+.app-theme .action-button--ghost {
+  background: #ffffff !important;
+  color: var(--text-soft) !important;
+  border: 1px solid var(--border) !important;
+  box-shadow: none !important;
+}
+
+.app-theme .action-button--ghost:hover {
+  background: var(--surface-soft) !important;
+  border-color: var(--accent-border) !important;
+  color: var(--text-strong) !important;
+}
+
+.app-theme .action-button--danger,
+.app-theme .profile-delete-button {
+  background: var(--danger) !important;
+  border-color: var(--danger) !important;
+  color: #ffffff !important;
+  box-shadow: none !important;
+}
+
+/* Inputs and focus */
+.app-theme .text-input,
+.app-theme select.text-input,
+.app-theme textarea.text-input {
+  min-height: 44px;
+  border-radius: 14px;
+  border: 1px solid var(--border) !important;
+  background: #ffffff !important;
+  color: var(--text-soft) !important;
+  box-shadow: none !important;
+}
+
+.app-theme .text-input:focus,
+.app-theme select.text-input:focus,
+.app-theme textarea.text-input:focus {
+  border-color: var(--accent-border) !important;
+  box-shadow: 0 0 0 3px rgba(46, 95, 168, 0.18) !important;
+}
+
+.app-theme button:focus-visible,
+.app-theme a:focus-visible,
+.app-theme input:focus-visible,
+.app-theme select:focus-visible,
+.app-theme textarea:focus-visible,
+.app-theme [role='button']:focus-visible {
+  outline: 3px solid rgba(46, 95, 168, 0.5) !important;
+  outline-offset: 2px;
+}
+
+/* Pills and point semantics */
+.app-theme .pill {
+  border: 1px solid var(--border) !important;
+  box-shadow: none !important;
+}
+
+.app-theme .pill--soft,
+.app-theme .pill--rank {
+  background: var(--accent-bg) !important;
+  color: var(--accent-strong) !important;
+  border-color: var(--accent-border) !important;
+}
+
+.app-theme .pill--gold {
+  background: var(--gold-soft) !important;
+  color: #8a5a00 !important;
+  border-color: var(--gold-border) !important;
+}
+
+.app-theme .pill--success {
+  background: var(--success-bg) !important;
+  color: #047857 !important;
+  border-color: rgba(4, 120, 87, 0.22) !important;
+}
+
+.app-theme .pill--warning {
+  background: var(--warning-bg) !important;
+  color: #9a5800 !important;
+  border-color: rgba(154, 88, 0, 0.22) !important;
+}
+
+.app-theme .pill--danger {
+  background: var(--danger-bg) !important;
+  color: #b91c1c !important;
+  border-color: rgba(185, 28, 28, 0.22) !important;
+}
+
+/* Lavender accents (sparse) */
+.app-theme .hero-chip--accent,
+.app-theme .badge-token--violet,
+.app-theme .badge-card--violet {
+  background: var(--lavender-soft) !important;
+  border-color: var(--lavender-border) !important;
+  color: #5f46bd !important;
+}
+
+/* Dashboard (home/overview) */
+.app-theme .db-hero__stat-value--gold,
+.app-theme .db-daily-strip__pts,
+.app-theme .db-top3-row__pts,
+.app-theme .db-recommend__pts,
+.app-theme .db-weekly-post__score {
+  color: var(--accent-strong) !important;
+}
+
+.app-theme .db-weekly-post {
+  border-color: var(--border) !important;
+  background: #ffffff !important;
+}
+
+.app-theme .db-weekly-post__author--button {
+  border-radius: 999px;
+}
+
+.app-theme .db-weekly-post__author--button:hover {
+  background: var(--surface-soft) !important;
+}
+
+.app-theme .db-hero__progress-fill,
+.app-theme .knot-progress-bar__fill,
+.app-theme .progress-bar span {
+  background: linear-gradient(90deg, var(--accent), var(--cta)) !important;
+}
+
+.app-theme .db-top3-row--self,
+.app-theme .leaderboard-row--self {
+  border-color: var(--accent-border) !important;
+  box-shadow: 0 0 0 1px rgba(255, 138, 31, 0.26), var(--shadow-soft) !important;
+}
+
+.app-theme .db-daily-strip {
+  background: linear-gradient(135deg, #fff9f2 0%, #fff3e6 100%) !important;
+  border-color: var(--accent-border) !important;
+  box-shadow: 0 10px 22px rgba(255, 138, 31, 0.14) !important;
+}
+
+.app-theme .db-daily-strip__eyebrow {
+  color: var(--accent-strong) !important;
+}
+
+.app-theme .db-hero__streak {
+  border-color: var(--accent-border) !important;
+  background: #fff4e8 !important;
+}
+
+.app-theme .db-hero__streak-value {
+  color: var(--accent-strong) !important;
+}
+
+.app-theme .db-top3 {
+  border-color: var(--accent-border) !important;
+}
+
+.app-theme .db-messages,
+.app-theme .dashboard-message-card,
+.app-theme .status-hub-card {
+  background: #ffffff !important;
+  border-color: var(--border) !important;
+}
+
+.app-theme .db-message p,
+.app-theme .dashboard-message-card p,
+.app-theme .status-hub-card p {
+  color: var(--text-muted) !important;
+}
+
+/* Leaderboard and duel filters */
+.app-theme .leaderboard-switch__button,
+.app-theme .leaderboard-scope-switch__button,
+.app-theme .leaderboard-gender-filter__button,
+.app-theme .knot-folder-tab,
+.app-theme .knot-submission-form .submission-mode-pill {
+  min-height: 44px;
+  border: 1px solid var(--border) !important;
+  background: #ffffff !important;
+  color: var(--text-soft) !important;
+}
+
+.app-theme .leaderboard-switch__button.is-active,
+.app-theme .leaderboard-scope-switch__button.is-active,
+.app-theme .leaderboard-gender-filter__button.is-active,
+.app-theme .knot-folder-tab.is-active,
+.app-theme .knot-submission-form .submission-mode-pill.is-active {
+  background: var(--primary-soft) !important;
+  border-color: var(--accent-border) !important;
+  color: var(--accent-strong) !important;
+}
+
+.app-theme .leaderboard-row__rank {
+  background: var(--accent-bg) !important;
+  border: 1px solid var(--accent-border) !important;
+  color: var(--accent-strong) !important;
+}
+
+.app-theme .leaderboard-row__rank--gold {
+  background: var(--gold-soft) !important;
+  border-color: var(--gold-border) !important;
+  color: #8a5a00 !important;
+}
+
+.app-theme .leaderboard-row__rank--silver {
+  background: #edf2f7 !important;
+  border-color: #c8d2df !important;
+  color: #4f6278 !important;
+}
+
+.app-theme .leaderboard-row__rank--bronze {
+  background: #f7eadf !important;
+  border-color: #ddb48e !important;
+  color: #80512d !important;
+}
+
+.app-theme .leaderboard-row__hot-mover {
+  background: var(--highlight-soft);
+  border-color: var(--gold-border);
+}
+
+/* Knots page */
+.app-theme .knots-page {
+  background: transparent;
+}
+
+.app-theme .knots-page__points {
+  background: var(--accent-bg);
+  border: 1px solid var(--accent-border);
+}
+
+.app-theme .knots-page__points span,
+.app-theme .knot-row__cta-points {
+  color: var(--accent-strong) !important;
+}
+
+.app-theme .knot-row__doc-btn,
+.app-theme .knot-action-bar__btn:not(.knot-action-bar__btn--ghost) {
+  border: 1px solid var(--cta-strong) !important;
+  background: var(--cta) !important;
+  color: #ffffff !important;
+}
+
+.app-theme .knot-row__expand-btn,
+.app-theme .knot-action-bar__btn--ghost {
+  border-color: var(--border) !important;
+  color: var(--text-soft) !important;
+  background: #ffffff !important;
+}
+
+.app-theme .knot-row__expand-btn.is-active,
+.app-theme .knot-row__expand-btn:hover {
+  background: var(--accent-bg) !important;
+  border-color: var(--accent-border) !important;
+  color: var(--accent-strong) !important;
+}
+
+.app-theme .knot-row__dot.is-pending {
+  background: var(--warning) !important;
+}
+
+.app-theme .knot-row__dot.is-approved {
+  background: var(--success) !important;
+}
+
+.app-theme .knot-row__dot.is-rejected {
+  background: var(--danger) !important;
+}
+
+/* Feed */
+.app-theme .feed-card-v3,
+.app-theme .feed-card-desktop {
+  overflow: hidden;
+  border-radius: 22px;
+}
+
+.app-theme .feed-card-v3__index {
+  background: var(--accent-bg);
+  color: var(--accent-strong);
+  border: 1px solid var(--accent-border);
+}
+
+.app-theme .feed-rating-star {
+  color: #c6cfdb !important;
+}
+
+.app-theme .feed-rating-star.is-active {
+  color: #d99500 !important;
+}
+
+.app-theme .feed-media__fs-btn,
+.app-theme .feed-card-delete-button,
+.app-theme .feed-card-report-button {
+  min-height: 44px;
+}
+
+.app-theme .feed-card-v3 .profile-avatar--small,
+.app-theme .feed-card-desktop .profile-avatar--small {
+  background: var(--surface-soft);
+  color: var(--accent-strong);
+  border: 1px solid var(--accent-border);
+}
+
+/* Profile + status */
+.app-theme .profile-cover {
+  background: linear-gradient(140deg, #ffffff 0%, #f6f8fc 100%) !important;
+  border-color: var(--border) !important;
+}
+
+.app-theme .profile-russ-name {
+  color: var(--accent-strong) !important;
+}
+
+.app-theme .status-hub-card__kicker {
+  color: var(--accent-strong) !important;
+}
+
+.app-theme .status-hub-card strong,
+.app-theme .status-inline-summary__item strong,
+.app-theme .status-list-row strong {
+  color: var(--text-strong) !important;
+}
+
+/* Admin */
+.app-theme .admin-task-button {
+  border-radius: 18px;
+}
+
+.app-theme .admin-task-button.is-active {
+  border-color: var(--accent-border) !important;
+  background: var(--accent-bg) !important;
+  box-shadow: 0 0 0 1px rgba(255, 138, 31, 0.22), var(--shadow-soft) !important;
+}
+
+.app-theme .submission-row.is-active {
+  border-color: var(--accent-border) !important;
+  box-shadow: 0 0 0 1px rgba(255, 138, 31, 0.25), var(--shadow-soft) !important;
+}
+
+.app-theme .admin-review-toolbar__hint {
+  color: var(--text-muted) !important;
+}
+
+.app-theme .submission-row__select {
+  color: var(--text-muted) !important;
+}
+
+.app-theme .admin-task-button__badge,
+.app-theme .folder-count {
+  background: var(--gold-soft) !important;
+  border: 1px solid var(--gold-border) !important;
+  color: #8a5a00 !important;
+}
+
+/* Keep motion subtle and fast */
+.app-theme .hero-chip--accent,
+.app-theme .daily-knot-card,
+.app-theme .db-top3-row,
+.app-theme .dashboard-message-card,
+.app-theme .dashboard-rival-row,
+.app-theme .dashboard-activity-row {
+  animation: none !important;
+}
+
+.app-theme .action-button,
+.app-theme .nav-button,
+.app-theme .desktop-segmented-nav__button,
+.app-theme .bottom-swipe-nav__button,
+.app-theme .knot-folder-tab,
+.app-theme .leaderboard-switch__button,
+.app-theme .leaderboard-scope-switch__button,
+.app-theme .leaderboard-gender-filter__button,
+.app-theme .profile-selector,
+.app-theme .admin-task-button,
+.app-theme .admin-quick-card {
+  transition: transform 120ms ease, background-color 120ms ease, border-color 120ms ease,
+    color 120ms ease, box-shadow 120ms ease !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .app-theme *,
+  .app-theme *::before,
+  .app-theme *::after {
+    animation: none !important;
+    transition: none !important;
+  }
+}

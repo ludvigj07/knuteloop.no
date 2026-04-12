@@ -732,7 +732,12 @@
       "submissionMode": "feed",
       "ratings": {},
       "reviewedAtRaw": null,
-      "reviewedBy": null
+      "reviewedBy": null,
+      "basePoints": 10,
+      "streakBonusPoints": 0,
+      "streakQualified": false,
+      "streakDay": null,
+      "streakDayKey": null
     },
     {
       "id": "submission-1775998558954",
@@ -753,7 +758,12 @@
       "submissionMode": "review",
       "ratings": {},
       "reviewedAtRaw": null,
-      "reviewedBy": null
+      "reviewedBy": null,
+      "basePoints": 10,
+      "streakBonusPoints": 0,
+      "streakQualified": false,
+      "streakDay": null,
+      "streakDayKey": null
     },
     {
       "id": "submission-1775998549403",
@@ -774,7 +784,12 @@
       "submissionMode": "review",
       "ratings": {},
       "reviewedAtRaw": null,
-      "reviewedBy": null
+      "reviewedBy": null,
+      "basePoints": 20,
+      "streakBonusPoints": 0,
+      "streakQualified": false,
+      "streakDay": null,
+      "streakDayKey": null
     },
     {
       "id": "submission-1775998542611",
@@ -795,7 +810,12 @@
       "submissionMode": "review",
       "ratings": {},
       "reviewedAtRaw": null,
-      "reviewedBy": null
+      "reviewedBy": null,
+      "basePoints": 15,
+      "streakBonusPoints": 0,
+      "streakQualified": false,
+      "streakDay": null,
+      "streakDayKey": null
     },
     {
       "id": "submission-1775998532903",
@@ -816,7 +836,12 @@
       "submissionMode": "review",
       "ratings": {},
       "reviewedAtRaw": null,
-      "reviewedBy": null
+      "reviewedBy": null,
+      "basePoints": 10,
+      "streakBonusPoints": 0,
+      "streakQualified": false,
+      "streakDay": null,
+      "streakDayKey": null
     },
     {
       "id": "submission-1775996925345",
@@ -2192,14 +2217,14 @@
   },
   "sessions": [
     {
-      "token": "a5a10bc4-2fb3-4959-b9fc-8a548a61ebcf",
-      "userId": 1,
-      "createdAt": "2026-04-12T12:56:51.346Z"
-    },
-    {
       "token": "b7c26420-b317-4bd6-bf39-8f8eac80d4dd",
       "userId": 2,
       "createdAt": "2026-04-12T15:56:50.410Z"
+    },
+    {
+      "token": "4f50d83e-59c6-4761-9eb9-e08f12ee9896",
+      "userId": 1,
+      "createdAt": "2026-04-12T17:07:19.875Z"
     }
   ],
   "reports": [

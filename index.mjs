@@ -16,7 +16,7 @@ import {
   DUEL_WINDOW_HOURS,
   limitNoteWords,
   MODERATION_POLICY,
-} from '../src/data/appHelpers.js';
+} from '../knuteloop.no/backend/src/data/appHelpers.js';
 import {
   initialDuels,
   initialKnots,
@@ -25,7 +25,7 @@ import {
   initialSubmissions,
   socialProfileDetails,
   stOlavBoardKnots,
-} from '../src/data/prototypeData.js';
+} from '../knuteloop.no/backend/src/data/prototypeData.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
