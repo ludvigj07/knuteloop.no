@@ -49,6 +49,7 @@ export function SwipeTabsShell({
   });
 
   const [viewportWidth, setViewportWidth] = useState(0);
+  const [pageHeights, setPageHeights] = useState({});
   const [isMobileViewport, setIsMobileViewport] = useState(() => {
     if (typeof window === 'undefined') {
       return true;
@@ -58,7 +59,6 @@ export function SwipeTabsShell({
   });
   const [dragOffset, setDragOffset] = useState(0);
   const [isDragging, setIsDragging] = useState(false);
-  const [viewportHeight, setViewportHeight] = useState(null);
 
   const pageIndexById = useMemo(
     () =>
@@ -70,6 +70,64 @@ export function SwipeTabsShell({
   );
   const activeIndex = pageIndexById[activePageId] ?? 0;
   const useSwipeNav = !mobileOnlySwipe || isMobileViewport;
+
+  useEffect(() => {
+    if (!useSwipeNav) {
+      return;
+    }
+
+    function collectHeights() {
+      const nextHeights = {};
+
+      pages.forEach((page) => {
+        const element = pageRefs.current.get(page.id);
+        if (!element) {
+          return;
+        }
+
+        nextHeights[page.id] = Math.ceil(element.getBoundingClientRect().height);
+      });
+
+      setPageHeights((currentHeights) => {
+        const currentKeys = Object.keys(currentHeights);
+        const nextKeys = Object.keys(nextHeights);
+
+        if (currentKeys.length !== nextKeys.length) {
+          return nextHeights;
+        }
+
+        for (const key of nextKeys) {
+          if (currentHeights[key] !== nextHeights[key]) {
+            return nextHeights;
+          }
+        }
+
+        return currentHeights;
+      });
+    }
+
+    collectHeights();
+
+    if (typeof ResizeObserver === 'undefined') {
+      return;
+    }
+
+    const observer = new ResizeObserver(collectHeights);
+
+    pages.forEach((page) => {
+      const element = pageRefs.current.get(page.id);
+      if (element) {
+        observer.observe(element);
+      }
+    });
+
+    window.addEventListener('resize', collectHeights);
+
+    return () => {
+      observer.disconnect();
+      window.removeEventListener('resize', collectHeights);
+    };
+  }, [pages, useSwipeNav]);
 
   useEffect(() => {
     function handleResize() {
@@ -88,42 +146,6 @@ export function SwipeTabsShell({
   useEffect(() => {
     setViewportWidth(getViewportWidth(shellRef.current));
   }, [pages.length, isMobileViewport]);
-
-  useEffect(() => {
-    if (!useSwipeNav) {
-      setViewportHeight(null);
-      return;
-    }
-
-    const activePageElement = pageRefs.current.get(activePageId);
-    if (!activePageElement) {
-      return;
-    }
-
-    const updateViewportHeight = () => {
-      const nextHeight = Math.ceil(activePageElement.getBoundingClientRect().height);
-      setViewportHeight((currentHeight) =>
-        currentHeight === nextHeight ? currentHeight : nextHeight,
-      );
-    };
-
-    updateViewportHeight();
-    const rafId = window.requestAnimationFrame(updateViewportHeight);
-
-    let resizeObserver;
-    if (typeof ResizeObserver !== 'undefined') {
-      resizeObserver = new ResizeObserver(updateViewportHeight);
-      resizeObserver.observe(activePageElement);
-    }
-
-    window.addEventListener('resize', updateViewportHeight);
-
-    return () => {
-      window.cancelAnimationFrame(rafId);
-      window.removeEventListener('resize', updateViewportHeight);
-      resizeObserver?.disconnect();
-    };
-  }, [activePageId, pages.length, useSwipeNav]);
 
   function goToPage(pageId) {
     if (pageId === activePageId) {
@@ -290,9 +312,27 @@ export function SwipeTabsShell({
   const trackTranslate = useSwipeNav
     ? -activeIndex * viewportWidth + dragOffset
     : 0;
+  const activePage = pages[activeIndex];
+  const activePageHeight = activePage ? pageHeights[activePage.id] ?? 0 : 0;
+  const swipeDirection = dragOffset === 0 ? 0 : dragOffset < 0 ? 1 : -1;
+  const adjacentPage = pages[clamp(activeIndex + swipeDirection, 0, pages.length - 1)];
+  const adjacentPageHeight = adjacentPage
+    ? pageHeights[adjacentPage.id] ?? activePageHeight
+    : activePageHeight;
+  const dragProgress =
+    viewportWidth > 0 ? clamp(Math.abs(dragOffset) / viewportWidth, 0, 1) : 0;
+  const viewportHeight =
+    isDragging && swipeDirection !== 0
+      ? Math.round(
+          activePageHeight + (adjacentPageHeight - activePageHeight) * dragProgress,
+        )
+      : activePageHeight;
   const viewportStyle =
-    useSwipeNav && typeof viewportHeight === 'number'
-      ? { height: `${viewportHeight}px` }
+    useSwipeNav && viewportHeight > 0
+      ? {
+          height: `${viewportHeight}px`,
+          transition: isDragging ? 'none' : 'height 0.22s ease',
+        }
       : undefined;
 
   return (
@@ -322,9 +362,9 @@ export function SwipeTabsShell({
               {pages.map((page) => (
                 <section
                   key={page.id}
-                  ref={(node) => {
-                    if (node) {
-                      pageRefs.current.set(page.id, node);
+                  ref={(element) => {
+                    if (element) {
+                      pageRefs.current.set(page.id, element);
                     } else {
                       pageRefs.current.delete(page.id);
                     }

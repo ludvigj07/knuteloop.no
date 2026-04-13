@@ -173,7 +173,6 @@ function getStatusDotClass(status) {
   if (isRejectedStatus(status)) return 'is-rejected';
   return 'is-available';
 }
-
 function getStatusKey(status) {
   if (status === 'Godkjent') return 'approved';
   if (status === 'Sendt inn') return 'pending';
@@ -413,7 +412,6 @@ function KnotRow({
   const effectiveMode = activeFeedBan ? SUBMISSION_MODE.REVIEW : submissionMode;
   const wordCount = getWordCount(draft.note ?? '');
   const isOverWordLimit = wordCount > 100;
-  const dotClass = getStatusDotClass(knot.status);
   const isCompletedKnot = knot.status === 'Godkjent' || knot.status === 'Fullført';
 
   return (
@@ -423,8 +421,6 @@ function KnotRow({
       data-status={getStatusKey(knot.status)}
     >
       <div className="knot-row__header">
-        <span className={`knot-row__dot ${dotClass}`} aria-hidden="true" />
-
         <div className="knot-row__info">
           <div className="knot-row__title-line">
             <span className={`knot-row__points${isCompletedKnot ? ' is-completed' : ''}`}>
