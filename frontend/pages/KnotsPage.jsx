@@ -1,7 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { MobileVideo } from '../components/MobileVideo.jsx';
-import { convertToMp4 } from '../data/api.js';
 import { isGoldKnot } from '../data/badgeSystem.js';
 import { KNOT_FOLDERS, resolveKnotFolder } from '../data/knotFolders.js';
 
@@ -14,7 +12,6 @@ const SORT_OPTIONS = [
   { value: 'standard', label: 'Standard' },
   { value: 'points-desc', label: 'Høyest poeng' },
   { value: 'points-asc', label: 'Lavest poeng' },
-  { value: 'difficulty-asc', label: 'Lett først' },
 ];
 
 const DIFFICULTY_ORDER = {
@@ -159,6 +156,17 @@ function getSubmissionModeLabel(mode) {
   return 'uten feed';
 }
 
+function buildDraftFromSubmission(submission) {
+  if (!submission) return null;
+
+  return {
+    note: submission.note ?? '',
+    imageName: submission.imageName ?? '',
+    imagePreviewUrl: submission.imagePreviewUrl ?? '',
+    submissionMode: normalizeSubmissionMode(submission.submissionMode),
+  };
+}
+
 function getStatusDotClass(status) {
   if (status === 'Godkjent') return 'is-approved';
   if (status === 'Sendt inn') return 'is-pending';
@@ -227,17 +235,19 @@ function SubmissionFormContent({
   onUpdateNote,
   onUpdateMode,
   onUpdateFile,
+  onRemoveImage,
   onPasteImage,
   showDesktopPasteHint,
   onSubmit,
 }) {
   const shareToFeed = effectiveMode === SUBMISSION_MODE.FEED;
   const shareToAnonymousFeed = effectiveMode === SUBMISSION_MODE.ANONYMOUS_FEED;
+  const hasImage = Boolean(draft.imageFile || draft.imagePreviewUrl || draft.imageName);
 
   return (
     <div className="knot-submission-form" onPaste={onPasteImage}>
       <label className="field-group">
-        <span>Kommentar til admin</span>
+        <span>Forklaring:</span>
         <textarea
           className="text-input text-input--area text-input--compact"
           placeholder="Kort forklaring på hvordan knuten ble gjort. Maks 100 ord."
@@ -250,86 +260,115 @@ function SubmissionFormContent({
       </label>
 
       <div className="submission-mode-options">
-        <p className="submission-mode-options__label">Velg hvordan du vil poste</p>
-        <div className="submission-mode-segment" role="radiogroup" aria-label="Postemodus">
-          <button
-            type="button"
-            className={`submission-mode-pill ${effectiveMode === SUBMISSION_MODE.REVIEW ? 'is-active' : ''}`}
-            onClick={() => onUpdateMode(SUBMISSION_MODE.REVIEW)}
-          >
-            Kun godkjenning
-          </button>
+        <p className="submission-mode-options__label">
+          Velg hvordan du vil poste{' '}
+          <span className="submission-mode-options__optional">(valgfritt)</span>
+        </p>
+        <div className="submission-mode-segment" role="group" aria-label="Feedvalg">
           <button
             type="button"
             className={`submission-mode-pill ${shareToFeed ? 'is-active' : ''}`}
+            aria-pressed={shareToFeed}
             disabled={Boolean(activeFeedBan)}
-            onClick={() => onUpdateMode(SUBMISSION_MODE.FEED)}
+            onClick={() =>
+              onUpdateMode(
+                shareToFeed ? SUBMISSION_MODE.REVIEW : SUBMISSION_MODE.FEED,
+              )
+            }
           >
             Del i feed
           </button>
           <button
             type="button"
             className={`submission-mode-pill ${shareToAnonymousFeed ? 'is-active' : ''}`}
+            aria-pressed={shareToAnonymousFeed}
             disabled={Boolean(activeFeedBan)}
-            onClick={() => onUpdateMode(SUBMISSION_MODE.ANONYMOUS_FEED)}
+            onClick={() =>
+              onUpdateMode(
+                shareToAnonymousFeed
+                  ? SUBMISSION_MODE.REVIEW
+                  : SUBMISSION_MODE.ANONYMOUS_FEED,
+              )
+            }
           >
             Post anonymt
           </button>
         </div>
       </div>
 
-      <p className="submission-mode-hint">
-        {activeFeedBan
-          ? `Feed-posting er blokkert i ${activeFeedBan.remainingLabel}. Innsending går kun til godkjenning.`
-          : 'Valgfritt: Lar du begge stå av, sendes knuten kun til godkjenning.'}
-      </p>
+      {activeFeedBan ? (
+        <p className="submission-mode-hint">
+          {`Feed-posting er blokkert i ${activeFeedBan.remainingLabel}. Innsending går kun til godkjenning.`}
+        </p>
+      ) : null}
 
       <div className="submission-upload-grid">
-        <label className="upload-field upload-field--compact">
-          <span>Last opp bilde</span>
-          <input
-            type="file"
-            accept="image/*"
-            onChange={(e) => {
-              const file = e.target.files?.[0];
-              onUpdateFile('image', file);
-              e.target.value = '';
-            }}
-          />
-          <small>{draft.imageName || 'Valgfritt bildebevis'}</small>
+        <div className="upload-field upload-field--compact">
+          <span>{showDesktopPasteHint ? 'Bilde' : 'Last opp bilde'}</span>
+
           {showDesktopPasteHint ? (
-            <small>Tips (PC): Lim inn bilde med Ctrl+V.</small>
-          ) : null}
-        </label>
-        <label className="upload-field upload-field--compact">
-          <span>Last opp video</span>
-          <input
-            type="file"
-            accept="video/mp4,video/quicktime,video/x-m4v"
-            onChange={(e) => {
-              const file = e.target.files?.[0];
-              onUpdateFile('video', file);
-              e.target.value = '';
-            }}
-          />
-          <small>{draft.videoName || 'Valgfritt videobevis'}</small>
-        </label>
+            <>
+              <div className="upload-file-row">
+                <input
+                  type="file"
+                  accept="image/*"
+                  className="upload-file-input"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    onUpdateFile('image', file);
+                    e.target.value = '';
+                  }}
+                />
+                <span className="upload-file-name">{draft.imageName || 'Ingen fil valgt'}</span>
+                <button
+                  type="button"
+                  className="upload-remove-btn"
+                  onClick={onRemoveImage}
+                  disabled={!hasImage}
+                >
+                  Slett bilde
+                </button>
+              </div>
+              <input
+                type="text"
+                readOnly
+                className="upload-paste-target"
+                value="Lim inn bilde i boksen (Ctrl+V)"
+                aria-label="Lim inn bilde i boksen med Ctrl+V"
+                onPaste={onPasteImage}
+              />
+            </>
+          ) : (
+            <>
+              <input
+                type="file"
+                accept="image/*"
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  onUpdateFile('image', file);
+                  e.target.value = '';
+                }}
+              />
+              <small>{draft.imageName || 'Valgfritt bildebevis'}</small>
+              <button
+                type="button"
+                className="upload-remove-btn upload-remove-btn--mobile"
+                onClick={onRemoveImage}
+                disabled={!hasImage}
+              >
+                Slett bilde
+              </button>
+            </>
+          )}
+        </div>
       </div>
 
-      {(draft.imagePreviewUrl || draft.videoPreviewUrl) ? (
+      {draft.imagePreviewUrl ? (
         <div className="submission-preview-grid">
-          {draft.imagePreviewUrl ? (
-            <div className="evidence-card">
-              <span>Bildepreview</span>
-              <img src={draft.imagePreviewUrl} alt="Bevis" />
-            </div>
-          ) : null}
-          {draft.videoPreviewUrl ? (
-            <div className="evidence-card">
-              <span>Videopreview</span>
-              <MobileVideo controls autoPlay muted loop src={draft.videoPreviewUrl} />
-            </div>
-          ) : null}
+          <div className="evidence-card">
+            <span>Bildepreview</span>
+            <img src={draft.imagePreviewUrl} alt="Bevis" />
+          </div>
         </div>
       ) : null}
 
@@ -365,6 +404,7 @@ function KnotRow({
   onUpdateNote,
   onUpdateMode,
   onUpdateFile,
+  onRemoveImage,
   onPasteImage,
   showDesktopPasteHint,
   onSubmit,
@@ -386,30 +426,63 @@ function KnotRow({
         <span className={`knot-row__dot ${dotClass}`} aria-hidden="true" />
 
         <div className="knot-row__info">
-          <span className="knot-row__title">{knot.title}</span>
+          <div className="knot-row__title-line">
+            <span className={`knot-row__points${isCompletedKnot ? ' is-completed' : ''}`}>
+              P{knot.points}
+            </span>
+            <span className="knot-row__title">{knot.title}</span>
+            {knot.status === 'Sendt inn' ? (
+              <span className="pill pill--warning pill--sm">Sendt</span>
+            ) : null}
+          </div>
         </div>
 
         <div className="knot-row__cta">
-          <span className={`knot-row__cta-points${isCompletedKnot ? ' is-completed' : ''}`}>
-            P{knot.points}
-          </span>
           {canSubmit ? (
             <button
               type="button"
               className={`knot-row__doc-btn${isFormOpen ? ' is-active' : ''}`}
               disabled={Boolean(activeSubmissionBan) && !isFormOpen}
               onClick={onDocumentClick}
+              aria-label={isMobile ? 'Registrering' : undefined}
             >
-              <span className="knot-row__doc-btn-label">{isMobile ? 'Reg.' : 'Registrer'}</span>
+              {isMobile ? (
+                <span className="knot-row__doc-btn-icon" aria-hidden="true">
+                  <svg viewBox="0 0 24 24" fill="none" role="img">
+                    <path
+                      d="M7.5 4.5h6l3 3v12h-9z"
+                      stroke="currentColor"
+                      strokeWidth="1.8"
+                      strokeLinejoin="round"
+                    />
+                    <path
+                      d="M13.5 4.5v3h3"
+                      stroke="currentColor"
+                      strokeWidth="1.8"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    />
+                    <path
+                      d="M9.5 11h5M9.5 14h5M9.5 17h3.5"
+                      stroke="currentColor"
+                      strokeWidth="1.8"
+                      strokeLinecap="round"
+                    />
+                  </svg>
+                </span>
+              ) : (
+                <span className="knot-row__doc-btn-label">Registrering</span>
+              )}
             </button>
           ) : null}
           <button
             type="button"
             className={`knot-row__expand-btn${isDetailOpen ? ' is-active' : ''}`}
             aria-expanded={isDetailOpen}
+            aria-label="Vis detaljer"
             onClick={onToggleDetail}
           >
-            {isDetailOpen ? 'Skjul' : (isMobile ? '?' : 'Hvordan')}
+            <span className="knot-row__expand-icon" aria-hidden="true" />
           </button>
         </div>
       </div>
@@ -426,8 +499,10 @@ function KnotRow({
             {knot.safety === 'review' ? (
               <span className="knot-hint knot-hint--warn">⚠ Krever godkjenning av sikkerhetshensyn</span>
             ) : null}
-            {!canSubmit && knot.status === 'Sendt inn' ? (
-              <span className="knot-hint">Innsendingen behandles av admin.</span>
+            {knot.status === 'Sendt inn' ? (
+              <span className="knot-hint">
+                Innsendingen behandles av admin. Du kan fortsatt legge til mer info.
+              </span>
             ) : null}
           </div>
         </div>
@@ -446,6 +521,7 @@ function KnotRow({
             onUpdateNote={onUpdateNote}
             onUpdateMode={onUpdateMode}
             onUpdateFile={onUpdateFile}
+            onRemoveImage={onRemoveImage}
             onPasteImage={onPasteImage}
             showDesktopPasteHint={showDesktopPasteHint}
             onSubmit={onSubmit}
@@ -470,6 +546,7 @@ function KnotBottomSheet({
   onUpdateNote,
   onUpdateMode,
   onUpdateFile,
+  onRemoveImage,
   onPasteImage,
   onSubmit,
 }) {
@@ -596,6 +673,7 @@ function KnotBottomSheet({
               onUpdateNote={onUpdateNote}
               onUpdateMode={onUpdateMode}
               onUpdateFile={onUpdateFile}
+              onRemoveImage={onRemoveImage}
               onPasteImage={onPasteImage}
               showDesktopPasteHint={false}
               onSubmit={onSubmit}
@@ -633,12 +711,14 @@ function KnotActionBar({ documented, total, hasActiveFilters, onResetFilters }) 
 
 export function KnotsPage({
   currentUserActiveBans = [],
+  currentUserId = null,
   currentUserPoints = 0,
   focusedKnotId,
   focusedKnotScrollRequest = 0,
   isPageActive = true,
   knots,
   onSubmitKnot,
+  submissions = [],
 }) {
   const focusedKnot = focusedKnotId
     ? knots.find((k) => k.id === focusedKnotId)
@@ -710,16 +790,37 @@ export function KnotsPage({
     currentUserActiveBans.find((b) => b.type === 'feed') ?? null;
   const activeSubmissionBan =
     currentUserActiveBans.find((b) => b.type === 'submission') ?? null;
+  const pendingSubmissionsByKnotId = submissions
+    .filter(
+      (submission) =>
+        submission?.status === 'Venter' &&
+        (currentUserId == null || submission?.leaderId === currentUserId),
+    )
+    .sort(
+      (left, right) =>
+        new Date(right?.submittedAtRaw ?? 0).getTime() -
+        new Date(left?.submittedAtRaw ?? 0).getTime(),
+    )
+    .reduce((acc, submission) => {
+      if (!acc[submission.knotId]) {
+        acc[submission.knotId] = submission;
+      }
+      return acc;
+    }, {});
 
   const sheetKnot = sheetKnotId ? knots.find((k) => k.id === sheetKnotId) : null;
   const sheetDraft = sheetKnotId ? (drafts[sheetKnotId] ?? {}) : {};
   const sheetCanSubmit = sheetKnot
-    ? sheetKnot.status === 'Tilgjengelig' || isRejectedStatus(sheetKnot.status)
+    ? sheetKnot.status === 'Tilgjengelig' ||
+      sheetKnot.status === 'Sendt inn' ||
+      isRejectedStatus(sheetKnot.status)
     : false;
   const sheetButtonLabel =
-    sheetKnot && isRejectedStatus(sheetKnot.status)
-      ? 'Send til godkjenning på nytt'
-      : 'Send til godkjenning';
+    sheetKnot?.status === 'Sendt inn'
+      ? 'Oppdater innsending'
+      : sheetKnot && isRejectedStatus(sheetKnot.status)
+        ? 'Send til godkjenning på nytt'
+        : 'Send til godkjenning';
 
   // ── Effects ──────────────────────────────────────────────────────────────
 
@@ -757,7 +858,6 @@ export function KnotsPage({
     () => () => {
       Object.values(draftsRef.current).forEach((d) => {
         revokeObjectUrl(d.imagePreviewUrl);
-        revokeObjectUrl(d.videoPreviewUrl);
       });
     },
     [],
@@ -803,29 +903,46 @@ export function KnotsPage({
       [knotId]: {
         ...d[knotId],
         submissionMode: normalizeSubmissionMode(submissionMode),
+        modeTouched: true,
       },
     }));
   }
 
   async function updateDraftFile(knotId, type, file) {
-    if (!file) return;
-    const nextFile = type === 'video' ? await convertToMp4(file) : file;
-    if (!nextFile) return;
-    const previewField = type === 'image' ? 'imagePreviewUrl' : 'videoPreviewUrl';
-    const nameField = type === 'image' ? 'imageName' : 'videoName';
-    const fileField = type === 'image' ? 'imageFile' : 'videoFile';
-    const nextPreviewUrl = URL.createObjectURL(nextFile);
+    if (type !== 'image' || !file) return;
+    const nextPreviewUrl = URL.createObjectURL(file);
 
     setDrafts((d) => {
       const cur = d[knotId] ?? {};
-      revokeObjectUrl(cur[previewField]);
+      revokeObjectUrl(cur.imagePreviewUrl);
       return {
         ...d,
         [knotId]: {
           ...cur,
-          [nameField]: nextFile.name,
-          [fileField]: nextFile,
-          [previewField]: nextPreviewUrl,
+          imageName: file.name,
+          imageFile: file,
+          imagePreviewUrl: nextPreviewUrl,
+          removeImage: false,
+        },
+      };
+    });
+  }
+
+  function clearDraftImage(knotId) {
+    setDrafts((d) => {
+      const cur = d[knotId] ?? {};
+      if (!cur.imagePreviewUrl && !cur.imageName && !cur.imageFile) {
+        return d;
+      }
+      revokeObjectUrl(cur.imagePreviewUrl);
+      return {
+        ...d,
+        [knotId]: {
+          ...cur,
+          imageName: '',
+          imageFile: undefined,
+          imagePreviewUrl: '',
+          removeImage: true,
         },
       };
     });
@@ -868,20 +985,28 @@ export function KnotsPage({
     }
 
     const draft = drafts[knotId] ?? {};
+    const modeTouched = draft.modeTouched === true;
     const submissionMode = normalizeSubmissionMode(draft.submissionMode);
     const effectiveSubmissionMode = activeFeedBan
       ? SUBMISSION_MODE.REVIEW
       : submissionMode;
     const knot = knots.find((k) => k.id === knotId);
+    const wasPending = knot?.status === 'Sendt inn';
 
     try {
-      await onSubmitKnot(knotId, draft, effectiveSubmissionMode);
+      await onSubmitKnot(knotId, draft, effectiveSubmissionMode, { modeTouched });
       resetDraft(knotId);
       setOpenFormId(null);
       setSheetKnotId(null);
-      setFeedbackMessage(
-        `"${knot?.title ?? 'Knuten'}" ble sendt inn for vurdering (${getSubmissionModeLabel(effectiveSubmissionMode)}).`,
-      );
+      if (wasPending) {
+        setFeedbackMessage(
+          `"${knot?.title ?? 'Knuten'}" ble oppdatert. Innsendingen står fortsatt til vurdering.`,
+        );
+      } else {
+        setFeedbackMessage(
+          `"${knot?.title ?? 'Knuten'}" ble sendt inn for vurdering (${getSubmissionModeLabel(effectiveSubmissionMode)}).`,
+        );
+      }
     } catch (error) {
       setFeedbackMessage(
         error instanceof Error && error.message
@@ -892,6 +1017,27 @@ export function KnotsPage({
   }
 
   // ── UI handlers ──────────────────────────────────────────────────────────
+
+  function seedDraftFromPendingSubmission(knotId) {
+    const existingDraft = draftsRef.current[knotId];
+    if (existingDraft) {
+      return;
+    }
+
+    const pendingSubmission = pendingSubmissionsByKnotId[knotId];
+    const seededDraft = buildDraftFromSubmission(pendingSubmission);
+    if (!seededDraft) {
+      return;
+    }
+
+    setDrafts((d) => {
+      if (d[knotId]) return d;
+      return {
+        ...d,
+        [knotId]: seededDraft,
+      };
+    });
+  }
 
   function handleFolderChange(folderId) {
     setActiveFolder(folderId);
@@ -907,9 +1053,21 @@ export function KnotsPage({
 
   function handleDocumentClick(knotId) {
     if (isMobileViewport) {
-      setSheetKnotId((current) => (current === knotId ? null : knotId));
+      setSheetKnotId((current) => {
+        const next = current === knotId ? null : knotId;
+        if (next) {
+          seedDraftFromPendingSubmission(next);
+        }
+        return next;
+      });
     } else {
-      setOpenFormId((current) => (current === knotId ? null : knotId));
+      setOpenFormId((current) => {
+        const next = current === knotId ? null : knotId;
+        if (next) {
+          seedDraftFromPendingSubmission(next);
+        }
+        return next;
+      });
     }
   }
 
@@ -1054,10 +1212,15 @@ export function KnotsPage({
         <div className="knot-list">
           {visibleKnots.map((knot) => {
             const canSubmit =
-              knot.status === 'Tilgjengelig' || isRejectedStatus(knot.status);
-            const buttonLabel = isRejectedStatus(knot.status)
-              ? 'Send til godkjenning på nytt'
-              : 'Send til godkjenning';
+              knot.status === 'Tilgjengelig' ||
+              knot.status === 'Sendt inn' ||
+              isRejectedStatus(knot.status);
+            const buttonLabel =
+              knot.status === 'Sendt inn'
+                ? 'Oppdater innsending'
+                : isRejectedStatus(knot.status)
+                  ? 'Send til godkjenning på nytt'
+                  : 'Send til godkjenning';
             const draft = drafts[knot.id] ?? {};
 
             return (
@@ -1078,6 +1241,7 @@ export function KnotsPage({
                 onUpdateNote={(note) => updateDraftNote(knot.id, note)}
                 onUpdateMode={(mode) => updateDraftSubmissionMode(knot.id, mode)}
                 onUpdateFile={(type, file) => updateDraftFile(knot.id, type, file)}
+                onRemoveImage={() => clearDraftImage(knot.id)}
                 onPasteImage={(event) => {
                   void handlePasteImageForKnot(knot.id, event);
                 }}
@@ -1106,6 +1270,11 @@ export function KnotsPage({
         onUpdateFile={(type, file) =>
           sheetKnotId && updateDraftFile(sheetKnotId, type, file)
         }
+        onRemoveImage={() => {
+          if (sheetKnotId) {
+            clearDraftImage(sheetKnotId);
+          }
+        }}
         onPasteImage={(event) => {
           if (sheetKnotId) {
             void handlePasteImageForKnot(sheetKnotId, event);

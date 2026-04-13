@@ -1926,6 +1926,10 @@ async function handleCreateSubmission(request, response) {
 
   const body = await readJsonBody(request);
   const knot = db.knots.find((item) => item.id === body.knotId && item.isActive !== false);
+  const hasRequestedSubmissionMode = Object.prototype.hasOwnProperty.call(
+    body,
+    'submissionMode',
+  );
   const requestedSubmissionMode = normalizeSubmissionMode(
     body.submissionMode,
     body.isAnonymousFeed === true ? 'anonymous-feed' : body.postToFeed === true ? 'feed' : 'review',
@@ -1944,6 +1948,19 @@ async function handleCreateSubmission(request, response) {
     return;
   }
 
+  const existingPendingSubmission = db.submissions
+    .filter(
+      (submission) =>
+        submission.knotId === knot.id &&
+        submission.leaderId === user.id &&
+        submission.status === 'Venter',
+    )
+    .sort(
+      (left, right) =>
+        new Date(right.submittedAtRaw ?? 0).getTime() -
+        new Date(left.submittedAtRaw ?? 0).getTime(),
+    )[0] ?? null;
+
   const imagePreviewUrl = await saveUploadedAsset(
     body.imageDataUrl,
     body.imageName,
@@ -1954,6 +1971,71 @@ async function handleCreateSubmission(request, response) {
     body.videoName,
     'submission-video',
   );
+
+  if (existingPendingSubmission) {
+    const hasNewImage = Boolean(imagePreviewUrl);
+    const hasNewVideo = Boolean(videoPreviewUrl);
+    const shouldRemoveImage = body.removeImage === true && !hasNewImage;
+    const incomingNote = limitNoteWords(body.note);
+    const currentSubmissionMode = normalizeSubmissionMode(
+      existingPendingSubmission.submissionMode,
+      deriveSubmissionMode(existingPendingSubmission),
+    );
+    const nextSubmissionMode = hasRequestedSubmissionMode
+      ? submissionMode
+      : currentSubmissionMode;
+    const nextIsAnonymousFeed = nextSubmissionMode === 'anonymous-feed';
+
+    if (
+      (hasNewImage || shouldRemoveImage) &&
+      existingPendingSubmission.imagePreviewUrl &&
+      (!hasNewImage || existingPendingSubmission.imagePreviewUrl !== imagePreviewUrl)
+    ) {
+      await deleteLocalUploadIfNeeded(existingPendingSubmission.imagePreviewUrl);
+    }
+
+    if (
+      hasNewVideo &&
+      existingPendingSubmission.videoPreviewUrl &&
+      existingPendingSubmission.videoPreviewUrl !== videoPreviewUrl
+    ) {
+      await deleteLocalUploadIfNeeded(existingPendingSubmission.videoPreviewUrl);
+    }
+
+    const nextDb = {
+      ...db,
+      submissions: db.submissions.map((submission) =>
+        submission.id === existingPendingSubmission.id
+          ? {
+              ...submission,
+              note: incomingNote || submission.note || '',
+              imageName: hasNewImage
+                ? (body.imageName ?? submission.imageName ?? '')
+                : shouldRemoveImage
+                  ? ''
+                  : (submission.imageName ?? ''),
+              imagePreviewUrl: hasNewImage
+                ? imagePreviewUrl
+                : shouldRemoveImage
+                  ? ''
+                  : (submission.imagePreviewUrl ?? ''),
+              videoName: hasNewVideo
+                ? (body.videoName ?? submission.videoName ?? '')
+                : (submission.videoName ?? ''),
+              videoPreviewUrl: hasNewVideo
+                ? videoPreviewUrl
+                : (submission.videoPreviewUrl ?? ''),
+              submissionMode: nextSubmissionMode,
+              isAnonymousFeed: nextIsAnonymousFeed,
+            }
+          : submission,
+      ),
+    };
+
+    await writeDb(nextDb);
+    sendJson(response, 200, buildBootstrap(nextDb, user));
+    return;
+  }
 
   const staleSubmissions = db.submissions.filter(
     (submission) =>

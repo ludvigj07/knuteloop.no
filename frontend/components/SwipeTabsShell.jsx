@@ -35,6 +35,7 @@ export function SwipeTabsShell({
   mobileOnlySwipe = true,
 }) {
   const shellRef = useRef(null);
+  const pageRefs = useRef(new Map());
   const suppressNextClickRef = useRef(false);
   const pointerStateRef = useRef({
     active: false,
@@ -57,6 +58,7 @@ export function SwipeTabsShell({
   });
   const [dragOffset, setDragOffset] = useState(0);
   const [isDragging, setIsDragging] = useState(false);
+  const [viewportHeight, setViewportHeight] = useState(null);
 
   const pageIndexById = useMemo(
     () =>
@@ -86,6 +88,42 @@ export function SwipeTabsShell({
   useEffect(() => {
     setViewportWidth(getViewportWidth(shellRef.current));
   }, [pages.length, isMobileViewport]);
+
+  useEffect(() => {
+    if (!useSwipeNav) {
+      setViewportHeight(null);
+      return;
+    }
+
+    const activePageElement = pageRefs.current.get(activePageId);
+    if (!activePageElement) {
+      return;
+    }
+
+    const updateViewportHeight = () => {
+      const nextHeight = Math.ceil(activePageElement.getBoundingClientRect().height);
+      setViewportHeight((currentHeight) =>
+        currentHeight === nextHeight ? currentHeight : nextHeight,
+      );
+    };
+
+    updateViewportHeight();
+    const rafId = window.requestAnimationFrame(updateViewportHeight);
+
+    let resizeObserver;
+    if (typeof ResizeObserver !== 'undefined') {
+      resizeObserver = new ResizeObserver(updateViewportHeight);
+      resizeObserver.observe(activePageElement);
+    }
+
+    window.addEventListener('resize', updateViewportHeight);
+
+    return () => {
+      window.cancelAnimationFrame(rafId);
+      window.removeEventListener('resize', updateViewportHeight);
+      resizeObserver?.disconnect();
+    };
+  }, [activePageId, pages.length, useSwipeNav]);
 
   function goToPage(pageId) {
     if (pageId === activePageId) {
@@ -252,6 +290,10 @@ export function SwipeTabsShell({
   const trackTranslate = useSwipeNav
     ? -activeIndex * viewportWidth + dragOffset
     : 0;
+  const viewportStyle =
+    useSwipeNav && typeof viewportHeight === 'number'
+      ? { height: `${viewportHeight}px` }
+      : undefined;
 
   return (
     <div
@@ -262,6 +304,7 @@ export function SwipeTabsShell({
         <>
           <div
             className="swipe-tabs-shell__viewport"
+            style={viewportStyle}
             onClickCapture={handleViewportClickCapture}
             onPointerDown={handlePointerDown}
             onPointerMove={handlePointerMove}
@@ -279,6 +322,13 @@ export function SwipeTabsShell({
               {pages.map((page) => (
                 <section
                   key={page.id}
+                  ref={(node) => {
+                    if (node) {
+                      pageRefs.current.set(page.id, node);
+                    } else {
+                      pageRefs.current.delete(page.id);
+                    }
+                  }}
                   className={`swipe-tabs-shell__page ${
                     activePageId === page.id ? 'is-active' : ''
                   }`}

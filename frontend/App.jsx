@@ -490,12 +490,18 @@ function App() {
     setAppData(nextAppData);
   }
 
-  async function handleSubmitKnot(knotId, evidence = {}, submissionMode = 'review') {
+  async function handleSubmitKnot(
+    knotId,
+    evidence = {},
+    submissionMode = 'review',
+    options = {},
+  ) {
     const knot = knots.find((item) => item.id === knotId);
 
     if (
       !knot ||
       (knot.status !== 'Tilgjengelig' &&
+        knot.status !== 'Sendt inn' &&
         knot.status !== 'Avslått' &&
         knot.status !== 'Avslaatt')
     ) {
@@ -509,11 +515,17 @@ function App() {
       submissionMode === 'feed' || submissionMode === 'anonymous-feed'
         ? submissionMode
         : 'review';
+    const modeTouched = options?.modeTouched === true;
+    const shouldSendSubmissionMode =
+      knot.status !== 'Sendt inn' || modeTouched;
 
     const nextAppData = await submitKnot(sessionToken, {
       knotId,
-      submissionMode: normalizedSubmissionMode,
+      ...(shouldSendSubmissionMode
+        ? { submissionMode: normalizedSubmissionMode }
+        : {}),
       note: evidence.note ?? '',
+      removeImage: evidence.removeImage === true,
       imageName: evidence.imageName ?? '',
       imageDataUrl: evidence.imageFile
         ? await readFileAsDataUrl(evidence.imageFile)

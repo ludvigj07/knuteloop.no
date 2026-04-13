@@ -3312,6 +3312,7 @@
   user-select: none;
   -webkit-user-select: none;
   border-radius: 28px;
+  transition: height 0.22s ease;
 }
 
 .swipe-tabs-shell__track {
@@ -3671,7 +3672,7 @@
   }
 
   .swipe-tabs-shell__page {
-    min-height: calc(100dvh - 132px);
+    min-height: 0;
   }
 
   .status-hub-grid,
@@ -5912,13 +5913,18 @@ textarea.text-input:focus {
 }
 
 .knot-row.is-completed {
-  background: linear-gradient(135deg, #ffffff 0%, #f4fbf6 100%);
-  border-color: #b8efca;
+  background: linear-gradient(135deg, #ecfdf3 0%, #dcfce7 100%);
+  border-color: #22c55e;
 }
 
 .knot-row.is-completed .knot-row__header {
-  border-left: 3px solid #86efac;
-  padding-left: calc(var(--space-3) - 3px);
+  border-left: 4px solid #22c55e;
+  padding-left: calc(var(--space-3) - 4px);
+}
+
+.knot-row.is-completed .knot-row__title {
+  color: #166534;
+  font-weight: 700;
 }
 
 .knot-row__header {
@@ -5953,6 +5959,8 @@ textarea.text-input:focus {
 .knot-row__title {
   font-size: var(--text-sm);
   font-weight: 600;
+  min-width: 0;
+  flex: 1;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -5967,9 +5975,15 @@ textarea.text-input:focus {
 
 .knot-row__points {
   font-size: var(--text-xs);
-  color: var(--text-secondary);
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  color: #64748b;
   flex-shrink: 0;
   white-space: nowrap;
+}
+
+.knot-row__points.is-completed {
+  color: #15803d;
 }
 
 .knot-row__sub {
@@ -6015,7 +6029,7 @@ textarea.text-input:focus {
   align-items: center;
   justify-content: center;
   height: var(--tap-min);
-  min-width: 92px;
+  min-width: 104px;
   padding: 0 var(--space-2);
   border-radius: var(--radius);
   border: 1px solid var(--brand-primary, var(--primary, #2f6fed));
@@ -6023,17 +6037,30 @@ textarea.text-input:focus {
   color: var(--brand-primary, var(--primary, #2f6fed));
   font: inherit;
   font-size: var(--text-xs);
-  font-weight: 600;
+  font-weight: 700;
   line-height: 1;
   cursor: pointer;
   transition: background 0.15s, color 0.15s;
-  white-space: nowrap;
   -webkit-text-fill-color: currentColor;
 }
 
 .knot-row__doc-btn-label {
   display: inline-block;
-  opacity: 1;
+}
+
+.knot-row__doc-btn-icon {
+  display: grid;
+  place-items: center;
+  width: 18px;
+  height: 18px;
+  line-height: 0;
+  flex: 0 0 18px;
+}
+
+.knot-row__doc-btn-icon svg {
+  display: block;
+  width: 100%;
+  height: 100%;
 }
 
 .knot-row__doc-btn.is-active,
@@ -6049,21 +6076,48 @@ textarea.text-input:focus {
 }
 
 .knot-row__expand-btn {
+  position: relative;
   width: var(--tap-min);
   height: var(--tap-min);
   border-radius: var(--radius);
   border: 1px solid var(--line-color, var(--border, #d4d8df));
   background: var(--surface, #fff);
   color: var(--text-secondary, var(--text-muted, #5a6478));
-  font: inherit;
-  font-size: 1.2rem;
-  line-height: 1;
+  font-size: 0;
+  line-height: 0;
   cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  display: grid;
+  place-items: center;
   flex-shrink: 0;
   transition: background 0.15s, color 0.15s, border-color 0.15s;
+}
+
+.knot-row__expand-icon {
+  position: relative;
+  display: block;
+  width: 14px;
+  height: 14px;
+}
+
+.knot-row__expand-icon::before,
+.knot-row__expand-icon::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  background: currentColor;
+  border-radius: 1px;
+  transform: translate(-50%, -50%);
+}
+
+.knot-row__expand-icon::before {
+  width: 14px;
+  height: 2px;
+}
+
+.knot-row__expand-icon::after {
+  width: 2px;
+  height: 14px;
 }
 
 .knot-row__expand-btn.is-active,
@@ -6145,6 +6199,17 @@ textarea.text-input:focus {
   gap: 8px;
 }
 
+.knot-submission-form textarea.text-input.text-input--compact,
+.knot-submission-form .submission-mode-pill,
+.knot-submission-form .upload-field.upload-field--compact {
+  border-color: color-mix(
+    in srgb,
+    var(--line-color, var(--border, #d4d8df)) 58%,
+    var(--text-secondary, var(--text-muted, #5a6478)) 42%
+  );
+  box-shadow: inset 0 0 0 1px rgba(49, 58, 74, 0.08);
+}
+
 .submission-mode-options__label {
   margin: 0;
   font-size: 0.86rem;
@@ -6152,9 +6217,14 @@ textarea.text-input:focus {
   color: var(--text, var(--text-strong, #20242f));
 }
 
+.submission-mode-options__optional {
+  font-weight: 600;
+  color: var(--text-secondary, var(--text-muted, #6f7a90));
+}
+
 .knot-submission-form .submission-mode-segment {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 8px;
 }
 
@@ -6173,13 +6243,9 @@ textarea.text-input:focus {
 }
 
 .knot-submission-form .submission-mode-pill.is-active {
-  border-color: var(--brand-primary, var(--primary, #2f6fed));
-  background: color-mix(
-    in srgb,
-    var(--brand-primary, var(--primary, #2f6fed)) 12%,
-    #fff 88%
-  );
-  color: var(--brand-primary, var(--primary, #2f6fed));
+  border-color: #ff5a36;
+  background: linear-gradient(135deg, #ff6a3d, #ff4d2e);
+  color: #fff;
 }
 
 .knot-submission-form .submission-mode-pill:disabled {
@@ -6188,6 +6254,7 @@ textarea.text-input:focus {
 }
 
 .knot-submission-form .submission-upload-grid {
+  grid-template-columns: 1fr;
   gap: 8px;
 }
 
@@ -6219,6 +6286,90 @@ textarea.text-input:focus {
   font: inherit;
   font-size: 0.82rem;
   margin-right: 8px;
+}
+
+.knot-submission-form .upload-file-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.knot-submission-form .upload-file-row .upload-file-input {
+  flex: 0 0 auto;
+  width: auto;
+}
+
+.knot-submission-form .upload-file-name {
+  flex: 1 1 auto;
+  min-width: 0;
+  font-size: 0.86rem;
+  color: var(--text-secondary, var(--text-muted, #5a6478));
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.knot-submission-form .upload-remove-btn {
+  flex: 0 0 auto;
+  min-height: 34px;
+  padding: 0 10px;
+  border-radius: 10px;
+  border: 1px solid color-mix(in srgb, #ff4d2e 45%, var(--line-color, #d4d8df) 55%);
+  background: color-mix(in srgb, #ff4d2e 10%, var(--surface, #fff) 90%);
+  color: #b93822;
+  font: inherit;
+  font-size: 0.8rem;
+  font-weight: 700;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+}
+
+.knot-submission-form .upload-remove-btn:hover:not(:disabled) {
+  background: color-mix(in srgb, #ff4d2e 15%, var(--surface, #fff) 85%);
+  border-color: #ff7a45;
+  color: #9e2f1d;
+}
+
+.knot-submission-form .upload-remove-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.knot-submission-form .upload-remove-btn.upload-remove-btn--mobile {
+  width: fit-content;
+}
+
+.knot-submission-form .upload-paste-target {
+  width: 100%;
+  min-height: 38px;
+  padding: 8px 10px;
+  border-radius: 10px;
+  border: 1px dashed color-mix(in srgb, var(--line-color, #d4d8df) 65%, #7a879e 35%);
+  background: color-mix(in srgb, var(--surface, #fff) 88%, #eef2f8 12%);
+  color: var(--text-secondary, var(--text-muted, #5a6478));
+  font: inherit;
+  font-size: 0.84rem;
+  text-align: center;
+  cursor: text;
+}
+
+.knot-submission-form .upload-paste-target:focus {
+  outline: none;
+  border-color: #ff7a45;
+  box-shadow: 0 0 0 2px rgba(255, 122, 69, 0.2);
+}
+
+@media (min-width: 901px) {
+  .knot-submission-form .upload-field.upload-field--compact {
+    gap: 6px;
+    padding: 8px 10px;
+  }
+
+  .knot-submission-form .upload-field.upload-field--compact > span {
+    font-size: 0.9rem;
+  }
 }
 
 /* Bottom sheet backdrop */
@@ -6422,8 +6573,9 @@ textarea.text-input:focus {
   }
 
   .knot-row__doc-btn {
-    min-width: 58px;
-    padding: 0 10px;
+    width: 40px;
+    min-width: 40px;
+    height: 40px;
   }
 
   .knot-row__expand-btn {
@@ -6435,9 +6587,8 @@ textarea.text-input:focus {
     gap: 6px;
   }
 
-  .knot-row__cta-points {
-    padding: 0 6px;
-    min-height: 26px;
+  .knot-row__points {
+    font-size: 0.72rem;
   }
 
   .knot-submission-form .submission-mode-segment {
@@ -6480,12 +6631,11 @@ textarea.text-input:focus {
 
 /* Expand button â€” widen to fit text labels */
 .knot-row__expand-btn {
-  width: auto !important;
+  width: var(--tap-min) !important;
   min-width: var(--tap-min);
-  padding: 0 var(--space-2) !important;
-  font-size: var(--text-xs) !important;
-  font-weight: 600 !important;
-  letter-spacing: -0.01em;
+  padding: 0 !important;
+  font-size: 0 !important;
+  letter-spacing: 0;
 }
 
 /* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
