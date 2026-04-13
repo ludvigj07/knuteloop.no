@@ -5735,6 +5735,34 @@ textarea.text-input:focus {
   margin: 0;
 }
 
+.knots-status-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 14px;
+}
+
+.knots-status-legend__item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: var(--text-xs);
+  font-weight: 600;
+}
+
+.knots-status-legend__item::before {
+  content: '';
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: currentColor;
+  flex-shrink: 0;
+}
+
+.knots-status-legend__item.is-available { color: var(--text-secondary); }
+.knots-status-legend__item.is-pending   { color: var(--warning); }
+.knots-status-legend__item.is-approved  { color: var(--success); }
+.knots-status-legend__item.is-rejected  { color: var(--danger); }
+
 .knots-page__points {
   display: flex;
   flex-direction: column;

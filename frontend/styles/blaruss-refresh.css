@@ -405,11 +405,27 @@
 .app-theme .leaderboard-switch__button.is-active,
 .app-theme .leaderboard-scope-switch__button.is-active,
 .app-theme .leaderboard-gender-filter__button.is-active,
-.app-theme .knot-folder-tab.is-active,
 .app-theme .knot-submission-form .submission-mode-pill.is-active {
   background: var(--primary-soft) !important;
   border-color: var(--accent-border) !important;
   color: var(--accent-strong) !important;
+  box-shadow: 0 4px 10px rgba(255, 138, 31, 0.14) !important;
+}
+
+.app-theme .knot-folder-tab.is-active {
+  background: linear-gradient(90deg, var(--accent), var(--cta)) !important;
+  border-color: transparent !important;
+  color: #ffffff !important;
+  box-shadow: 0 6px 14px rgba(255, 138, 31, 0.24) !important;
+}
+
+.app-theme .knot-folder-tab:focus-visible {
+  outline: none !important;
+  box-shadow: 0 0 0 2px rgba(255, 138, 31, 0.32) !important;
+}
+
+.app-theme .knot-folder-tab.is-active:focus-visible {
+  box-shadow: 0 0 0 2px rgba(255, 138, 31, 0.36), 0 6px 14px rgba(255, 138, 31, 0.24) !important;
 }
 
 .app-theme .leaderboard-row__rank {

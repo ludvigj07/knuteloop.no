@@ -877,9 +877,15 @@ function App() {
         <main className="page-layout">
           {page.id !== 'dashboard' ? (
             <section className="page-intro page-intro--shell">
-              <p className="eyebrow">Visning</p>
-              <h2>{page.title}</h2>
-              <p>{page.description}</p>
+              {page.id === 'knuter' ? (
+                <h2>{page.title}</h2>
+              ) : (
+                <>
+                  <p className="eyebrow">Visning</p>
+                  <h2>{page.title}</h2>
+                  <p>{page.description}</p>
+                </>
+              )}
             </section>
           ) : null}
           {content}

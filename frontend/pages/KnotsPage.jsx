@@ -5,6 +5,11 @@ import { KNOT_FOLDERS, resolveKnotFolder } from '../data/knotFolders.js';
 
 const MOBILE_BREAKPOINT = 900;
 const SHEET_DISMISS_THRESHOLD = 120;
+const ALL_KNOTS_FOLDER_ID = 'Alle knuter';
+const KNOT_FOLDER_TABS = [
+  { id: ALL_KNOTS_FOLDER_ID, description: 'Alle knuter samlet pa tvers av mapper.' },
+  ...KNOT_FOLDERS,
+];
 
 const STATUS_FILTERS = ['Alle', 'Tilgjengelig', 'Sendt inn', 'Godkjent', 'Avslått'];
 
@@ -260,8 +265,7 @@ function SubmissionFormContent({
 
       <div className="submission-mode-options">
         <p className="submission-mode-options__label">
-          Velg hvordan du vil poste{' '}
-          <span className="submission-mode-options__optional">(valgfritt)</span>
+          Ønsker du å poste?
         </p>
         <div className="submission-mode-segment" role="group" aria-label="Feedvalg">
           <button
@@ -275,7 +279,7 @@ function SubmissionFormContent({
               )
             }
           >
-            Del i feed
+            Del som bruker
           </button>
           <button
             type="button"
@@ -290,7 +294,7 @@ function SubmissionFormContent({
               )
             }
           >
-            Post anonymt
+            Del som anonym
           </button>
         </div>
       </div>
@@ -721,7 +725,7 @@ export function KnotsPage({
     : null;
 
   const [activeFolder, setActiveFolder] = useState(
-    () => resolveKnotFolder(focusedKnot) || KNOT_FOLDERS[0].id,
+    () => (focusedKnot ? resolveKnotFolder(focusedKnot) : ALL_KNOTS_FOLDER_ID),
   );
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('Alle');
@@ -743,16 +747,19 @@ export function KnotsPage({
   // ── Derived ──────────────────────────────────────────────────────────────
 
   const folderCounts = Object.fromEntries(
-    KNOT_FOLDERS.map((folder) => [
+    KNOT_FOLDER_TABS.map((folder) => [
       folder.id,
-      knots.filter((k) => resolveKnotFolder(k) === folder.id).length,
+      folder.id === ALL_KNOTS_FOLDER_ID
+        ? knots.length
+        : knots.filter((k) => resolveKnotFolder(k) === folder.id).length,
     ]),
   );
   const visibleFolder =
-    KNOT_FOLDERS.find((f) => f.id === activeFolder) ?? KNOT_FOLDERS[0];
-  const visibleFolderKnots = knots.filter(
-    (k) => resolveKnotFolder(k) === visibleFolder.id,
-  );
+    KNOT_FOLDER_TABS.find((f) => f.id === activeFolder) ?? KNOT_FOLDER_TABS[0];
+  const visibleFolderKnots =
+    visibleFolder.id === ALL_KNOTS_FOLDER_ID
+      ? knots
+      : knots.filter((k) => resolveKnotFolder(k) === visibleFolder.id);
   const normalizedQuery = searchQuery.trim().toLowerCase();
   const filteredKnots = sortKnots(
     visibleFolderKnots.filter((k) => {
@@ -841,7 +848,7 @@ export function KnotsPage({
     const nextFocused = knots.find((k) => k.id === focusedKnotId);
     if (!nextFocused) return;
     const t = window.setTimeout(() => {
-      setActiveFolder(resolveKnotFolder(nextFocused) || KNOT_FOLDERS[0].id);
+      setActiveFolder(resolveKnotFolder(nextFocused) || ALL_KNOTS_FOLDER_ID);
       setSearchQuery('');
       setStatusFilter('Alle');
       setSortKey('standard');
@@ -1099,7 +1106,12 @@ export function KnotsPage({
       <div className="knots-page__header">
         <div>
           <h2>Knutekatalog</h2>
-          <p>Velg en knute, del det du har gjort, og følg progresjon.</p>
+          <div className="knots-status-legend" aria-label="Fargeforklaring for knutestatus">
+            <span className="knots-status-legend__item is-approved">Grønn: fullførte</span>
+            <span className="knots-status-legend__item is-available">Grå: tilgjengelige</span>
+            <span className="knots-status-legend__item is-pending">Oransje: sendt inn</span>
+            <span className="knots-status-legend__item is-rejected">Rød: avslått</span>
+          </div>
         </div>
         <div className="knots-page__points">
           <span>{currentUserPoints}</span>
@@ -1116,7 +1128,7 @@ export function KnotsPage({
 
       {/* Folder tabs */}
       <KnotFolderTabs
-        folders={KNOT_FOLDERS}
+        folders={KNOT_FOLDER_TABS}
         activeFolder={activeFolder}
         folderCounts={folderCounts}
         onChangeFolder={handleFolderChange}
