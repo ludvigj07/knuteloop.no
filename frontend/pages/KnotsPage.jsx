@@ -4,7 +4,6 @@ import { isGoldKnot } from '../data/badgeSystem.js';
 import { KNOT_FOLDERS, resolveKnotFolder } from '../data/knotFolders.js';
 
 const MOBILE_BREAKPOINT = 900;
-const SHEET_DISMISS_THRESHOLD = 120;
 
 const STATUS_FILTERS = ['Alle', 'Tilgjengelig', 'Sendt inn', 'Godkjent', 'Avslått'];
 
@@ -243,6 +242,12 @@ function SubmissionFormContent({
   const shareToAnonymousFeed = effectiveMode === SUBMISSION_MODE.ANONYMOUS_FEED;
   const hasImage = Boolean(draft.imageFile || draft.imagePreviewUrl || draft.imageName);
 
+  function handleImageInputChange(event) {
+    const file = event.target.files?.[0];
+    onUpdateFile('image', file);
+    event.target.value = '';
+  }
+
   return (
     <div className="knot-submission-form" onPaste={onPasteImage}>
       <label className="field-group">
@@ -343,15 +348,27 @@ function SubmissionFormContent({
             </>
           ) : (
             <>
-              <input
-                type="file"
-                accept="image/*"
-                onChange={(e) => {
-                  const file = e.target.files?.[0];
-                  onUpdateFile('image', file);
-                  e.target.value = '';
-                }}
-              />
+              <div className="upload-capture-row" style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+                <label className="action-button action-button--ghost" style={{ cursor: 'pointer' }}>
+                  Ta bilde
+                  <input
+                    type="file"
+                    accept="image/*"
+                    capture="environment"
+                    style={{ position: 'absolute', width: 1, height: 1, opacity: 0, pointerEvents: 'none' }}
+                    onChange={handleImageInputChange}
+                  />
+                </label>
+                <label className="action-button action-button--ghost" style={{ cursor: 'pointer' }}>
+                  Velg fra galleri
+                  <input
+                    type="file"
+                    accept="image/*"
+                    style={{ position: 'absolute', width: 1, height: 1, opacity: 0, pointerEvents: 'none' }}
+                    onChange={handleImageInputChange}
+                  />
+                </label>
+              </div>
               <small>{draft.imageName || 'Valgfritt bildebevis'}</small>
               <button
                 type="button"
@@ -550,9 +567,7 @@ function KnotBottomSheet({
   onPasteImage,
   onSubmit,
 }) {
-  const [dragY, setDragY] = useState(0);
   const [isClosing, setIsClosing] = useState(false);
-  const dragStateRef = useRef({ active: false, startY: 0, pointerId: null });
 
   const submissionMode = normalizeSubmissionMode(draft.submissionMode);
   const effectiveMode = activeFeedBan ? SUBMISSION_MODE.REVIEW : submissionMode;
@@ -578,66 +593,23 @@ function KnotBottomSheet({
     }, 260);
   }
 
-  function handleHandlePointerDown(e) {
-    if (e.pointerType === 'mouse') return;
-    dragStateRef.current = { active: true, startY: e.clientY, pointerId: e.pointerId };
-    try {
-      e.currentTarget.setPointerCapture(e.pointerId);
-    } catch {
-      // ignore
-    }
-    setDragY(0);
-  }
-
-  function handleHandlePointerMove(e) {
-    const ds = dragStateRef.current;
-    if (!ds.active || ds.pointerId !== e.pointerId) return;
-    const dy = Math.max(0, e.clientY - ds.startY);
-    setDragY(dy);
-  }
-
-  function handleHandlePointerUp(e) {
-    const ds = dragStateRef.current;
-    if (!ds.active || ds.pointerId !== e.pointerId) return;
-    dragStateRef.current.active = false;
-    const dy = Math.max(0, e.clientY - ds.startY);
-    if (dy >= SHEET_DISMISS_THRESHOLD) {
-      setDragY(0);
-      triggerClose();
-    } else {
-      setDragY(0);
-    }
-  }
-
   if (!isOpen && !isClosing) return null;
 
-  const sheetStyle =
-    dragY > 0
-      ? { transform: `translateY(${dragY}px)`, transition: 'none' }
-      : undefined;
   const sheetOpen = isOpen && !isClosing;
 
   return createPortal(
     <>
       <div
         className={`knot-sheet-backdrop ${sheetOpen ? 'is-open' : 'is-closing'}`}
-        onClick={triggerClose}
         aria-hidden="true"
       />
       <div
         className={`knot-sheet ${sheetOpen ? 'is-open' : 'is-closing'}`}
-        style={sheetStyle}
         role="dialog"
         aria-modal="true"
         aria-label={`Dokumenter: ${knot?.title ?? ''}`}
       >
-        <div
-          className="knot-sheet__handle-area"
-          onPointerDown={handleHandlePointerDown}
-          onPointerMove={handleHandlePointerMove}
-          onPointerUp={handleHandlePointerUp}
-          onPointerCancel={handleHandlePointerUp}
-        >
+        <div className="knot-sheet__handle-area" aria-hidden="true">
           <div className="knot-sheet__handle" />
         </div>
 

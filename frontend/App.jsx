@@ -362,6 +362,29 @@ function App() {
     window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
   }, [activePage]);
 
+  useEffect(() => {
+    if (!sessionToken || typeof document === 'undefined') return;
+    let cancelled = false;
+    const silentRefresh = async () => {
+      try {
+        const next = await fetchBootstrap(sessionToken);
+        if (!cancelled) setAppData(next);
+      } catch {
+        // Ignore transient failures; the next user action triggers a full refresh.
+      }
+    };
+    const interval = window.setInterval(silentRefresh, 30000);
+    const onVisibility = () => {
+      if (document.visibilityState === 'visible') silentRefresh();
+    };
+    document.addEventListener('visibilitychange', onVisibility);
+    return () => {
+      cancelled = true;
+      window.clearInterval(interval);
+      document.removeEventListener('visibilitychange', onVisibility);
+    };
+  }, [sessionToken]);
+
   async function refreshAppData(token = sessionToken) {
     if (!token) {
       setAppData(null);
