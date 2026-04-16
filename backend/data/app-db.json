@@ -176,6 +176,31 @@
         "russType": "blue",
         "genderIdentity": "other"
       }
+    },
+    {
+      "id": 8,
+      "schoolId": "st-olav",
+      "name": "Linus",
+      "group": "3STE",
+      "role": "user",
+      "loginCode": "",
+      "email": "linus8@dfghj.no",
+      "basePoints": 0,
+      "baseCompletedKnots": 0,
+      "profile": {
+        "icon": "",
+        "photoUrl": "",
+        "russName": "PUDDING",
+        "realName": "Linus",
+        "className": "3STE",
+        "bio": "",
+        "quote": "",
+        "knownFor": "",
+        "signatureKnot": "",
+        "favoriteCategory": "",
+        "russType": "blue",
+        "genderIdentity": "other"
+      }
     }
   ],
   "knots": [
@@ -763,6 +788,62 @@
     }
   ],
   "submissions": [
+    {
+      "id": "submission-1776346915452",
+      "knotId": "knot-3",
+      "knotTitle": "Møt opp med røde sokker hele dagen",
+      "knotCategory": "Stil",
+      "student": "Linus",
+      "leaderId": 8,
+      "submittedAtRaw": "2026-04-16T13:41:55.079Z",
+      "status": "Godkjent",
+      "points": 15,
+      "basePoints": 15,
+      "streakBonusPoints": 0,
+      "streakQualified": false,
+      "streakDay": null,
+      "streakDayKey": null,
+      "note": "Grønne sokker",
+      "imageName": "Sjur02.JPG",
+      "imagePreviewUrl": "/uploads/submission-image-1776346915081-468ef64f-fb12-4719-abe0-1deef315e7f1.webp",
+      "videoName": "",
+      "videoPreviewUrl": "",
+      "isAnonymousFeed": false,
+      "submissionMode": "feed",
+      "ratings": {
+        "6": 4
+      },
+      "reviewedAtRaw": "2026-04-16T13:42:07.191Z",
+      "reviewedBy": 6,
+      "profileHidden": false
+    },
+    {
+      "id": "submission-1776346859421",
+      "knotId": "knot-1",
+      "knotTitle": "Spis frokost under pulten",
+      "knotCategory": "Skole",
+      "student": "Linus",
+      "leaderId": 8,
+      "submittedAtRaw": "2026-04-16T13:40:59.133Z",
+      "status": "Godkjent",
+      "points": 10,
+      "basePoints": 10,
+      "streakBonusPoints": 0,
+      "streakQualified": true,
+      "streakDay": 1,
+      "streakDayKey": "2026-04-16",
+      "note": "Vanskelig",
+      "imageName": "DSC_1105.JPG",
+      "imagePreviewUrl": "/uploads/submission-image-1776346859134-fe29f934-fd8e-4c6c-a3fb-6025233d85b2.webp",
+      "videoName": "",
+      "videoPreviewUrl": "",
+      "isAnonymousFeed": false,
+      "submissionMode": "review",
+      "ratings": {},
+      "reviewedAtRaw": "2026-04-16T13:41:20.147Z",
+      "reviewedBy": 6,
+      "profileHidden": false
+    },
     {
       "id": "submission-1776342489994",
       "knotId": "board-3",
