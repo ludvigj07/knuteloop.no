@@ -3,6 +3,7 @@ import { MobileVideo } from '../components/MobileVideo.jsx';
 import { SectionCard } from '../components/SectionCard.jsx';
 import { StatCard } from '../components/StatCard.jsx';
 import { KNOT_FOLDERS, resolveKnotFolder } from '../data/knotFolders.js';
+import { UserAdminPanel } from '../components/UserAdminPanel.jsx';
 
 function getDuelEvidence(duel, participant) {
   if (participant === 'challenger') {
@@ -350,6 +351,7 @@ export function AdminPage({
   reports = [],
   stats,
   submissions,
+  sessionToken,
 }) {
   const [newTitle, setNewTitle] = useState('');
   const [newDescription, setNewDescription] = useState('');
@@ -450,6 +452,12 @@ export function AdminPage({
       label: 'Bans',
       count: activeBanCount,
       note: 'Aktive',
+    },
+    {
+      id: 'users',
+      label: 'Brukere',
+      count: 0,
+      note: 'Invitér + admin',
     },
     {
       id: 'overview',
@@ -1534,6 +1542,10 @@ export function AdminPage({
             </div>
           </div>
         </SectionCard>
+      ) : null}
+
+      {activeAdminTask === 'users' ? (
+        <UserAdminPanel sessionToken={sessionToken} />
       ) : null}
 
       {activeAdminTask === 'overview' ? (

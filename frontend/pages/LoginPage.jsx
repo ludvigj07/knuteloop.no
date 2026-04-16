@@ -1,19 +1,20 @@
 export function LoginPage({
-  code,
+  email,
+  password,
   error,
   isSubmitting,
-  onChangeCode,
+  onChangeEmail,
+  onChangePassword,
   onSubmit,
-  pilotUsers = [],
 }) {
   return (
     <div className="login-shell">
       <section className="login-card">
-        <p className="eyebrow">Pilot login</p>
-        <h1>Logg inn på russeknute-appen</h1>
+        <p className="eyebrow">Logg inn</p>
+        <h1>Velkommen til russeknute-appen</h1>
         <p className="login-copy">
-          Dette er første versjon med lagret data. Logg inn med en enkel kode
-          fra admin for å komme inn på din bruker.
+          Logg inn med e-posten og passordet ditt. Har du fått en invitasjon
+          fra admin, aktivér kontoen via lenken i e-posten først.
         </p>
 
         <form
@@ -24,14 +25,27 @@ export function LoginPage({
           }}
         >
           <label className="field-group">
-            <span>Innloggingskode</span>
+            <span>E-post</span>
             <input
-              type="text"
+              type="email"
               className="text-input"
-              value={code}
-              onChange={(event) => onChangeCode(event.target.value)}
-              placeholder="Skriv inn koden din"
-              autoComplete="off"
+              value={email}
+              onChange={(event) => onChangeEmail(event.target.value)}
+              placeholder="din@skole.no"
+              autoComplete="email"
+              required
+            />
+          </label>
+
+          <label className="field-group">
+            <span>Passord</span>
+            <input
+              type="password"
+              className="text-input"
+              value={password}
+              onChange={(event) => onChangePassword(event.target.value)}
+              autoComplete="current-password"
+              required
             />
           </label>
 
@@ -41,35 +55,11 @@ export function LoginPage({
             {isSubmitting ? 'Logger inn...' : 'Logg inn'}
           </button>
         </form>
-      </section>
 
-      <section className="login-card login-card--secondary">
-        <h2>Pilotbrukere</h2>
-        <p className="login-copy">
-          Disse seed-brukerne ligger inne for testing av den ekte dataflyten.
+        <p className="login-copy" style={{ marginTop: '1.5rem', fontSize: '0.9rem' }}>
+          Har du fått invitasjonskode? <a href="/invite">Aktivér kontoen din her.</a>
         </p>
-
-        <div className="login-user-list">
-          {pilotUsers.map((user) => (
-            <button
-              key={user.id}
-              type="button"
-              className="profile-selector"
-              onClick={() => onChangeCode(user.code)}
-            >
-              <div className="profile-selector__identity">
-                <strong>{user.russName}</strong>
-                <span>
-                  {user.name} | {user.className}
-                </span>
-              </div>
-              <span className="pill pill--rank">{user.code}</span>
-            </button>
-          ))}
-        </div>
       </section>
     </div>
   );
 }
-
-

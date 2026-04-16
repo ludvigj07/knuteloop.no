@@ -32,6 +32,7 @@ import {
   getStoredSessionToken,
   importKnots,
   loginWithCode,
+  loginWithEmailPassword,
   logout,
   readFileAsDataUrl,
   rateSubmission,
@@ -131,6 +132,8 @@ function App() {
   const [appData, setAppData] = useState(null);
   const [pilotUsers, setPilotUsers] = useState([]);
   const [loginCode, setLoginCode] = useState('');
+  const [loginEmail, setLoginEmail] = useState('');
+  const [loginPassword, setLoginPassword] = useState('');
   const [loginError, setLoginError] = useState('');
   const [appError, setAppError] = useState('');
   const [isLoadingApp, setIsLoadingApp] = useState(true);
@@ -414,8 +417,8 @@ function App() {
   }
 
   async function handleLogin() {
-    if (!loginCode.trim()) {
-      setLoginError('Skriv inn en kode for å logge inn.');
+    if (!loginEmail.trim() || !loginPassword) {
+      setLoginError('Fyll inn e-post og passord.');
       return;
     }
 
@@ -423,10 +426,10 @@ function App() {
     setLoginError('');
 
     try {
-      const result = await loginWithCode(loginCode);
+      const result = await loginWithEmailPassword(loginEmail.trim(), loginPassword);
       storeSessionToken(result.token);
       setSessionToken(result.token);
-      setLoginCode('');
+      setLoginPassword('');
       await refreshAppData(result.token);
     } catch (error) {
       setLoginError(error.message);
@@ -762,6 +765,7 @@ function App() {
 
   function renderPageContent(page) {
     const commonPageProps = {
+      sessionToken,
       activityLog,
       achievements,
       currentUserId: currentUser.leaderId,
@@ -907,12 +911,13 @@ function App() {
       <div className="app-theme" data-theme={theme}>
         <div className="app-shell">
           <LoginPage
-            code={loginCode}
+            email={loginEmail}
+            password={loginPassword}
             error={loginError || appError}
             isSubmitting={isLoggingIn}
-            onChangeCode={setLoginCode}
+            onChangeEmail={setLoginEmail}
+            onChangePassword={setLoginPassword}
             onSubmit={handleLogin}
-            pilotUsers={pilotUsers}
           />
         </div>
       </div>

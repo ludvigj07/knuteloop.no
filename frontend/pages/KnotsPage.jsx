@@ -259,40 +259,44 @@ function SubmissionFormContent({
       </label>
 
       <div className="submission-mode-options">
-        <p className="submission-mode-options__label">
-          Velg hvordan du vil poste{' '}
-          <span className="submission-mode-options__optional">(valgfritt)</span>
-        </p>
-        <div className="submission-mode-segment" role="group" aria-label="Feedvalg">
-          <button
-            type="button"
-            className={`submission-mode-pill ${shareToFeed ? 'is-active' : ''}`}
-            aria-pressed={shareToFeed}
+        <label
+          className="submission-mode-checkbox"
+          style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: activeFeedBan ? 'not-allowed' : 'pointer' }}
+        >
+          <input
+            type="checkbox"
+            checked={shareToFeed || shareToAnonymousFeed}
             disabled={Boolean(activeFeedBan)}
-            onClick={() =>
-              onUpdateMode(
-                shareToFeed ? SUBMISSION_MODE.REVIEW : SUBMISSION_MODE.FEED,
-              )
-            }
+            onChange={(event) => {
+              if (event.target.checked) {
+                onUpdateMode(SUBMISSION_MODE.FEED);
+              } else {
+                onUpdateMode(SUBMISSION_MODE.REVIEW);
+              }
+            }}
+          />
+          <span>Del detaljer med feeden (bilde og beskrivelse vises)</span>
+        </label>
+        {shareToFeed || shareToAnonymousFeed ? (
+          <label
+            className="submission-mode-checkbox"
+            style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginTop: '0.25rem', cursor: activeFeedBan ? 'not-allowed' : 'pointer', paddingLeft: '1.5rem' }}
           >
-            Del i feed
-          </button>
-          <button
-            type="button"
-            className={`submission-mode-pill ${shareToAnonymousFeed ? 'is-active' : ''}`}
-            aria-pressed={shareToAnonymousFeed}
-            disabled={Boolean(activeFeedBan)}
-            onClick={() =>
-              onUpdateMode(
-                shareToAnonymousFeed
-                  ? SUBMISSION_MODE.REVIEW
-                  : SUBMISSION_MODE.ANONYMOUS_FEED,
-              )
-            }
-          >
-            Post anonymt
-          </button>
-        </div>
+            <input
+              type="checkbox"
+              checked={shareToAnonymousFeed}
+              disabled={Boolean(activeFeedBan)}
+              onChange={(event) => {
+                onUpdateMode(
+                  event.target.checked
+                    ? SUBMISSION_MODE.ANONYMOUS_FEED
+                    : SUBMISSION_MODE.FEED,
+                );
+              }}
+            />
+            <span>Post anonymt</span>
+          </label>
+        ) : null}
       </div>
 
       {activeFeedBan ? (

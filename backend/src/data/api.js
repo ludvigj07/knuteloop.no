@@ -54,6 +54,13 @@ export function loginWithCode(code) {
   });
 }
 
+export function loginWithEmailPassword(email, password) {
+  return apiRequest('/auth/password-login', {
+    method: 'POST',
+    body: { email, password },
+  });
+}
+
 export function logout(token) {
   return apiRequest('/auth/logout', {
     method: 'POST',
@@ -63,6 +70,42 @@ export function logout(token) {
 
 export function fetchBootstrap(token) {
   return apiRequest('/bootstrap', { token });
+}
+
+export function adminListUsers(token) {
+  return apiRequest('/admin/users', { token });
+}
+
+export function adminCreateUser(token, payload) {
+  return apiRequest('/admin/users', { method: 'POST', token, body: payload });
+}
+
+export function adminRegenerateInvite(token, userId) {
+  return apiRequest(`/admin/users/${userId}/regenerate-invite`, { method: 'POST', token });
+}
+
+export function adminResetPassword(token, userId, password) {
+  return apiRequest(`/admin/users/${userId}/password`, {
+    method: 'POST',
+    token,
+    body: { password },
+  });
+}
+
+export function adminSetUserActive(token, userId, active) {
+  return apiRequest(`/admin/users/${userId}/active`, {
+    method: 'PATCH',
+    token,
+    body: { active },
+  });
+}
+
+export function adminSetUserRussName(token, userId, russName) {
+  return apiRequest(`/admin/users/${userId}/russ-name`, {
+    method: 'PATCH',
+    token,
+    body: { russName },
+  });
 }
 
 export async function readFileAsDataUrl(file) {
