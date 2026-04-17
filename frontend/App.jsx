@@ -44,6 +44,7 @@ import {
   startDuel,
   storeSessionToken,
   submitKnot,
+  updateKnotFeedbackMessages,
   updateKnotPoints,
   updateProfile,
 } from './data/api.js';
@@ -137,7 +138,6 @@ function App() {
   const [isLoggingIn, setIsLoggingIn] = useState(false);
 
   const currentUser = appData?.currentUser ?? null;
-  const theme = 'blue';
   const knots = appData?.knots ?? EMPTY_ARRAY;
   const submissions = appData?.submissions ?? EMPTY_ARRAY;
   const duels = appData?.duels ?? EMPTY_ARRAY;
@@ -153,6 +153,7 @@ function App() {
   };
   const profileDetails = appData?.profileDetails ?? EMPTY_OBJECT;
   const profileHistory = appData?.profileHistory ?? EMPTY_OBJECT;
+  const knotFeedbackMessages = appData?.knotFeedbackMessages ?? EMPTY_OBJECT;
   const baseLeaders = appData?.leaders ?? EMPTY_ARRAY;
 
   const leaders = useMemo(
@@ -537,6 +538,7 @@ function App() {
     });
 
     setAppData(nextAppData);
+    return nextAppData;
   }
 
   async function handleReviewSubmission(submissionId, nextStatus) {
@@ -695,6 +697,12 @@ function App() {
     setAppData(nextAppData);
   }
 
+  async function handleUpdateKnotFeedbackMessages(messages) {
+    const nextAppData = await updateKnotFeedbackMessages(sessionToken, messages);
+    setAppData(nextAppData);
+    return nextAppData;
+  }
+
   function renderHeroPanel() {
     return (
       <header className="hero-panel hero-panel--page">
@@ -768,6 +776,7 @@ function App() {
       currentUserRole: currentUser.role,
       currentUserName: currentUser.name,
       currentUserPoints: currentLeader?.points ?? 0,
+      currentUserStreak,
       dailyKnot,
       dashboard: dashboardData,
       duelAvailability,
@@ -799,8 +808,10 @@ function App() {
       onSelectProfile: handleOpenProfile,
       onStartDuel: handleStartDuel,
       onSubmitKnot: handleSubmitKnot,
+      onUpdateKnotFeedbackMessages: handleUpdateKnotFeedbackMessages,
       onUpdateKnotPoints: handleUpdateKnotPoints,
       onUpdateProfile: handleUpdateProfile,
+      knotFeedbackMessages,
       profiles,
       reports,
       currentUserActiveBans,
@@ -896,7 +907,7 @@ function App() {
 
   if (isLoadingApp) {
     return (
-      <div className="app-theme" data-theme={theme}>
+      <div className="app-theme">
         <div className="app-shell">
           <section className="section-card">
             <p className="eyebrow">Laster</p>
@@ -910,7 +921,7 @@ function App() {
 
   if (!sessionToken || !currentUser || !currentPage) {
     return (
-      <div className="app-theme" data-theme={theme}>
+      <div className="app-theme">
         <div className="app-shell">
           <LoginPage
             code={loginCode}
@@ -926,7 +937,7 @@ function App() {
   }
 
   return (
-    <div className="app-theme" data-theme={theme}>
+    <div className="app-theme">
       <div className="app-shell">
         <SwipeTabsShell
           pages={visiblePages}

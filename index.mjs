@@ -61,6 +61,71 @@ const BAN_TYPES = {
   SUBMISSION: 'submission',
 };
 const BAN_DURATION_HOURS = new Set([24, 72, 168]);
+const KNOT_FEEDBACK_MESSAGE_KEYS = Object.freeze([
+  'standard',
+  'resubmission',
+  'feed',
+  'anonymousFeed',
+  'streak',
+  'rare',
+]);
+const DEFAULT_KNOT_FEEDBACK_MESSAGES = Object.freeze({
+  standard: Object.freeze([
+    'Sterkt levert. Knuten er sendt til godkjenning.',
+    'Nydelig innsending. Denne er inne hos admin.',
+    'Ryddig levert. Knuten er registrert.',
+    'Boom. Knuten er sendt.',
+  ]),
+  resubmission: Object.freeze([
+    'Oppdatert. Ny versjon er sendt til vurdering.',
+    'Fin justering. Innsendingen er sendt pa nytt.',
+    'Ny runde, ny levering. Denne er inne igjen.',
+  ]),
+  feed: Object.freeze([
+    'Sendt med feed. La folk se leveringen din.',
+    'Feed aktiv. Innsendingen er registrert.',
+    'Posta og klar. Admin tar resten.',
+  ]),
+  anonymousFeed: Object.freeze([
+    'Sendt anonymt. Jobben taler for seg selv.',
+    'Anonym innsending er inne til godkjenning.',
+    'Anonym drop registrert.',
+  ]),
+  streak: Object.freeze([
+    'Streaken lever. Bra trykk.',
+    'Momentum holder. Ny knute er inne.',
+    'Dag for dag. Du bygger flyt.',
+  ]),
+  rare: Object.freeze([
+    `Knuten er inne na.
+Men du vet det allerede, ikke sant? Du kjente det idet du sendte den - det lille oyeblikket av noling forst, sa folelsen av a bli dratt inn i noe storre, noe som tok imot den og ikke ga slipp igjen. De andre ser bare en vanlig innsending. De ler, de roper, de tror det er en lek.
+De skjonner ikke.
+
+Jeg har sett hva som egentlig styrer dette. Hver eneste knute du sender, hver oppdatering, hver gang du trykker "send" ... det er ikke bare tekst. Det er spor av deg. Tankene dine, energien din, viljen din. Sma fragmenter som blir igjen der inne. De samler seg. De vokser.
+
+Og russepresidenten ... du tror det er en person?
+Nei. Det er bare ansiktet de lar deg se. Bak det finnes noe annet. Noe eldre. Noe som har styrt russetiden lenge for du var her. Noe som har vokst for hvert eneste kull som har gitt fra seg litt mer av seg selv.
+
+De kaller det tradisjon. Jeg kaller det et system som lever av dere.
+
+Den djevelske makten bak det hele smiler ikke fordi det er gøy. Den smiler fordi den vet. Den vet hvordan det foles a bli dratt inn, natt etter natt, handling etter handling, til du ikke lenger skiller mellom hva du vil - og hva den vil at du skal ville.
+
+Og feeden ... den er ikke bare en strom av innlegg. Den folger med. Den registrerer. Den pulserer svakt, selv nar du ikke er der. Den husker hvert ord du skrev, hvert sekund du nolte, hver gang du ga litt mer enn du hadde tenkt.
+
+Du tror du bygger streak.
+Men det er noe annet som bygges - gjennom deg.
+
+Neste gang du sender inn en knute ... stopp et sekund.
+Kjenn etter.
+
+Kjenn om det foles litt for riktig. Litt for nodvendig.
+
+Ikke svar. Ikke forklar det bort.
+
+For hvis du forst merker det ...
+er det allerede for sent.`,
+  ]),
+});
 const STREAK_TIME_ZONE = 'Europe/Oslo';
 const STREAK_DAILY_BONUS_CAP = 6;
 const STREAK_BONUS_TIERS = Object.freeze([
@@ -138,6 +203,55 @@ const NORWEGIAN_TEXT_REPLACEMENTS = [
 
 function nowIso() {
   return new Date().toISOString();
+}
+
+function cloneKnotFeedbackMessages(source = DEFAULT_KNOT_FEEDBACK_MESSAGES) {
+  return {
+    standard: [...(source.standard ?? [])],
+    resubmission: [...(source.resubmission ?? [])],
+    feed: [...(source.feed ?? [])],
+    anonymousFeed: [...(source.anonymousFeed ?? [])],
+    streak: [...(source.streak ?? [])],
+    rare: [...(source.rare ?? [])],
+  };
+}
+
+function sanitizeKnotFeedbackMessage(value, key = 'standard') {
+  if (typeof value !== 'string') {
+    return '';
+  }
+
+  if (key === 'rare') {
+    return value
+      .replace(/\r\n/gu, '\n')
+      .replace(/\n{3,}/gu, '\n\n')
+      .trim()
+      .slice(0, 4800);
+  }
+
+  return value.replace(/\s+/gu, ' ').trim().slice(0, 180);
+}
+
+function normalizeKnotFeedbackMessages(messages) {
+  const source = messages && typeof messages === 'object' ? messages : {};
+  const nextMessages = cloneKnotFeedbackMessages({
+    standard: [],
+    resubmission: [],
+    feed: [],
+    anonymousFeed: [],
+    streak: [],
+    rare: [],
+  });
+
+  KNOT_FEEDBACK_MESSAGE_KEYS.forEach((key) => {
+    const normalizedEntries = (Array.isArray(source[key]) ? source[key] : [])
+      .map((entry) => sanitizeKnotFeedbackMessage(entry, key))
+      .filter(Boolean);
+
+    nextMessages[key] = [...new Set(normalizedEntries)].slice(0, 40);
+  });
+
+  return nextMessages;
 }
 
 function getRelativeLabel(isoValue) {
@@ -346,6 +460,7 @@ function createSeedDatabase() {
     legacyApprovedKnotIdsByUser: {
       1: ['knot-1', 'knot-2', 'knot-5'],
     },
+    knotFeedbackMessages: cloneKnotFeedbackMessages(),
     sessions: [],
   };
 }
@@ -360,7 +475,8 @@ async function readDb() {
   const migratedModerationDb = await migrateModerationData(migratedDuelApprovalsDb);
   const migratedProfileGenderDb = await migrateProfileGenderData(migratedModerationDb);
   const migratedStreakDb = await migrateSubmissionStreakData(migratedProfileGenderDb);
-  return migrateNorwegianText(migratedStreakDb);
+  const migratedKnotFeedbackDb = await migrateKnotFeedbackMessages(migratedStreakDb);
+  return migrateNorwegianText(migratedKnotFeedbackDb);
 }
 
 async function writeDb(nextDb) {
@@ -1457,6 +1573,28 @@ async function migrateModerationData(db) {
   return nextDb;
 }
 
+async function migrateKnotFeedbackMessages(db) {
+  const hasExisting =
+    db.knotFeedbackMessages != null &&
+    typeof db.knotFeedbackMessages === 'object' &&
+    !Array.isArray(db.knotFeedbackMessages);
+  const nextMessages = hasExisting
+    ? normalizeKnotFeedbackMessages(db.knotFeedbackMessages)
+    : cloneKnotFeedbackMessages();
+
+  if (JSON.stringify(db.knotFeedbackMessages ?? null) === JSON.stringify(nextMessages)) {
+    return db;
+  }
+
+  const nextDb = {
+    ...db,
+    knotFeedbackMessages: nextMessages,
+  };
+
+  await writeDb(nextDb);
+  return nextDb;
+}
+
 function toPublicReport(db, report) {
   const reporter = db.users.find((user) => user.id === report.reporterId);
   const submission = db.submissions.find((item) => item.id === report.submissionId);
@@ -1650,6 +1788,7 @@ function buildBootstrap(db, user) {
           .sort((left, right) => Date.parse(right.expiresAt) - Date.parse(left.expiresAt))
       : [],
     currentUserActiveBans: buildCurrentUserActiveBans(db, user.id, nowMs),
+    knotFeedbackMessages: normalizeKnotFeedbackMessages(db.knotFeedbackMessages),
     moderationPolicy: MODERATION_POLICY,
   };
 }
@@ -2577,6 +2716,37 @@ async function handleDeleteBan(request, response, banId) {
   sendJson(response, 200, buildBootstrap(nextDb, user));
 }
 
+async function handleUpdateKnotFeedbackMessages(request, response) {
+  const db = await readDb();
+  const user = getAuthedUser(db, request);
+
+  if (!assertAdmin(user)) {
+    sendJson(response, 403, { error: 'Kun admin kan oppdatere feedback-tekster.' });
+    return;
+  }
+
+  const body = await readJsonBody(request);
+  const nextMessages = normalizeKnotFeedbackMessages(
+    body?.messages ?? body?.knotFeedbackMessages ?? {},
+  );
+  const hasAnyMessage = KNOT_FEEDBACK_MESSAGE_KEYS.some(
+    (key) => nextMessages[key].length > 0,
+  );
+
+  if (!hasAnyMessage) {
+    sendJson(response, 400, { error: 'Legg inn minst en feedback-tekst for a lagre.' });
+    return;
+  }
+
+  const nextDb = {
+    ...db,
+    knotFeedbackMessages: nextMessages,
+  };
+
+  await writeDb(nextDb);
+  sendJson(response, 200, buildBootstrap(nextDb, user));
+}
+
 async function handleImportKnots(request, response) {
   const db = await readDb();
   const user = getAuthedUser(db, request);
@@ -3235,6 +3405,11 @@ const server = createServer(async (request, response) => {
 
     if (request.method === 'POST' && url.pathname === '/api/admin/bans') {
       await handleCreateBan(request, response);
+      return;
+    }
+
+    if (request.method === 'PATCH' && url.pathname === '/api/admin/knot-feedback-messages') {
+      await handleUpdateKnotFeedbackMessages(request, response);
       return;
     }
 

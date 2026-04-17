@@ -3,11 +3,7 @@
 /* Clash Royale inspired UI system:
    bright blue arena, gold rewards, chunky buttons, and strong visual hierarchy. */
 
-.app-theme,
-.app-theme[data-theme],
-.app-theme[data-theme='blue'],
-.app-theme[data-theme='friendly'],
-.app-theme[data-theme='red'] {
+.app-theme {
   --primary: #2f90ff;
   --primary-strong: #1268db;
   --primary-soft: rgba(68, 164, 255, 0.24);
@@ -750,11 +746,21 @@
 }
 
 .app-theme .knots-status-legend {
-  gap: 4px 12px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 10px;
 }
 
 .app-theme .knots-status-legend__item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 9px;
+  border-radius: 999px;
+  border: 1px solid rgba(187, 231, 255, 0.42);
+  background: rgba(8, 38, 92, 0.38);
   font-size: 0.73rem;
+  line-height: 1.25;
   color: #d4ecff !important;
   text-shadow: 0 1px 0 rgba(9, 39, 100, 0.8);
 }
@@ -866,6 +872,7 @@
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 10px;
+  margin-top: 2px;
 }
 
 .app-theme .knot-toolbar-compact__search {
@@ -896,6 +903,15 @@
     radial-gradient(circle at 72% 50%, rgba(138, 197, 255, 0.18), transparent 36%),
     linear-gradient(180deg, #2a72cb 0%, #1c5ab2 52%, #154b9c 100%) !important;
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.24), 0 5px 0 #123f85, 0 10px 20px rgba(5, 18, 58, 0.3) !important;
+  transition: transform 0.16s ease, box-shadow 0.16s ease, border-color 0.16s ease;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .app-theme .knot-row:hover {
+    transform: translateY(-1px);
+    border-color: rgba(183, 231, 255, 0.95) !important;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.3), 0 6px 0 #123f85, 0 14px 24px rgba(5, 18, 58, 0.35) !important;
+  }
 }
 
 .app-theme .knot-row[data-status]::before {
@@ -962,6 +978,60 @@
   background: currentColor !important;
 }
 
+.app-theme .knots-page .inline-feedback,
+.app-theme .knots-page .folder-empty,
+.app-theme .knots-page .filter-empty-state {
+  border-radius: 16px !important;
+  border: 2px solid rgba(170, 225, 255, 0.7) !important;
+  background: linear-gradient(180deg, rgba(29, 82, 164, 0.72) 0%, rgba(20, 62, 129, 0.82) 100%) !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.18), 0 4px 0 #113d82 !important;
+}
+
+.app-theme .knots-page .inline-feedback p,
+.app-theme .knots-page .folder-empty,
+.app-theme .knots-page .filter-empty-state p {
+  color: #dff1ff !important;
+}
+
+.app-theme .knots-page .filter-empty-state h3 {
+  color: #f7fcff !important;
+  text-shadow: 0 1px 0 rgba(8, 35, 88, 0.72);
+}
+
+.app-theme .knot-feedback-toast {
+  border: 2px solid rgba(255, 227, 127, 0.85) !important;
+  background: linear-gradient(180deg, rgba(29, 82, 164, 0.98) 0%, rgba(16, 58, 126, 0.98) 100%) !important;
+  box-shadow: 0 8px 0 #0f458f, 0 20px 38px rgba(7, 24, 56, 0.44) !important;
+}
+
+.app-theme .knot-feedback-toast p {
+  color: #f3fbff !important;
+  text-shadow: 0 1px 0 rgba(11, 35, 84, 0.7);
+}
+
+.app-theme .knot-feedback-toast.is-rare {
+  border-color: rgba(255, 157, 157, 0.95) !important;
+  background: linear-gradient(180deg, rgba(33, 72, 144, 0.99) 0%, rgba(21, 42, 90, 0.99) 100%) !important;
+  box-shadow: 0 8px 0 #132f68, 0 22px 44px rgba(6, 14, 36, 0.55) !important;
+}
+
+.app-theme .knot-row__detail {
+  border-top: 1px solid rgba(170, 225, 255, 0.38) !important;
+  background: linear-gradient(180deg, rgba(19, 67, 141, 0.78) 0%, rgba(14, 56, 121, 0.84) 100%) !important;
+}
+
+.app-theme .knot-row__desc {
+  background: rgba(8, 37, 92, 0.55) !important;
+  border-color: rgba(170, 225, 255, 0.44) !important;
+  color: #ecf7ff !important;
+}
+
+.app-theme .knot-hint {
+  border-color: rgba(170, 225, 255, 0.46) !important;
+  background: rgba(9, 41, 100, 0.46) !important;
+  color: #dff0ff !important;
+}
+
 .app-theme .bottom-swipe-nav__button.is-active,
 .app-theme .desktop-segmented-nav__button.is-active,
 .app-theme .nav-button.is-active {
@@ -1005,6 +1075,15 @@
 
   .app-theme .knots-page__header h2 {
     font-size: 1.5rem;
+  }
+
+  .app-theme .knots-status-legend {
+    gap: 5px 8px;
+  }
+
+  .app-theme .knots-status-legend__item {
+    padding: 3px 7px;
+    font-size: 0.67rem;
   }
 
   .app-theme .knot-folder-tab {
