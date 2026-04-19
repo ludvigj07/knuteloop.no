@@ -140,3 +140,13 @@ dist
 # Vite logs files
 vite.config.js.timestamp-*
 vite.config.ts.timestamp-*
+
+# Runtime state — ikke committe dev- eller prod-DB eller brukeropplastninger.
+# Deploy skal aldri overskrive serverens levende database eller uploads/.
+backend/data/*
+!backend/data/.gitkeep
+backend/uploads/*
+!backend/uploads/.gitkeep
+
+# Produksjons-tarball fra deploy-prosedyren
+release.tgz
