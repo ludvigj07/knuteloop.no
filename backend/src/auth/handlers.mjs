@@ -37,10 +37,25 @@ export function setAuthBridge(next) {
   bridge = { ensureJsonUser: async () => {}, ...next };
 }
 
+const MAX_REQUEST_BODY_BYTES = 50 * 1024 * 1024;
+
 function readJsonBody(request) {
   return new Promise((resolve, reject) => {
     const chunks = [];
-    request.on('data', (chunk) => chunks.push(chunk));
+    let total = 0;
+    request.on('data', (chunk) => {
+      total += chunk.length;
+      if (total > MAX_REQUEST_BODY_BYTES) {
+        const err = new Error(
+          `Forespørselen er for stor. Maks ${MAX_REQUEST_BODY_BYTES / 1024 / 1024} MB.`,
+        );
+        err.statusCode = 413;
+        request.destroy();
+        reject(err);
+        return;
+      }
+      chunks.push(chunk);
+    });
     request.on('end', () => {
       try {
         const raw = Buffer.concat(chunks).toString('utf8');

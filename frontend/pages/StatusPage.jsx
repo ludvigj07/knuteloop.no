@@ -4,11 +4,18 @@ import { getFeaturedAchievements, getUnlockedAchievements } from '../data/badgeS
 
 function ProfileThumb({ person }) {
   if (person?.studentPhotoUrl || person?.photoUrl) {
+    const src =
+      person.studentPhotoThumbUrl ||
+      person.photoThumbUrl ||
+      person.studentPhotoUrl ||
+      person.photoUrl;
     return (
       <div className="profile-photo profile-photo--small">
         <img
-          src={person.studentPhotoUrl ?? person.photoUrl}
+          src={src}
           alt={`${person.studentName ?? person.russName ?? person.name} profilbilde`}
+          loading="lazy"
+          decoding="async"
         />
       </div>
     );

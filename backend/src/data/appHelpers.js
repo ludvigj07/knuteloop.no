@@ -877,6 +877,7 @@ export function buildActivityLog(profiles, submissions = []) {
           : profile.realName ?? submission.student,
         studentIcon: isAnonymous ? 'ðŸ‘¤' : profile.icon ?? '',
         studentPhotoUrl: isAnonymous ? '' : profile.photoUrl ?? '',
+        studentPhotoThumbUrl: isAnonymous ? '' : profile.photoThumbUrl ?? '',
         studentGroup: isAnonymous
           ? 'Anonym post'
           : profile.className ?? profile.group ?? '',
@@ -886,6 +887,7 @@ export function buildActivityLog(profiles, submissions = []) {
         points: submission.points ?? 0,
         note: shareDetails ? submission.note ?? '' : '',
         imagePreviewUrl: shareDetails ? submission.imagePreviewUrl ?? '' : '',
+        imageThumbUrl: shareDetails ? submission.imageThumbUrl ?? '' : '',
         videoPreviewUrl: shareDetails ? submission.videoPreviewUrl ?? '' : '',
         mediaType: shareDetails
           ? submission.videoPreviewUrl
@@ -944,6 +946,7 @@ export function buildActivityLog(profiles, submissions = []) {
         studentRealName: profile.realName ?? profile.name,
         studentIcon: profile.icon,
         studentPhotoUrl: profile.photoUrl ?? '',
+        studentPhotoThumbUrl: profile.photoThumbUrl ?? '',
         studentGroup: profile.group,
         knotTitle: knot.title,
         category: knot.category,

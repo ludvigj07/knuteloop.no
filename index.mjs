@@ -1,15 +1,25 @@
 import { createServer } from 'node:http';
 import { randomUUID } from 'node:crypto';
 import sharp from 'sharp';
-import { exec } from 'node:child_process';
+import { execFile } from 'node:child_process';
 import { createReadStream, promises as fs } from 'node:fs';
 import path from 'node:path';
 import { promisify } from 'node:util';
 import { fileURLToPath } from 'node:url';
+import { brotliCompressSync, gzipSync } from 'node:zlib';
+import ffmpegPath from 'ffmpeg-static';
 import {
+  buildActivityLog,
+  buildClassLeaderboard,
+  buildDailyKnot,
+  buildDashboardData,
   buildDuelAvailability,
+  buildDuelHistory,
+  buildGenderLeaderboards,
   buildImportedKnots,
+  buildKnotTypeLeaderboard,
   buildLeaderboard,
+  buildProfiles,
   DUEL_DAILY_LIMIT,
   DUEL_LIMITS_DISABLED,
   DUEL_RANGE,
@@ -17,7 +27,8 @@ import {
   DUEL_WINDOW_HOURS,
   limitNoteWords,
   MODERATION_POLICY,
-} from '../knuteloop.no/backend/src/data/appHelpers.js';
+} from './backend/src/data/appHelpers.js';
+import { buildAchievements } from './backend/src/data/badgeSystem.js';
 import {
   openAuthDb,
   insertUser,
@@ -48,7 +59,7 @@ import {
   initialSubmissions,
   socialProfileDetails,
   stOlavBoardKnots,
-} from '../knuteloop.no/backend/src/data/prototypeData.js';
+} from './backend/src/data/prototypeData.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -57,7 +68,9 @@ const DATA_DIR = path.join(APP_ROOT, 'backend', 'data');
 const UPLOADS_DIR = path.join(APP_ROOT, 'backend', 'uploads');
 const DB_FILE = path.join(DATA_DIR, 'app-db.json');
 const PORT = Number(process.env.PORT) || 3001;
-const execAsync = promisify(exec);
+const execFileAsync = promisify(execFile);
+const FFMPEG_BINARY = ffmpegPath ?? 'ffmpeg';
+const ALLOWED_ORIGIN = process.env.ALLOWED_ORIGIN ?? '*';
 const VIDEO_MIME_TYPES = new Set([
   'video/mp4',
   'video/quicktime',
@@ -516,10 +529,49 @@ function normalizeVideoNameToMp4(name, fallback = 'video.mp4') {
   return rawName.replace(/\.[^.]+$/u, '') + '.mp4';
 }
 
+const MAX_VIDEO_BYTES = 30 * 1024 * 1024;
+const MAX_VIDEO_SECONDS = 20;
+const transcodeQueue = [];
+let transcodeBusy = false;
+
+function scheduleTranscode(finalPath) {
+  transcodeQueue.push(finalPath);
+  drainTranscodeQueue();
+}
+
+async function drainTranscodeQueue() {
+  if (transcodeBusy) return;
+  transcodeBusy = true;
+  try {
+    while (transcodeQueue.length > 0) {
+      const finalPath = transcodeQueue.shift();
+      const tempPath = `${finalPath}.transcoded.mp4`;
+      try {
+        await transcodeVideoToMp4(finalPath, tempPath);
+        await fs.rename(tempPath, finalPath);
+      } catch (error) {
+        await fs.rm(tempPath, { force: true }).catch(() => {});
+        console.error(
+          `[video] background transcode failed for ${path.basename(finalPath)}:`,
+          error instanceof Error ? error.message : error,
+        );
+      }
+    }
+  } finally {
+    transcodeBusy = false;
+  }
+}
+
 async function transcodeVideoToMp4(inputPath, outputPath) {
-  await execAsync(
-    `ffmpeg -y -i "${inputPath}" -vcodec h264 -acodec aac -movflags +faststart "${outputPath}"`,
-  );
+  await execFileAsync(FFMPEG_BINARY, [
+    '-y',
+    '-t', String(MAX_VIDEO_SECONDS),
+    '-i', inputPath,
+    '-vcodec', 'h264',
+    '-acodec', 'aac',
+    '-movflags', '+faststart',
+    outputPath,
+  ]);
 }
 
 async function maybeMigrateStoredVideo(fileUrl, category) {
@@ -665,10 +717,21 @@ async function migrateNorwegianText(db) {
   return nextDb;
 }
 
+const MAX_REQUEST_BODY_BYTES = 50 * 1024 * 1024;
+
 async function readJsonBody(request) {
   const chunks = [];
+  let total = 0;
 
   for await (const chunk of request) {
+    total += chunk.length;
+    if (total > MAX_REQUEST_BODY_BYTES) {
+      const err = new Error(
+        `Forespørselen er for stor. Maks ${MAX_REQUEST_BODY_BYTES / 1024 / 1024} MB.`,
+      );
+      err.statusCode = 413;
+      throw err;
+    }
     chunks.push(chunk);
   }
 
@@ -679,21 +742,49 @@ async function readJsonBody(request) {
   return JSON.parse(Buffer.concat(chunks).toString('utf8'));
 }
 
+const JSON_COMPRESSION_THRESHOLD = 1024;
+
 function sendJson(response, statusCode, payload) {
-  response.writeHead(statusCode, {
+  const body = Buffer.from(JSON.stringify(payload), 'utf8');
+  const headers = {
     'Content-Type': 'application/json; charset=utf-8',
-    'Access-Control-Allow-Origin': '*',
+    'Access-Control-Allow-Origin': ALLOWED_ORIGIN,
     'Access-Control-Allow-Headers': 'Content-Type, Authorization',
     'Access-Control-Allow-Methods': 'GET, POST, PATCH, DELETE, OPTIONS',
-  });
-  response.end(JSON.stringify(payload));
+    Vary: 'Accept-Encoding',
+  };
+
+  const accept = response.req?.headers?.['accept-encoding'] ?? '';
+  let output = body;
+
+  if (body.length >= JSON_COMPRESSION_THRESHOLD) {
+    if (accept.includes('br')) {
+      output = brotliCompressSync(body);
+      headers['Content-Encoding'] = 'br';
+    } else if (accept.includes('gzip')) {
+      output = gzipSync(body);
+      headers['Content-Encoding'] = 'gzip';
+    }
+  }
+
+  headers['Content-Length'] = output.length;
+  response.writeHead(statusCode, headers);
+  response.end(output);
 }
 
-async function sendFile(request, response, statusCode, filePath, contentType) {
+async function sendFile(
+  request,
+  response,
+  statusCode,
+  filePath,
+  contentType,
+  { cacheControl } = {},
+) {
   const stats = await fs.stat(filePath);
   const totalSize = stats.size;
   const rangeHeader = request.headers.range;
   const isVideo = contentType.startsWith('video/');
+  const extraHeaders = cacheControl ? { 'Cache-Control': cacheControl } : {};
 
   if (isVideo && rangeHeader) {
     const match = /bytes=(\d*)-(\d*)/.exec(rangeHeader);
@@ -702,7 +793,7 @@ async function sendFile(request, response, statusCode, filePath, contentType) {
       response.writeHead(416, {
         'Content-Range': `bytes */${totalSize}`,
         'Accept-Ranges': 'bytes',
-        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Origin': ALLOWED_ORIGIN,
       });
       response.end();
       return;
@@ -721,7 +812,7 @@ async function sendFile(request, response, statusCode, filePath, contentType) {
       response.writeHead(416, {
         'Content-Range': `bytes */${totalSize}`,
         'Accept-Ranges': 'bytes',
-        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Origin': ALLOWED_ORIGIN,
       });
       response.end();
       return;
@@ -736,7 +827,8 @@ async function sendFile(request, response, statusCode, filePath, contentType) {
       'Content-Range': `bytes ${start}-${safeEnd}/${totalSize}`,
       'Accept-Ranges': 'bytes',
       'Content-Disposition': 'inline',
-      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Origin': ALLOWED_ORIGIN,
+      ...extraHeaders,
     });
 
     await new Promise((resolve, reject) => {
@@ -753,7 +845,8 @@ async function sendFile(request, response, statusCode, filePath, contentType) {
     'Content-Length': totalSize,
     'Accept-Ranges': 'bytes',
     'Content-Disposition': 'inline',
-    'Access-Control-Allow-Origin': '*',
+    'Access-Control-Allow-Origin': ALLOWED_ORIGIN,
+    ...extraHeaders,
   });
 
   await new Promise((resolve, reject) => {
@@ -1732,6 +1825,7 @@ function toPublicSubmission(db, submission, currentUserId = null) {
     note: submission.note ?? '',
     imageName: submission.imageName ?? '',
     imagePreviewUrl: submission.imagePreviewUrl ?? '',
+    imageThumbUrl: deriveThumbUrl(submission.imagePreviewUrl ?? ''),
     videoName: submission.videoName ?? '',
     videoPreviewUrl: submission.videoPreviewUrl ?? '',
     isAnonymousFeed,
@@ -1792,26 +1886,109 @@ function pickDuelKnotForPair(db, challengerId, opponentId) {
 function buildBootstrap(db, user) {
   const nowMs = Date.now();
   const isAdminUser = assertAdmin(user);
+  const currentUserId = user.id;
+
+  const leaderSeed = buildLeaderSeed(db);
+  const clientKnots = buildClientKnots(db, currentUserId);
+  const publicSubmissions = db.submissions.map((submission) =>
+    toPublicSubmission(db, submission, currentUserId),
+  );
+  const ownSubmissions = isAdminUser
+    ? publicSubmissions
+    : publicSubmissions.filter((submission) => submission.leaderId === currentUserId);
+  const visibleDuels = isAdminUser
+    ? db.duels
+    : db.duels.filter(
+        (duel) =>
+          duel.challengerId === currentUserId || duel.opponentId === currentUserId,
+      );
+  const profileDetails = Object.fromEntries(
+    db.users.map((entry) => [entry.id, entry.profile]),
+  );
+  const rawLeaderboard = buildLeaderboard(
+    leaderSeed,
+    publicSubmissions,
+    clientKnots,
+    currentUserId,
+    db.duels,
+  );
+  const profilesRaw = buildProfiles(
+    rawLeaderboard,
+    currentUserId,
+    clientKnots,
+    publicSubmissions,
+    db.profileHistory,
+    profileDetails,
+  );
+  const profiles = profilesRaw.map((profile) => ({
+    ...profile,
+    photoThumbUrl: deriveThumbUrl(profile.photoUrl ?? ''),
+  }));
+  const leaderboard = rawLeaderboard.map((leader) => {
+    const profile = profiles.find((candidate) => candidate.id === leader.id);
+    return profile
+      ? {
+          ...leader,
+          icon: profile.icon,
+          leaderboardTitle: profile.leaderboardTitle,
+          photoUrl: profile.photoUrl,
+          photoThumbUrl: deriveThumbUrl(profile.photoUrl ?? ''),
+          russName: profile.russName,
+          realName: profile.realName,
+          className: profile.className,
+          genderIdentity: profile.genderIdentity,
+        }
+      : leader;
+  });
+  const currentLeader =
+    leaderboard.find((leader) => leader.id === currentUserId) ?? null;
+  const achievements = buildAchievements(clientKnots, currentLeader);
+  const activityLog = buildActivityLog(profiles, publicSubmissions);
+  const classLeaderboard = buildClassLeaderboard(leaderboard);
+  const knotTypeLeaderboard = buildKnotTypeLeaderboard(publicSubmissions, clientKnots);
+  const genderLeaderboards = buildGenderLeaderboards(leaderboard);
+  const dailyKnot = buildDailyKnot(clientKnots);
+  const duelAvailability = buildDuelAvailability(currentUserId, leaderboard, db.duels);
+  const duelHistory = buildDuelHistory(db.duels, leaderboard);
+  const duelSummary = {
+    stake: DUEL_STAKE,
+    range: DUEL_RANGE,
+    deadlineHours: DUEL_WINDOW_HOURS,
+    dailyLimit: DUEL_LIMITS_DISABLED ? 'Ingen (testmodus)' : DUEL_DAILY_LIMIT,
+    currentUserDailyCount: duelAvailability.currentUserDailyCount ?? 0,
+    currentUserRemaining: duelAvailability.currentUserRemaining ?? 0,
+    thisDayTotal: duelAvailability.thisDayTotal ?? 0,
+    activeCount: db.duels.filter((duel) => duel.status === 'active').length,
+  };
+  const dashboardData = currentLeader
+    ? buildDashboardData(currentUserId, leaderboard, achievements, activityLog, clientKnots)
+    : {
+        stats: [],
+        messages: [],
+        rivals: [],
+        recentActivity: [],
+        nextRank: null,
+        nextAchievement: null,
+        rankProgress: null,
+        recommendedKnot: null,
+        weeklyTopPost: null,
+        weeklyPostMinRatings: 10,
+        currentLeader: null,
+      };
 
   return {
     school: db.schools[0],
     currentUser: {
-      leaderId: user.id,
+      leaderId: currentUserId,
       name: user.name,
       group: user.group,
       role: user.role,
     },
-    currentUserStreak: getUserStreakSummary(db, user.id),
-    leaders: buildLeaderSeed(db),
-    knots: buildClientKnots(db, user.id),
-    submissions: db.submissions.map((submission) =>
-      toPublicSubmission(db, submission, user.id),
-    ),
-    duels: db.duels,
-    profileHistory: db.profileHistory,
-    profileDetails: Object.fromEntries(
-      db.users.map((entry) => [entry.id, entry.profile]),
-    ),
+    currentUserStreak: getUserStreakSummary(db, currentUserId),
+    leaders: leaderSeed,
+    knots: clientKnots,
+    submissions: ownSubmissions,
+    duels: visibleDuels,
     reports: isAdminUser
       ? (db.reports ?? []).map((report) => toPublicReport(db, report))
       : [],
@@ -1820,9 +1997,20 @@ function buildBootstrap(db, user) {
           .map((ban) => toPublicBan(db, ban, nowMs))
           .sort((left, right) => Date.parse(right.expiresAt) - Date.parse(left.expiresAt))
       : [],
-    currentUserActiveBans: buildCurrentUserActiveBans(db, user.id, nowMs),
-    knotFeedbackMessages: normalizeKnotFeedbackMessages(db.knotFeedbackMessages),
+    currentUserActiveBans: buildCurrentUserActiveBans(db, currentUserId, nowMs),
     moderationPolicy: MODERATION_POLICY,
+    leaderboard,
+    profiles,
+    achievements,
+    activityLog,
+    classLeaderboard,
+    knotTypeLeaderboard,
+    genderLeaderboards,
+    dailyKnot,
+    duelAvailability,
+    duelHistory,
+    duelSummary,
+    dashboardData,
   };
 }
 
@@ -1849,6 +2037,12 @@ async function saveUploadedAsset(dataUrl, originalName, category) {
         .resize({ width: 1600, withoutEnlargement: true })
         .webp({ quality: 80 })
         .toFile(outputPath);
+      const thumbName = `${path.basename(safeName, path.extname(safeName))}-thumb.webp`;
+      await sharp(parsed.buffer)
+        .rotate()
+        .resize({ width: 480, withoutEnlargement: true })
+        .webp({ quality: 72 })
+        .toFile(path.join(UPLOADS_DIR, thumbName));
       return `/uploads/${safeName}`;
     }
     const extension = path.extname(originalName || '') || getExtensionFromMime(parsed.mimeType);
@@ -1858,39 +2052,39 @@ async function saveUploadedAsset(dataUrl, originalName, category) {
     return `/uploads/${safeName}`;
   }
 
-  const sourceExtension = path.extname(originalName || '') || getExtensionFromMime(parsed.mimeType);
-  const tempName = `${category}-${Date.now()}-${randomUUID()}${sourceExtension}`;
-  const tempPath = path.join(UPLOADS_DIR, tempName);
+  if (parsed.buffer.length > MAX_VIDEO_BYTES) {
+    throw new Error(
+      `Videoen er for stor (${(parsed.buffer.length / 1024 / 1024).toFixed(1)} MB). Maks ${MAX_VIDEO_BYTES / 1024 / 1024} MB.`,
+    );
+  }
+
   const mp4Name = `${category}-${Date.now()}-${randomUUID()}.mp4`;
   const mp4Path = path.join(UPLOADS_DIR, mp4Name);
 
-  await fs.writeFile(tempPath, parsed.buffer);
-
-  try {
-    await transcodeVideoToMp4(tempPath, mp4Path);
-  } catch (error) {
-    await fs.rm(tempPath, { force: true });
-    await fs.rm(mp4Path, { force: true });
-
-    const message =
-      error instanceof Error && error.message
-        ? error.message
-        : 'Ukjent ffmpeg-feil.';
-
-    throw new Error(`Videokonvertering feilet. ${message}`);
-  }
-
-  await fs.rm(tempPath, { force: true });
+  await fs.writeFile(mp4Path, parsed.buffer);
+  scheduleTranscode(mp4Path);
   return `/uploads/${mp4Name}`;
 }
 
-function deleteLocalUploadIfNeeded(fileUrl) {
-  if (!fileUrl || !fileUrl.startsWith('/uploads/')) {
-    return Promise.resolve();
-  }
+function deriveThumbUrl(fileUrl) {
+  if (!fileUrl || !fileUrl.startsWith('/uploads/')) return '';
+  const ext = path.extname(fileUrl).toLowerCase();
+  if (!['.jpg', '.jpeg', '.png', '.webp'].includes(ext)) return '';
+  const base = fileUrl.slice(0, fileUrl.length - ext.length);
+  return `${base}-thumb.webp`;
+}
+
+async function deleteLocalUploadIfNeeded(fileUrl) {
+  if (!fileUrl || !fileUrl.startsWith('/uploads/')) return;
 
   const fileName = fileUrl.replace('/uploads/', '');
-  return fs.rm(path.join(UPLOADS_DIR, fileName), { force: true });
+  await fs.rm(path.join(UPLOADS_DIR, fileName), { force: true });
+
+  const thumbUrl = deriveThumbUrl(fileUrl);
+  if (thumbUrl) {
+    const thumbName = thumbUrl.replace('/uploads/', '');
+    await fs.rm(path.join(UPLOADS_DIR, thumbName), { force: true });
+  }
 }
 
 async function cleanupSubmissionAssets(submission) {
@@ -2159,6 +2353,7 @@ async function handleCreateSubmission(request, response) {
     const hasNewImage = Boolean(imagePreviewUrl);
     const hasNewVideo = Boolean(videoPreviewUrl);
     const shouldRemoveImage = body.removeImage === true && !hasNewImage;
+    const shouldRemoveVideo = body.removeVideo === true && !hasNewVideo;
     const incomingNote = limitNoteWords(body.note);
     const currentSubmissionMode = normalizeSubmissionMode(
       existingPendingSubmission.submissionMode,
@@ -2178,9 +2373,9 @@ async function handleCreateSubmission(request, response) {
     }
 
     if (
-      hasNewVideo &&
+      (hasNewVideo || shouldRemoveVideo) &&
       existingPendingSubmission.videoPreviewUrl &&
-      existingPendingSubmission.videoPreviewUrl !== videoPreviewUrl
+      (!hasNewVideo || existingPendingSubmission.videoPreviewUrl !== videoPreviewUrl)
     ) {
       await deleteLocalUploadIfNeeded(existingPendingSubmission.videoPreviewUrl);
     }
@@ -2204,10 +2399,14 @@ async function handleCreateSubmission(request, response) {
                   : (submission.imagePreviewUrl ?? ''),
               videoName: hasNewVideo
                 ? (body.videoName ?? submission.videoName ?? '')
-                : (submission.videoName ?? ''),
+                : shouldRemoveVideo
+                  ? ''
+                  : (submission.videoName ?? ''),
               videoPreviewUrl: hasNewVideo
                 ? videoPreviewUrl
-                : (submission.videoPreviewUrl ?? ''),
+                : shouldRemoveVideo
+                  ? ''
+                  : (submission.videoPreviewUrl ?? ''),
               submissionMode: nextSubmissionMode,
               isAnonymousFeed: nextIsAnonymousFeed,
             }
@@ -3569,14 +3768,17 @@ const server = createServer(async (request, response) => {
         return;
       }
 
-        await sendFile(request, response, 200, filePath, getContentType(filePath));
+        await sendFile(request, response, 200, filePath, getContentType(filePath), {
+          cacheControl: 'public, max-age=31536000, immutable',
+        });
         return;
       }
 
     sendJson(response, 404, { error: 'Fant ikke endpoint.' });
   } catch (error) {
-    sendJson(response, 500, {
-      error: 'Serverfeil.',
+    const statusCode = error?.statusCode ?? 500;
+    sendJson(response, statusCode, {
+      error: statusCode === 413 ? (error?.message ?? 'For stor forespørsel.') : 'Serverfeil.',
       detail: error instanceof Error ? error.message : 'Ukjent feil',
     });
   }
