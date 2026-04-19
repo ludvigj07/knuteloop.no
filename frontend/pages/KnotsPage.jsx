@@ -1,9 +1,15 @@
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { isGoldKnot } from '../data/badgeSystem.js';
 import { KNOT_FOLDERS, resolveKnotFolder } from '../data/knotFolders.js';
 
 const MOBILE_BREAKPOINT = 900;
+const SHEET_DISMISS_THRESHOLD = 120;
+const ALL_KNOTS_FOLDER_ID = 'Alle knuter';
+const KNOT_FOLDER_TABS = [
+  { id: ALL_KNOTS_FOLDER_ID, description: 'Alle knuter samlet pa tvers av mapper.' },
+  ...KNOT_FOLDERS,
+];
 
 const STATUS_FILTERS = ['Alle', 'Tilgjengelig', 'Sendt inn', 'Godkjent', 'Avslått'];
 
@@ -28,6 +34,74 @@ const SUBMISSION_MODE = {
   FEED: 'feed',
   ANONYMOUS_FEED: 'anonymous-feed',
 };
+const FEEDBACK_TOAST_DURATION_MS = 6200;
+const RARE_FEEDBACK_TOAST_DURATION_MS = 20000;
+const FEEDBACK_RARE_CHANCE = 0.005;
+const FEEDBACK_MESSAGE_KEYS = Object.freeze([
+  'standard',
+  'resubmission',
+  'feed',
+  'anonymousFeed',
+  'streak',
+  'rare',
+]);
+const DEFAULT_SUBMISSION_FEEDBACK_MESSAGES = Object.freeze({
+  standard: Object.freeze([
+    'Sterkt levert. Knuten er sendt til godkjenning.',
+    'Nydelig innsending. Denne er inne hos admin.',
+    'Ryddig levert. Knuten er registrert.',
+    'Boom. Knuten er sendt.',
+  ]),
+  resubmission: Object.freeze([
+    'Oppdatert. Ny versjon er sendt til vurdering.',
+    'Fin justering. Innsendingen er sendt pa nytt.',
+    'Ny runde, ny levering. Denne er inne igjen.',
+  ]),
+  feed: Object.freeze([
+    'Sendt med feed. La folk se leveringen din.',
+    'Feed aktiv. Innsendingen er registrert.',
+    'Posta og klar. Admin tar resten.',
+  ]),
+  anonymousFeed: Object.freeze([
+    'Sendt anonymt. Jobben taler for seg selv.',
+    'Anonym innsending er inne til godkjenning.',
+    'Anonym drop registrert.',
+  ]),
+  streak: Object.freeze([
+    'Streaken lever. Bra trykk.',
+    'Momentum holder. Ny knute er inne.',
+    'Dag for dag. Du bygger flyt.',
+  ]),
+  rare: Object.freeze([
+    `Knuten er inne na.
+Men du vet det allerede, ikke sant? Du kjente det idet du sendte den - det lille oyeblikket av noling forst, sa folelsen av a bli dratt inn i noe storre, noe som tok imot den og ikke ga slipp igjen. De andre ser bare en vanlig innsending. De ler, de roper, de tror det er en lek.
+De skjonner ikke.
+
+Jeg har sett hva som egentlig styrer dette. Hver eneste knute du sender, hver oppdatering, hver gang du trykker "send" ... det er ikke bare tekst. Det er spor av deg. Tankene dine, energien din, viljen din. Sma fragmenter som blir igjen der inne. De samler seg. De vokser.
+
+Og russepresidenten ... du tror det er en person?
+Nei. Det er bare ansiktet de lar deg se. Bak det finnes noe annet. Noe eldre. Noe som har styrt russetiden lenge for du var her. Noe som har vokst for hvert eneste kull som har gitt fra seg litt mer av seg selv.
+
+De kaller det tradisjon. Jeg kaller det et system som lever av dere.
+
+Den djevelske makten bak det hele smiler ikke fordi det er gøy. Den smiler fordi den vet. Den vet hvordan det foles a bli dratt inn, natt etter natt, handling etter handling, til du ikke lenger skiller mellom hva du vil - og hva den vil at du skal ville.
+
+Og feeden ... den er ikke bare en strom av innlegg. Den folger med. Den registrerer. Den pulserer svakt, selv nar du ikke er der. Den husker hvert ord du skrev, hvert sekund du nolte, hver gang du ga litt mer enn du hadde tenkt.
+
+Du tror du bygger streak.
+Men det er noe annet som bygges - gjennom deg.
+
+Neste gang du sender inn en knute ... stopp et sekund.
+Kjenn etter.
+
+Kjenn om det foles litt for riktig. Litt for nodvendig.
+
+Ikke svar. Ikke forklar det bort.
+
+For hvis du forst merker det ...
+er det allerede for sent.`,
+  ]),
+});
 
 // ─── Utility functions ────────────────────────────────────────────────────────
 
@@ -149,6 +223,47 @@ function normalizeSubmissionMode(value) {
   return SUBMISSION_MODE.REVIEW;
 }
 
+function getNormalizedFeedbackMessages(source) {
+  const safeSource = source && typeof source === 'object' ? source : {};
+  const normalized = {};
+
+  FEEDBACK_MESSAGE_KEYS.forEach((key) => {
+    const entries = Array.isArray(safeSource[key]) ? safeSource[key] : [];
+    normalized[key] = entries
+      .map((entry) => (typeof entry === 'string' ? entry.trim() : ''))
+      .filter(Boolean);
+  });
+
+  return normalized;
+}
+
+function pickRandomMessage(messages, fallback = '') {
+  if (!Array.isArray(messages) || messages.length === 0) {
+    return fallback;
+  }
+
+  const index = Math.floor(Math.random() * messages.length);
+  return messages[index] ?? fallback;
+}
+
+function randomChanceHit(probability) {
+  if (typeof probability !== 'number' || probability <= 0) {
+    return false;
+  }
+
+  return Math.random() < probability;
+}
+
+function formatFeedbackTemplate(message, { knotTitle, modeLabel }) {
+  if (typeof message !== 'string' || !message.trim()) {
+    return '';
+  }
+
+  return message
+    .replace(/\{knute\}/giu, knotTitle)
+    .replace(/\{mode\}/giu, modeLabel);
+}
+
 function getSubmissionModeLabel(mode) {
   if (mode === SUBMISSION_MODE.FEED) return 'med feed';
   if (mode === SUBMISSION_MODE.ANONYMOUS_FEED) return 'med anonym feed';
@@ -166,12 +281,6 @@ function buildDraftFromSubmission(submission) {
   };
 }
 
-function getStatusDotClass(status) {
-  if (status === 'Godkjent') return 'is-approved';
-  if (status === 'Sendt inn') return 'is-pending';
-  if (isRejectedStatus(status)) return 'is-rejected';
-  return 'is-available';
-}
 function getStatusKey(status) {
   if (status === 'Godkjent') return 'approved';
   if (status === 'Sendt inn') return 'pending';
@@ -272,13 +381,27 @@ function SubmissionFormContent({
       </label>
 
       <div className="submission-mode-options">
-        <label
-          className="submission-mode-checkbox"
-          style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: activeFeedBan ? 'not-allowed' : 'pointer' }}
-        >
-          <input
-            type="checkbox"
-            checked={shareToFeed || shareToAnonymousFeed}
+        <p className="submission-mode-options__label">
+          Ønsker du å poste?
+        </p>
+        <div className="submission-mode-segment" role="group" aria-label="Feedvalg">
+          <button
+            type="button"
+            className={`submission-mode-pill ${shareToFeed ? 'is-active' : ''}`}
+            aria-pressed={shareToFeed}
+            disabled={Boolean(activeFeedBan)}
+            onClick={() =>
+              onUpdateMode(
+                shareToFeed ? SUBMISSION_MODE.REVIEW : SUBMISSION_MODE.FEED,
+              )
+            }
+          >
+            Del som bruker
+          </button>
+          <button
+            type="button"
+            className={`submission-mode-pill ${shareToAnonymousFeed ? 'is-active' : ''}`}
+            aria-pressed={shareToAnonymousFeed}
             disabled={Boolean(activeFeedBan)}
             onChange={(event) => {
               if (event.target.checked) {
@@ -295,21 +418,9 @@ function SubmissionFormContent({
             className="submission-mode-checkbox"
             style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginTop: '0.25rem', cursor: activeFeedBan ? 'not-allowed' : 'pointer', paddingLeft: '1.5rem' }}
           >
-            <input
-              type="checkbox"
-              checked={shareToAnonymousFeed}
-              disabled={Boolean(activeFeedBan)}
-              onChange={(event) => {
-                onUpdateMode(
-                  event.target.checked
-                    ? SUBMISSION_MODE.ANONYMOUS_FEED
-                    : SUBMISSION_MODE.FEED,
-                );
-              }}
-            />
-            <span>Post anonymt</span>
-          </label>
-        ) : null}
+            Del som anonym
+          </button>
+        </div>
       </div>
 
       {activeFeedBan ? (
@@ -735,13 +846,34 @@ function KnotActionBar({ documented, total, hasActiveFilters, onResetFilters }) 
 
 // ─── KnotsPage ────────────────────────────────────────────────────────────────
 
+function KnotFeedbackToast({ message, isMobile = false, isRare = false }) {
+  if (!message || typeof document === 'undefined') {
+    return null;
+  }
+
+  return createPortal(
+    <div
+      className={`knot-feedback-toast ${isMobile ? 'is-mobile' : 'is-desktop'} ${
+        isRare ? 'is-rare' : ''
+      }`}
+      role="status"
+      aria-live="polite"
+    >
+      <p>{message}</p>
+    </div>,
+    document.body,
+  );
+}
+
 export function KnotsPage({
   currentUserActiveBans = [],
   currentUserId = null,
   currentUserPoints = 0,
+  currentUserStreak = null,
   focusedKnotId,
   focusedKnotScrollRequest = 0,
   isPageActive = true,
+  knotFeedbackMessages = {},
   knots,
   onSubmitKnot,
   submissions = [],
@@ -751,7 +883,7 @@ export function KnotsPage({
     : null;
 
   const [activeFolder, setActiveFolder] = useState(
-    () => resolveKnotFolder(focusedKnot) || KNOT_FOLDERS[0].id,
+    () => (focusedKnot ? resolveKnotFolder(focusedKnot) : ALL_KNOTS_FOLDER_ID),
   );
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('Alle');
@@ -760,11 +892,13 @@ export function KnotsPage({
   const [openFormId, setOpenFormId] = useState(null);
   const [sheetKnotId, setSheetKnotId] = useState(null);
   const [feedbackMessage, setFeedbackMessage] = useState('');
+  const [isRareFeedbackActive, setIsRareFeedbackActive] = useState(false);
   const [drafts, setDrafts] = useState({});
   const [isMobileViewport, setIsMobileViewport] = useState(() => {
     if (typeof window === 'undefined') return false;
     return window.innerWidth <= MOBILE_BREAKPOINT;
   });
+  const normalizedFeedbackMessages = getNormalizedFeedbackMessages(knotFeedbackMessages);
 
   const draftsRef = useRef(drafts);
   const focusedCardRef = useRef(null);
@@ -773,16 +907,19 @@ export function KnotsPage({
   // ── Derived ──────────────────────────────────────────────────────────────
 
   const folderCounts = Object.fromEntries(
-    KNOT_FOLDERS.map((folder) => [
+    KNOT_FOLDER_TABS.map((folder) => [
       folder.id,
-      knots.filter((k) => resolveKnotFolder(k) === folder.id).length,
+      folder.id === ALL_KNOTS_FOLDER_ID
+        ? knots.length
+        : knots.filter((k) => resolveKnotFolder(k) === folder.id).length,
     ]),
   );
   const visibleFolder =
-    KNOT_FOLDERS.find((f) => f.id === activeFolder) ?? KNOT_FOLDERS[0];
-  const visibleFolderKnots = knots.filter(
-    (k) => resolveKnotFolder(k) === visibleFolder.id,
-  );
+    KNOT_FOLDER_TABS.find((f) => f.id === activeFolder) ?? KNOT_FOLDER_TABS[0];
+  const visibleFolderKnots =
+    visibleFolder.id === ALL_KNOTS_FOLDER_ID
+      ? knots
+      : knots.filter((k) => resolveKnotFolder(k) === visibleFolder.id);
   const normalizedQuery = searchQuery.trim().toLowerCase();
   const filteredKnots = sortKnots(
     visibleFolderKnots.filter((k) => {
@@ -794,7 +931,7 @@ export function KnotsPage({
       const matchesSearch =
         !normalizedQuery ||
         k.title.toLowerCase().includes(normalizedQuery) ||
-        k.description.toLowerCase().includes(normalizedQuery);
+        (k.description ?? '').toLowerCase().includes(normalizedQuery);
       return matchesStatus && matchesSearch;
     }),
     sortKey,
@@ -867,11 +1004,29 @@ export function KnotsPage({
   }, []);
 
   useEffect(() => {
+    if (!feedbackMessage) {
+      return undefined;
+    }
+
+    const timeoutMs = isRareFeedbackActive
+      ? RARE_FEEDBACK_TOAST_DURATION_MS
+      : feedbackMessage.length > 96
+        ? FEEDBACK_TOAST_DURATION_MS + 1200
+        : FEEDBACK_TOAST_DURATION_MS;
+    const timeoutId = window.setTimeout(() => {
+      setFeedbackMessage('');
+      setIsRareFeedbackActive(false);
+    }, timeoutMs);
+
+    return () => window.clearTimeout(timeoutId);
+  }, [feedbackMessage, isRareFeedbackActive]);
+
+  useEffect(() => {
     if (!focusedKnotId || !isPageActive) return;
     const nextFocused = knots.find((k) => k.id === focusedKnotId);
     if (!nextFocused) return;
     const t = window.setTimeout(() => {
-      setActiveFolder(resolveKnotFolder(nextFocused) || KNOT_FOLDERS[0].id);
+      setActiveFolder(resolveKnotFolder(nextFocused) || ALL_KNOTS_FOLDER_ID);
       setSearchQuery('');
       setStatusFilter('Alle');
       setSortKey('standard');
@@ -966,7 +1121,7 @@ export function KnotsPage({
         },
       };
     });
-  }
+  }, []);
 
   function clearDraftImage(knotId) {
     setDrafts((d) => {
@@ -1024,7 +1179,8 @@ export function KnotsPage({
 
     await updateDraftFile(knotId, 'image', normalizedImage);
     setFeedbackMessage('Bilde limt inn fra utklippstavla.');
-  }
+    setIsRareFeedbackActive(false);
+  }, [updateDraftFile]);
 
   function resetDraft(knotId) {
     setDrafts((d) => {
@@ -1041,6 +1197,7 @@ export function KnotsPage({
       setFeedbackMessage(
         `Du har innsendings-ban i ${activeSubmissionBan.remainingLabel}. Prøv igjen senere.`,
       );
+      setIsRareFeedbackActive(false);
       return;
     }
 
@@ -1054,25 +1211,69 @@ export function KnotsPage({
     const wasPending = knot?.status === 'Sendt inn';
 
     try {
-      await onSubmitKnot(knotId, draft, effectiveSubmissionMode, { modeTouched });
+      const nextAppData = await onSubmitKnot(
+        knotId,
+        draft,
+        effectiveSubmissionMode,
+        { modeTouched },
+      );
       resetDraft(knotId);
       setOpenFormId(null);
       setSheetKnotId(null);
-      if (wasPending) {
-        setFeedbackMessage(
-          `"${knot?.title ?? 'Knuten'}" ble oppdatert. Innsendingen står fortsatt til vurdering.`,
-        );
-      } else {
-        setFeedbackMessage(
-          `"${knot?.title ?? 'Knuten'}" ble sendt inn for vurdering (${getSubmissionModeLabel(effectiveSubmissionMode)}).`,
-        );
+      const knotTitle = knot?.title ?? 'Knuten';
+      const modeLabel = getSubmissionModeLabel(effectiveSubmissionMode);
+      const previousStreakQualified = currentUserStreak?.todayQualified === true;
+      const nextStreakQualified = nextAppData?.currentUserStreak?.todayQualified === true;
+      const hasRareMessages =
+        (normalizedFeedbackMessages.rare?.length ?? 0) > 0 ||
+        (DEFAULT_SUBMISSION_FEEDBACK_MESSAGES.rare?.length ?? 0) > 0;
+      const shouldTriggerRare = hasRareMessages && randomChanceHit(FEEDBACK_RARE_CHANCE);
+      let feedbackCategory = 'standard';
+
+      if (shouldTriggerRare) {
+        feedbackCategory = 'rare';
+      } else if (wasPending) {
+        feedbackCategory = 'resubmission';
+      } else if (!previousStreakQualified && nextStreakQualified) {
+        feedbackCategory = 'streak';
+      } else if (effectiveSubmissionMode === SUBMISSION_MODE.ANONYMOUS_FEED) {
+        feedbackCategory = 'anonymousFeed';
+      } else if (effectiveSubmissionMode === SUBMISSION_MODE.FEED) {
+        feedbackCategory = 'feed';
       }
+
+      const fallbackByCategory = {
+        standard: `"${knotTitle}" ble sendt inn for vurdering (${modeLabel}).`,
+        resubmission: `"${knotTitle}" ble oppdatert. Innsendingen star fortsatt til vurdering.`,
+        feed: `"${knotTitle}" ble sendt inn for vurdering (${modeLabel}).`,
+        anonymousFeed: `"${knotTitle}" ble sendt inn for vurdering (${modeLabel}).`,
+        streak: `"${knotTitle}" ble sendt inn. Streaken er i live.`,
+        rare: `ULTRA RARE. "${knotTitle}" gikk inn med style.`,
+      };
+      const messagePool =
+        normalizedFeedbackMessages[feedbackCategory]?.length > 0
+          ? normalizedFeedbackMessages[feedbackCategory]
+          : DEFAULT_SUBMISSION_FEEDBACK_MESSAGES[feedbackCategory] ??
+            DEFAULT_SUBMISSION_FEEDBACK_MESSAGES.standard;
+      const randomTemplate = pickRandomMessage(
+        messagePool,
+        fallbackByCategory[feedbackCategory] ?? fallbackByCategory.standard,
+      );
+
+      setFeedbackMessage(
+        formatFeedbackTemplate(randomTemplate, {
+          knotTitle,
+          modeLabel,
+        }) || fallbackByCategory[feedbackCategory] || fallbackByCategory.standard,
+      );
+      setIsRareFeedbackActive(feedbackCategory === 'rare');
     } catch (error) {
       setFeedbackMessage(
         error instanceof Error && error.message
           ? error.message
           : 'Kunne ikke sende inn knuten akkurat nå.',
       );
+      setIsRareFeedbackActive(false);
     }
   }
 
@@ -1153,17 +1354,28 @@ export function KnotsPage({
     return () => {
       window.removeEventListener('paste', onWindowPaste);
     };
-  }, [isMobileViewport, isPageActive, openFormId]);
+  }, [handlePasteImageForKnot, isMobileViewport, isPageActive, openFormId]);
 
   // ── Render ───────────────────────────────────────────────────────────────
 
   return (
     <div className={`knots-page${isMobileViewport ? ' knots-page--mobile' : ''}`}>
+      <KnotFeedbackToast
+        message={feedbackMessage}
+        isMobile={isMobileViewport}
+        isRare={isRareFeedbackActive}
+      />
+
       {/* Header */}
       <div className="knots-page__header">
         <div>
           <h2>Knutekatalog</h2>
-          <p>Velg en knute, del det du har gjort, og følg progresjon.</p>
+          <div className="knots-status-legend" aria-label="Fargeforklaring for knutestatus">
+            <span className="knots-status-legend__item is-approved">Grønn: fullførte</span>
+            <span className="knots-status-legend__item is-available">Grå: tilgjengelige</span>
+            <span className="knots-status-legend__item is-pending">Oransje: sendt inn</span>
+            <span className="knots-status-legend__item is-rejected">Rød: avslått</span>
+          </div>
         </div>
         <div className="knots-page__points">
           <span>{currentUserPoints}</span>
@@ -1180,7 +1392,7 @@ export function KnotsPage({
 
       {/* Folder tabs */}
       <KnotFolderTabs
-        folders={KNOT_FOLDERS}
+        folders={KNOT_FOLDER_TABS}
         activeFolder={activeFolder}
         folderCounts={folderCounts}
         onChangeFolder={handleFolderChange}
@@ -1218,18 +1430,6 @@ export function KnotsPage({
       </div>
 
       {/* Feedback & ban banners */}
-      {feedbackMessage ? (
-        <div className="inline-feedback" role="status">
-          <p>{feedbackMessage}</p>
-          <button
-            type="button"
-            className="action-button action-button--ghost action-button--compact"
-            onClick={() => setFeedbackMessage('')}
-          >
-            Lukk
-          </button>
-        </div>
-      ) : null}
       {activeSubmissionBan ? (
         <div className="inline-feedback">
           <p>
