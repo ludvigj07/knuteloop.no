@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { isGoldKnot } from '../data/badgeSystem.js';
 import { KNOT_FOLDERS, resolveKnotFolder } from '../data/knotFolders.js';
@@ -398,28 +398,21 @@ function SubmissionFormContent({
           >
             Del som bruker
           </button>
-          <button
-            type="button"
-            className={`submission-mode-pill ${shareToAnonymousFeed ? 'is-active' : ''}`}
-            aria-pressed={shareToAnonymousFeed}
-            disabled={Boolean(activeFeedBan)}
-            onChange={(event) => {
-              if (event.target.checked) {
-                onUpdateMode(SUBMISSION_MODE.FEED);
-              } else {
-                onUpdateMode(SUBMISSION_MODE.REVIEW);
+          {shareToFeed || shareToAnonymousFeed ? (
+            <button
+              type="button"
+              className={`submission-mode-pill ${shareToAnonymousFeed ? 'is-active' : ''}`}
+              aria-pressed={shareToAnonymousFeed}
+              disabled={Boolean(activeFeedBan)}
+              onClick={() =>
+                onUpdateMode(
+                  shareToAnonymousFeed ? SUBMISSION_MODE.FEED : SUBMISSION_MODE.ANONYMOUS_FEED,
+                )
               }
-            }}
-          />
-          <span>Del detaljer med feeden (bilde og beskrivelse vises)</span>
-        </label>
-        {shareToFeed || shareToAnonymousFeed ? (
-          <label
-            className="submission-mode-checkbox"
-            style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginTop: '0.25rem', cursor: activeFeedBan ? 'not-allowed' : 'pointer', paddingLeft: '1.5rem' }}
-          >
-            Del som anonym
-          </button>
+            >
+              Del som anonym
+            </button>
+          ) : null}
         </div>
       </div>
 
@@ -1121,7 +1114,7 @@ export function KnotsPage({
         },
       };
     });
-  }, []);
+  }
 
   function clearDraftImage(knotId) {
     setDrafts((d) => {
@@ -1180,7 +1173,7 @@ export function KnotsPage({
     await updateDraftFile(knotId, 'image', normalizedImage);
     setFeedbackMessage('Bilde limt inn fra utklippstavla.');
     setIsRareFeedbackActive(false);
-  }, [updateDraftFile]);
+  }
 
   function resetDraft(knotId) {
     setDrafts((d) => {
