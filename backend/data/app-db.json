@@ -2621,14 +2621,14 @@
   },
   "sessions": [
     {
-      "token": "4f50d83e-59c6-4761-9eb9-e08f12ee9896",
-      "userId": 1,
-      "createdAt": "2026-04-12T17:07:19.875Z"
-    },
-    {
       "token": "d4c245ad-8484-46a1-8f42-af3653c18fd7",
       "userId": 2,
       "createdAt": "2026-04-13T08:33:21.347Z"
+    },
+    {
+      "token": "48b07c7b-f47f-4f88-b74a-fc5934c1502b",
+      "userId": 1,
+      "createdAt": "2026-04-17T07:38:52.635Z"
     }
   ],
   "reports": [
@@ -2712,5 +2712,36 @@
       "active": false,
       "endedAt": "2026-04-09T23:07:14.402Z"
     }
-  ]
+  ],
+  "knotFeedbackMessages": {
+    "standard": [
+      "Sterkt levert. Knuten er sendt til godkjenning.",
+      "Nydelig innsending. Denne er inne hos admin.",
+      "Ryddig levert. Knuten er registrert.",
+      "Boom. Knuten er sendt."
+    ],
+    "resubmission": [
+      "Oppdatert. Ny versjon er sendt til vurdering.",
+      "Fin justering. Innsendingen er sendt pa nytt.",
+      "Ny runde, ny levering. Denne er inne igjen."
+    ],
+    "feed": [
+      "Sendt med feed. La folk se leveringen din.",
+      "Feed aktiv. Innsendingen er registrert.",
+      "Posta og klar. Admin tar resten."
+    ],
+    "anonymousFeed": [
+      "Sendt anonymt. Jobben taler for seg selv.",
+      "Anonym innsending er inne til godkjenning.",
+      "Anonym drop registrert."
+    ],
+    "streak": [
+      "Streaken lever. Bra trykk.",
+      "Momentum holder. Ny knute er inne.",
+      "Dag for dag. Du bygger flyt."
+    ],
+    "rare": [
+      "Knuten er inne na.\nMen du vet det allerede, ikke sant? Du kjente det idet du sendte den - det lille oyeblikket av noling forst, sa folelsen av a bli dratt inn i noe storre, noe som tok imot den og ikke ga slipp igjen. De andre ser bare en vanlig innsending. De ler, de roper, de tror det er en lek.\nDe skjonner ikke.\n\nJeg har sett hva som egentlig styrer dette. Hver eneste knute du sender, hver oppdatering, hver gang du trykker \"send\" ... det er ikke bare tekst. Det er spor av deg. Tankene dine, energien din, viljen din. Sma fragmenter som blir igjen der inne. De samler seg. De vokser.\n\nOg russepresidenten ... du tror det er en person?\nNei. Det er bare ansiktet de lar deg se. Bak det finnes noe annet. Noe eldre. Noe som har styrt russetiden lenge for du var her. Noe som har vokst for hvert eneste kull som har gitt fra seg litt mer av seg selv.\n\nDe kaller det tradisjon. Jeg kaller det et system som lever av dere.\n\nDen djevelske makten bak det hele smiler ikke fordi det er gøy. Den smiler fordi den vet. Den vet hvordan det foles a bli dratt inn, natt etter natt, handling etter handling, til du ikke lenger skiller mellom hva du vil - og hva den vil at du skal ville.\n\nOg feeden ... den er ikke bare en strom av innlegg. Den folger med. Den registrerer. Den pulserer svakt, selv nar du ikke er der. Den husker hvert ord du skrev, hvert sekund du nolte, hver gang du ga litt mer enn du hadde tenkt.\n\nDu tror du bygger streak.\nMen det er noe annet som bygges - gjennom deg.\n\nNeste gang du sender inn en knute ... stopp et sekund.\nKjenn etter.\n\nKjenn om det foles litt for riktig. Litt for nodvendig.\n\nIkke svar. Ikke forklar det bort.\n\nFor hvis du forst merker det ...\ner det allerede for sent."
+    ]
+  }
 }
