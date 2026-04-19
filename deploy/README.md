@@ -160,22 +160,89 @@ curl -sI https://knuteloop.no/
 # Forventet: HTTP/2 200, Cache-Control: no-cache, Content-Type: text/html
 ```
 
-## Senere deploys
+## Pull-deploy (anbefalt for senere releases)
 
-Steg 1 (lokalt) og steg 3 (utpakking på serveren), så:
+Istedenfor å bygge lokalt + scp, kan serveren selv hente siste kode fra
+GitHub og bygge der. Setter du opp dette én gang, er senere deploys ett
+kall: `sudo -u knuteloop /opt/knuteloop/deploy.sh`.
+
+### Engangs-oppsett på serveren
+
+**1. SSH-deploy-key for knuteloop-brukeren** (hopp over hvis repoet er
+offentlig):
 
 ```bash
-sudo systemctl restart knuteloop
+sudo -u knuteloop ssh-keygen -t ed25519 -f /home/knuteloop/.ssh/id_ed25519 -N ""
+sudo cat /home/knuteloop/.ssh/id_ed25519.pub
 ```
 
-Steg 2, 4 og 5 er engangs-oppsett og trengs ikke.
+Kopier output, legg den til som **Deploy Key** i GitHub-repo-settings
+(Settings → Deploy keys → Add deploy key). La "Allow write access" stå av —
+serveren skal bare lese.
 
-Hvis du endrer på unit-filen, Caddyfile-en eller env-eksempelet:
+Første clone spør om host-nøkkel-godkjenning. Forhåndsgodkjenn GitHubs:
 
 ```bash
-# Etter at steg 3 har kjørt (ny release i /opt/knuteloop/current):
+sudo -u knuteloop bash -c 'ssh-keyscan github.com >> ~/.ssh/known_hosts'
+```
+
+**2. NOPASSWD-regel for systemctl restart**
+
+Deploy-scriptet må kunne restarte Node-tjenesten uten passord-prompt:
+
+```bash
+echo 'knuteloop ALL=(ALL) NOPASSWD: /usr/bin/systemctl restart knuteloop' | \
+  sudo tee /etc/sudoers.d/knuteloop-deploy
+sudo chmod 440 /etc/sudoers.d/knuteloop-deploy
+sudo visudo -c   # valider at ingen andre sudoers-filer er ødelagt
+```
+
+**3. Installer deploy-scriptet**
+
+Scriptet følger med i release-tarballen (eller git-clonen), så flytt det
+på plass én gang:
+
+```bash
+sudo cp /opt/knuteloop/current/deploy/deploy.sh /opt/knuteloop/deploy.sh
+sudo chown knuteloop:knuteloop /opt/knuteloop/deploy.sh
+sudo chmod 755 /opt/knuteloop/deploy.sh
+```
+
+### Daglig bruk
+
+Etter hver push til GitHub:
+
+```bash
+# Deploy main (standard)
+sudo -u knuteloop /opt/knuteloop/deploy.sh
+
+# Deploy en annen branch — f.eks. release-candidate for staging-test
+sudo -u knuteloop /opt/knuteloop/deploy.sh release-candidate
+```
+
+Scriptet gjør: clone branch → `npm ci` → `npm run build` → slank til prod-
+deps → symlink state → bytt `current`-pekeren atomisk → `systemctl restart` →
+helsesjekk mot `/api/health`. Det rydder også opp i gamle releases
+(beholder de 5 siste).
+
+Hvis Caddyfile eller systemd-unit har endret seg i releasen, skriver
+scriptet ut en advarsel med kommandoen for manuell oppgradering — dette
+gjøres aldri automatisk, siden det krever root og påvirker hele serveren.
+
+## Fallback: manuell tar-deploy
+
+Hvis pull-deploy ikke fungerer (GitHub nede, nettverk feiler), kan du
+fortsatt bruke tar+scp fra del "Første deploy" over. Begge prosedyrer
+skriver til samme `releases/`-mappe og er trygge å veksle mellom.
+
+## Endringer i infrastruktur-filer
+
+Hvis du endrer `knuteloop.service`, `Caddyfile` eller `knuteloop.env.example`:
+
+```bash
+# Etter at en release med endringen er aktiv (deploy.sh har kjørt):
 sudo diff /etc/systemd/system/knuteloop.service /opt/knuteloop/current/deploy/knuteloop.service
-sudo diff /etc/caddy/Caddyfile /opt/knuteloop/current/deploy/Caddyfile
+sudo diff /etc/caddy/Caddyfile                  /opt/knuteloop/current/deploy/Caddyfile
 # Kopier over manuelt om du er enig, og kjør daemon-reload / caddy reload
 ```
 
