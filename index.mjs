@@ -2011,6 +2011,7 @@ function buildBootstrap(db, user) {
     duelHistory,
     duelSummary,
     dashboardData,
+    knotFeedbackMessages: cloneKnotFeedbackMessages(db.knotFeedbackMessages),
   };
 }
 

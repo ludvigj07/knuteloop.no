@@ -171,6 +171,7 @@ function App() {
     thisDayTotal: 0,
     activeCount: 0,
   };
+  const knotFeedbackMessages = appData?.knotFeedbackMessages ?? EMPTY_OBJECT;
   const dashboardData = appData?.dashboardData ?? {
     stats: [],
     messages: [],
