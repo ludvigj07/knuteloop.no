@@ -52,13 +52,20 @@ npm ci --omit=dev --no-audit --no-fund
 # 4. Symlinker til persistent state
 echo "[deploy] Symlinker data/ og uploads/..."
 mkdir -p backend/data
-rmdir backend/uploads 2>/dev/null || true
+
+# backend/uploads ligger i repo med .gitkeep, så git clone lager den som
+# en mappe. Fjern den (inklusive .gitkeep) så symlinken får plass.
+if [[ -L backend/uploads ]]; then
+	rm backend/uploads
+elif [[ -d backend/uploads ]]; then
+	rm -rf backend/uploads
+fi
 
 ln -sf "$APP_ROOT/data/app-db.json"       backend/data/app-db.json
 ln -sf "$APP_ROOT/data/auth.sqlite"       backend/data/auth.sqlite
 ln -sf "$APP_ROOT/data/auth.sqlite-wal"   backend/data/auth.sqlite-wal
 ln -sf "$APP_ROOT/data/auth.sqlite-shm"   backend/data/auth.sqlite-shm
-ln -sfn "$APP_ROOT/data/uploads"          backend/uploads
+ln -s  "$APP_ROOT/data/uploads"           backend/uploads
 
 # 5. Infrastruktur-endringer flagges, men byttes ikke ut automatisk
 if [[ -f /etc/caddy/Caddyfile ]] && ! diff -q "$RELEASE/deploy/Caddyfile" /etc/caddy/Caddyfile >/dev/null 2>&1; then
