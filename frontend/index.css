@@ -1,6 +1,6 @@
 ﻿:root {
   /* ── Primary action color (blue default — overridden per theme) ── */
-  --primary: #2563EB;
+  --primary: #ff63EB;
   --primary-strong: #1D4ED8;
   --primary-soft: rgba(37, 99, 235, 0.12);
   --brand-primary: var(--primary);
