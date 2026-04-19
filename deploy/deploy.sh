@@ -15,7 +15,7 @@ set -euo pipefail
 
 BRANCH="${1:-main}"
 APP_ROOT=/opt/knuteloop
-REPO_URL="${KNUTELOOP_REPO:-git@github.com:ingvejohnsen-git/knuteloop.no.git}"
+REPO_URL="${KNUTELOOP_REPO:-git@github.com:ludvigj07/knuteloop.no.git}"
 STAMP=$(date +%Y-%m-%d-%H%M%S)
 RELEASE="$APP_ROOT/releases/$STAMP"
 KEEP_RELEASES=5
