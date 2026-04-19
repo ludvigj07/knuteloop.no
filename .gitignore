@@ -107,13 +107,15 @@ dist
 # Docusaurus cache and generated files
 .docusaurus
 
+
 # Serverless directories
 .serverless/
 
 # FuseBox cache
 .fusebox/
 
-.clode*
+.claude/
+
 # DynamoDB Local files
 .dynamodb/
 

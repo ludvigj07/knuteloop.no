@@ -36,11 +36,15 @@ function revokeLocalPreview(url, keepUrl = '') {
 
 function ProfilePhoto({ profile, size = 'small' }) {
   if (profile?.photoUrl) {
+    const useThumb = size === 'small' || size === 'thumb';
+    const src = useThumb ? (profile.photoThumbUrl || profile.photoUrl) : profile.photoUrl;
     return (
       <div className={`profile-photo profile-photo--${size}`}>
         <img
-          src={profile.photoUrl}
+          src={src}
           alt={`${profile.russName ?? profile.realName ?? 'Profil'} profilbilde`}
+          loading="lazy"
+          decoding="async"
         />
       </div>
     );

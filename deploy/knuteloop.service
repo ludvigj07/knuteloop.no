@@ -1,0 +1,45 @@
+[Unit]
+Description=Knuteloop Node API server
+Documentation=https://knuteloop.no
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=knuteloop
+Group=knuteloop
+WorkingDirectory=/opt/knuteloop/current
+EnvironmentFile=/etc/knuteloop.env
+ExecStart=/usr/bin/node index.mjs
+
+# Restart policy
+Restart=on-failure
+RestartSec=3
+StartLimitIntervalSec=60
+StartLimitBurst=5
+
+# Logging to journald (view with: journalctl -u knuteloop -f)
+StandardOutput=journal
+StandardError=journal
+
+# --- Hardening ------------------------------------------------------------
+NoNewPrivileges=yes
+PrivateTmp=yes
+PrivateDevices=yes
+ProtectSystem=strict
+ProtectHome=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectControlGroups=yes
+RestrictNamespaces=yes
+RestrictRealtime=yes
+LockPersonality=yes
+MemoryDenyWriteExecute=no
+
+# Only these paths are writable. /opt/knuteloop/data holds app-db.json,
+# auth.sqlite, and uploads/. Everything else (/opt/knuteloop/current, /etc,
+# /usr, ...) is read-only to this service.
+ReadWritePaths=/opt/knuteloop/data
+
+[Install]
+WantedBy=multi-user.target

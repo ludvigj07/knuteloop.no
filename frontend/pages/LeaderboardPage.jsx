@@ -367,8 +367,10 @@ export function LeaderboardPage({
                       {leader.photoUrl ? (
                         <div className="profile-photo profile-photo--small">
                           <img
-                            src={leader.photoUrl}
+                            src={leader.photoThumbUrl || leader.photoUrl}
                             alt={`${leader.russName ?? leader.name} profilbilde`}
+                            loading="lazy"
+                            decoding="async"
                           />
                         </div>
                       ) : (
@@ -505,8 +507,10 @@ export function LeaderboardPage({
                         {leader.photoUrl ? (
                           <div className="profile-photo profile-photo--small">
                             <img
-                              src={leader.photoUrl}
+                              src={leader.photoThumbUrl || leader.photoUrl}
                               alt={`${leader.russName ?? leader.name} profilbilde`}
+                              loading="lazy"
+                              decoding="async"
                             />
                           </div>
                         ) : (
@@ -729,7 +733,8 @@ export function LeaderboardPage({
                               <span>Last opp video</span>
                               <input
                                 type="file"
-                                accept="video/mp4,video/quicktime,video/x-m4v"
+                                accept="video/mp4,video/quicktime,video/x-m4v,video/*"
+                                capture="environment"
                                 onChange={(event) => {
                                   updateDraftFile(duel.id, 'video', event.target.files?.[0]);
                                   event.target.value = '';
@@ -804,8 +809,10 @@ export function LeaderboardPage({
                       {leader.photoUrl ? (
                         <div className="profile-photo profile-photo--small">
                           <img
-                            src={leader.photoUrl}
+                            src={leader.photoThumbUrl || leader.photoUrl}
                             alt={`${leader.russName ?? leader.name} profilbilde`}
+                            loading="lazy"
+                            decoding="async"
                           />
                         </div>
                       ) : (

@@ -45,8 +45,10 @@ function MiniAvatar({ person }) {
     return (
       <img
         className="db-mini-avatar"
-        src={person.photoUrl}
+        src={person.photoThumbUrl || person.photoUrl}
         alt={person.russName ?? person.name}
+        loading="lazy"
+        decoding="async"
       />
     );
   }

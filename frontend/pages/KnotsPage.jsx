@@ -234,6 +234,7 @@ function SubmissionFormContent({
   onUpdateMode,
   onUpdateFile,
   onRemoveImage,
+  onRemoveVideo,
   onPasteImage,
   showDesktopPasteHint,
   onSubmit,
@@ -241,10 +242,17 @@ function SubmissionFormContent({
   const shareToFeed = effectiveMode === SUBMISSION_MODE.FEED;
   const shareToAnonymousFeed = effectiveMode === SUBMISSION_MODE.ANONYMOUS_FEED;
   const hasImage = Boolean(draft.imageFile || draft.imagePreviewUrl || draft.imageName);
+  const hasVideo = Boolean(draft.videoFile || draft.videoPreviewUrl || draft.videoName);
 
   function handleImageInputChange(event) {
     const file = event.target.files?.[0];
     onUpdateFile('image', file);
+    event.target.value = '';
+  }
+
+  function handleVideoInputChange(event) {
+    const file = event.target.files?.[0];
+    onUpdateFile('video', file);
     event.target.value = '';
   }
 
@@ -381,14 +389,56 @@ function SubmissionFormContent({
             </>
           )}
         </div>
+
+        <div className="upload-field upload-field--compact">
+          <span>Last opp video (maks 20 sek, 30 MB)</span>
+          <div className="upload-capture-row" style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+            <label className="action-button action-button--ghost" style={{ cursor: 'pointer' }}>
+              Ta video
+              <input
+                type="file"
+                accept="video/*"
+                capture="environment"
+                style={{ position: 'absolute', width: 1, height: 1, opacity: 0, pointerEvents: 'none' }}
+                onChange={handleVideoInputChange}
+              />
+            </label>
+            <label className="action-button action-button--ghost" style={{ cursor: 'pointer' }}>
+              Velg video
+              <input
+                type="file"
+                accept="video/*"
+                style={{ position: 'absolute', width: 1, height: 1, opacity: 0, pointerEvents: 'none' }}
+                onChange={handleVideoInputChange}
+              />
+            </label>
+          </div>
+          <small>{draft.videoName || 'Valgfritt videobevis'}</small>
+          <button
+            type="button"
+            className="upload-remove-btn upload-remove-btn--mobile"
+            onClick={onRemoveVideo}
+            disabled={!hasVideo}
+          >
+            Slett video
+          </button>
+        </div>
       </div>
 
-      {draft.imagePreviewUrl ? (
+      {draft.imagePreviewUrl || draft.videoPreviewUrl ? (
         <div className="submission-preview-grid">
-          <div className="evidence-card">
-            <span>Bildepreview</span>
-            <img src={draft.imagePreviewUrl} alt="Bevis" />
-          </div>
+          {draft.imagePreviewUrl ? (
+            <div className="evidence-card">
+              <span>Bildepreview</span>
+              <img src={draft.imagePreviewUrl} alt="Bevis" />
+            </div>
+          ) : null}
+          {draft.videoPreviewUrl ? (
+            <div className="evidence-card">
+              <span>Videopreview</span>
+              <video src={draft.videoPreviewUrl} controls preload="metadata" playsInline muted />
+            </div>
+          ) : null}
         </div>
       ) : null}
 
@@ -425,6 +475,7 @@ function KnotRow({
   onUpdateMode,
   onUpdateFile,
   onRemoveImage,
+  onRemoveVideo,
   onPasteImage,
   showDesktopPasteHint,
   onSubmit,
@@ -539,6 +590,7 @@ function KnotRow({
             onUpdateMode={onUpdateMode}
             onUpdateFile={onUpdateFile}
             onRemoveImage={onRemoveImage}
+            onRemoveVideo={onRemoveVideo}
             onPasteImage={onPasteImage}
             showDesktopPasteHint={showDesktopPasteHint}
             onSubmit={onSubmit}
@@ -564,6 +616,7 @@ function KnotBottomSheet({
   onUpdateMode,
   onUpdateFile,
   onRemoveImage,
+  onRemoveVideo,
   onPasteImage,
   onSubmit,
 }) {
@@ -646,6 +699,7 @@ function KnotBottomSheet({
               onUpdateMode={onUpdateMode}
               onUpdateFile={onUpdateFile}
               onRemoveImage={onRemoveImage}
+              onRemoveVideo={onRemoveVideo}
               onPasteImage={onPasteImage}
               showDesktopPasteHint={false}
               onSubmit={onSubmit}
@@ -881,20 +935,34 @@ export function KnotsPage({
   }
 
   async function updateDraftFile(knotId, type, file) {
-    if (type !== 'image' || !file) return;
+    if (!file) return;
+    if (type !== 'image' && type !== 'video') return;
     const nextPreviewUrl = URL.createObjectURL(file);
 
     setDrafts((d) => {
       const cur = d[knotId] ?? {};
-      revokeObjectUrl(cur.imagePreviewUrl);
+      if (type === 'image') {
+        revokeObjectUrl(cur.imagePreviewUrl);
+        return {
+          ...d,
+          [knotId]: {
+            ...cur,
+            imageName: file.name,
+            imageFile: file,
+            imagePreviewUrl: nextPreviewUrl,
+            removeImage: false,
+          },
+        };
+      }
+      revokeObjectUrl(cur.videoPreviewUrl);
       return {
         ...d,
         [knotId]: {
           ...cur,
-          imageName: file.name,
-          imageFile: file,
-          imagePreviewUrl: nextPreviewUrl,
-          removeImage: false,
+          videoName: file.name,
+          videoFile: file,
+          videoPreviewUrl: nextPreviewUrl,
+          removeVideo: false,
         },
       };
     });
@@ -915,6 +983,26 @@ export function KnotsPage({
           imageFile: undefined,
           imagePreviewUrl: '',
           removeImage: true,
+        },
+      };
+    });
+  }
+
+  function clearDraftVideo(knotId) {
+    setDrafts((d) => {
+      const cur = d[knotId] ?? {};
+      if (!cur.videoPreviewUrl && !cur.videoName && !cur.videoFile) {
+        return d;
+      }
+      revokeObjectUrl(cur.videoPreviewUrl);
+      return {
+        ...d,
+        [knotId]: {
+          ...cur,
+          videoName: '',
+          videoFile: undefined,
+          videoPreviewUrl: '',
+          removeVideo: true,
         },
       };
     });
@@ -1214,6 +1302,7 @@ export function KnotsPage({
                 onUpdateMode={(mode) => updateDraftSubmissionMode(knot.id, mode)}
                 onUpdateFile={(type, file) => updateDraftFile(knot.id, type, file)}
                 onRemoveImage={() => clearDraftImage(knot.id)}
+                onRemoveVideo={() => clearDraftVideo(knot.id)}
                 onPasteImage={(event) => {
                   void handlePasteImageForKnot(knot.id, event);
                 }}
@@ -1245,6 +1334,11 @@ export function KnotsPage({
         onRemoveImage={() => {
           if (sheetKnotId) {
             clearDraftImage(sheetKnotId);
+          }
+        }}
+        onRemoveVideo={() => {
+          if (sheetKnotId) {
+            clearDraftVideo(sheetKnotId);
           }
         }}
         onPasteImage={(event) => {

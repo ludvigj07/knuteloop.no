@@ -1,26 +1,9 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import './App.css';
 import './styles/blaruss-refresh.css';
 import { SwipeTabsShell } from './components/SwipeTabsShell.jsx';
 import {
-  buildActivityLog,
-  buildClassLeaderboard,
-  buildDashboardData,
-  buildDailyKnot,
-  buildDuelAvailability,
-  buildDuelHistory,
-  buildGenderLeaderboards,
-  buildKnotTypeLeaderboard,
-  buildLeaderboard,
-  buildProfiles,
-  DUEL_DAILY_LIMIT,
-  DUEL_LIMITS_DISABLED,
-  DUEL_RANGE,
-  DUEL_STAKE,
-  DUEL_WINDOW_HOURS,
-} from './data/appHelpers.js';
-import { buildAchievements } from './data/badgeSystem.js';
-import {
+  assertVideoWithinLimits,
   completeDuel,
   convertToMp4,
   createBan,
@@ -154,122 +137,53 @@ function App() {
     currentBonusPointsCap: 6,
     lastQualifiedDayKey: null,
   };
-  const profileDetails = appData?.profileDetails ?? EMPTY_OBJECT;
-  const profileHistory = appData?.profileHistory ?? EMPTY_OBJECT;
-  const baseLeaders = appData?.leaders ?? EMPTY_ARRAY;
-
-  const leaders = useMemo(
-    () =>
-      currentUser
-        ? buildLeaderboard(
-            baseLeaders,
-            submissions,
-            knots,
-            currentUser.leaderId,
-            duels,
-          )
-        : [],
-    [baseLeaders, currentUser, duels, knots, submissions],
-  );
+  const leaders = appData?.leaderboard ?? EMPTY_ARRAY;
+  const displayLeaders = leaders;
   const currentLeader = currentUser
-    ? leaders.find((leader) => leader.id === currentUser.leaderId)
+    ? leaders.find((leader) => leader.id === currentUser.leaderId) ?? null
     : null;
-  const achievements = useMemo(
-    () => buildAchievements(knots, currentLeader),
-    [currentLeader, knots],
-  );
-  const profiles = useMemo(
-    () =>
-      currentUser
-        ? buildProfiles(
-            leaders,
-            currentUser.leaderId,
-            knots,
-            submissions,
-            profileHistory,
-            profileDetails,
-          )
-        : [],
-    [currentUser, knots, leaders, profileDetails, profileHistory, submissions],
-  );
+  const achievements = appData?.achievements ?? EMPTY_ARRAY;
+  const profiles = appData?.profiles ?? EMPTY_ARRAY;
   const currentProfile = currentUser
     ? profiles.find((profile) => profile.id === currentUser.leaderId) ?? profiles[0]
     : null;
   const selectedProfile =
     profiles.find((profile) => profile.id === selectedProfileId) ?? profiles[0];
-  const displayLeaders = useMemo(
-    () =>
-      leaders.map((leader) => {
-        const profile = profiles.find((candidate) => candidate.id === leader.id);
-
-        return profile
-          ? {
-              ...leader,
-              icon: profile.icon,
-              leaderboardTitle: profile.leaderboardTitle,
-              photoUrl: profile.photoUrl,
-              russName: profile.russName,
-              realName: profile.realName,
-              className: profile.className,
-              genderIdentity: profile.genderIdentity,
-            }
-          : leader;
-      }),
-    [leaders, profiles],
-  );
-  const activityLog = useMemo(
-    () => buildActivityLog(profiles, submissions),
-    [profiles, submissions],
-  );
-  const classLeaderboard = useMemo(
-    () => buildClassLeaderboard(displayLeaders),
-    [displayLeaders],
-  );
-  const knotTypeLeaderboard = useMemo(
-    () => buildKnotTypeLeaderboard(submissions, knots),
-    [knots, submissions],
-  );
-  const genderLeaderboards = useMemo(
-    () => buildGenderLeaderboards(displayLeaders),
-    [displayLeaders],
-  );
-  const dailyKnot = useMemo(() => buildDailyKnot(knots), [knots]);
-  const duelAvailability = currentUser
-    ? buildDuelAvailability(currentUser.leaderId, displayLeaders, duels)
-    : { byLeaderId: {}, currentUserDailyCount: 0, currentUserRemaining: 0, thisDayTotal: 0 };
-  const duelHistory = buildDuelHistory(duels, displayLeaders);
-  const duelSummary = {
-    stake: DUEL_STAKE,
-    range: DUEL_RANGE,
-    deadlineHours: DUEL_WINDOW_HOURS,
-    dailyLimit: DUEL_LIMITS_DISABLED ? 'Ingen (testmodus)' : DUEL_DAILY_LIMIT,
-    currentUserDailyCount: duelAvailability.currentUserDailyCount ?? 0,
-    currentUserRemaining: duelAvailability.currentUserRemaining ?? 0,
-    thisDayTotal: duelAvailability.thisDayTotal ?? 0,
-    activeCount: duels.filter((duel) => duel.status === 'active').length,
+  const activityLog = appData?.activityLog ?? EMPTY_ARRAY;
+  const classLeaderboard = appData?.classLeaderboard ?? EMPTY_ARRAY;
+  const knotTypeLeaderboard = appData?.knotTypeLeaderboard ?? EMPTY_ARRAY;
+  const genderLeaderboards = appData?.genderLeaderboards ?? EMPTY_OBJECT;
+  const dailyKnot = appData?.dailyKnot ?? null;
+  const duelAvailability = appData?.duelAvailability ?? {
+    byLeaderId: {},
+    currentUserDailyCount: 0,
+    currentUserRemaining: 0,
+    thisDayTotal: 0,
   };
-  const dashboardData =
-    currentUser && currentLeader
-      ? buildDashboardData(
-          currentUser.leaderId,
-          displayLeaders,
-          achievements,
-          activityLog,
-          knots,
-        )
-      : {
-          stats: [],
-          messages: [],
-          rivals: [],
-          recentActivity: [],
-          nextRank: null,
-          nextAchievement: null,
-          rankProgress: null,
-          recommendedKnot: null,
-          weeklyTopPost: null,
-          weeklyPostMinRatings: 10,
-          currentLeader: null,
-        };
+  const duelHistory = appData?.duelHistory ?? EMPTY_ARRAY;
+  const duelSummary = appData?.duelSummary ?? {
+    stake: 0,
+    range: 0,
+    deadlineHours: 0,
+    dailyLimit: 0,
+    currentUserDailyCount: 0,
+    currentUserRemaining: 0,
+    thisDayTotal: 0,
+    activeCount: 0,
+  };
+  const dashboardData = appData?.dashboardData ?? {
+    stats: [],
+    messages: [],
+    rivals: [],
+    recentActivity: [],
+    nextRank: null,
+    nextAchievement: null,
+    rankProgress: null,
+    recommendedKnot: null,
+    weeklyTopPost: null,
+    weeklyPostMinRatings: 10,
+    currentLeader: null,
+  };
 
   const approvedKnots = knots.filter((knot) => knot.status === 'Godkjent').length;
   const pendingSubmissions = submissions.filter(
@@ -534,9 +448,11 @@ function App() {
       return;
     }
 
+    assertVideoWithinLimits(evidence.videoFile);
     const convertedVideoFile = evidence.videoFile
       ? await convertToMp4(evidence.videoFile)
       : null;
+    assertVideoWithinLimits(convertedVideoFile);
     const normalizedSubmissionMode =
       submissionMode === 'feed' || submissionMode === 'anonymous-feed'
         ? submissionMode
@@ -552,6 +468,7 @@ function App() {
         : {}),
       note: evidence.note ?? '',
       removeImage: evidence.removeImage === true,
+      removeVideo: evidence.removeVideo === true,
       imageName: evidence.imageName ?? '',
       imageDataUrl: evidence.imageFile
         ? await readFileAsDataUrl(evidence.imageFile)

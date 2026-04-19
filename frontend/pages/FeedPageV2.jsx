@@ -165,8 +165,10 @@ function FeedMedia({ entry, variant = 'mobile' }) {
         >
           <img
             className={mediaClass}
-            src={entry.imagePreviewUrl}
+            src={entry.imageThumbUrl || entry.imagePreviewUrl}
             alt={`${entry.studentName} sitt bildebevis for ${entry.knotTitle}`}
+            loading="lazy"
+            decoding="async"
           />
         </div>
         {lightboxOpen && (

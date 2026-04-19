@@ -108,6 +108,20 @@ export function adminSetUserRussName(token, userId, russName) {
   });
 }
 
+export const MAX_VIDEO_BYTES = 30 * 1024 * 1024;
+export const MAX_VIDEO_SECONDS = 20;
+
+export function assertVideoWithinLimits(file) {
+  if (!file) return;
+  if (file.size > MAX_VIDEO_BYTES) {
+    const mb = (file.size / 1024 / 1024).toFixed(1);
+    const maxMb = MAX_VIDEO_BYTES / 1024 / 1024;
+    throw new Error(
+      `Videoen er for stor (${mb} MB). Maks ${maxMb} MB. Prøv å filme kortere eller i lavere oppløsning.`,
+    );
+  }
+}
+
 export async function readFileAsDataUrl(file) {
   if (!file) {
     return '';
@@ -122,13 +136,25 @@ export async function readFileAsDataUrl(file) {
   });
 }
 
+const COMPRESSED_MAX_DIMENSION = 720;
+const COMPRESSED_VIDEO_BITRATE = 1_500_000;
+const COMPRESSED_AUDIO_BITRATE = 96_000;
+
+function pickCompressedMimeType() {
+  if (typeof MediaRecorder === 'undefined') return '';
+  const candidates = [
+    'video/mp4;codecs=avc1.42E01E,mp4a.40.2',
+    'video/mp4',
+    'video/webm;codecs=vp9,opus',
+    'video/webm;codecs=vp8,opus',
+    'video/webm',
+  ];
+  return candidates.find((mime) => MediaRecorder.isTypeSupported?.(mime)) ?? '';
+}
+
 export async function convertToMp4(file) {
   if (!file) {
     return null;
-  }
-
-  if (file.type === 'video/mp4') {
-    return file;
   }
 
   if (
@@ -139,7 +165,8 @@ export async function convertToMp4(file) {
     return file;
   }
 
-  if (!MediaRecorder.isTypeSupported?.('video/mp4')) {
+  const mimeType = pickCompressedMimeType();
+  if (!mimeType) {
     return file;
   }
 
@@ -147,28 +174,19 @@ export async function convertToMp4(file) {
     const video = document.createElement('video');
     let sourceUrl = '';
     let animationFrameId = null;
+    let stopTimer = null;
     let finalized = false;
     let recorder = null;
     let stream = null;
 
     function finalize(nextFile) {
-      if (finalized) {
-        return;
-      }
-
+      if (finalized) return;
       finalized = true;
 
-      if (animationFrameId) {
-        window.cancelAnimationFrame(animationFrameId);
-      }
-
-      if (stream) {
-        stream.getTracks().forEach((track) => track.stop());
-      }
-
-      if (sourceUrl) {
-        URL.revokeObjectURL(sourceUrl);
-      }
+      if (animationFrameId) window.cancelAnimationFrame(animationFrameId);
+      if (stopTimer) clearTimeout(stopTimer);
+      if (stream) stream.getTracks().forEach((track) => track.stop());
+      if (sourceUrl) URL.revokeObjectURL(sourceUrl);
 
       resolve(nextFile);
     }
@@ -187,8 +205,15 @@ export async function convertToMp4(file) {
 
       video.onloadedmetadata = async () => {
         try {
-          const width = Math.max(1, video.videoWidth || 720);
-          const height = Math.max(1, video.videoHeight || 1280);
+          const srcWidth = Math.max(1, video.videoWidth || 720);
+          const srcHeight = Math.max(1, video.videoHeight || 1280);
+          const scale = Math.min(
+            1,
+            COMPRESSED_MAX_DIMENSION / Math.max(srcWidth, srcHeight),
+          );
+          const width = Math.max(1, Math.round(srcWidth * scale));
+          const height = Math.max(1, Math.round(srcHeight * scale));
+
           const canvas = document.createElement('canvas');
           canvas.width = width;
           canvas.height = height;
@@ -200,13 +225,15 @@ export async function convertToMp4(file) {
           }
 
           stream = canvas.captureStream(30);
-          recorder = new MediaRecorder(stream, { mimeType: 'video/mp4' });
+          recorder = new MediaRecorder(stream, {
+            mimeType,
+            videoBitsPerSecond: COMPRESSED_VIDEO_BITRATE,
+            audioBitsPerSecond: COMPRESSED_AUDIO_BITRATE,
+          });
           const chunks = [];
 
           recorder.ondataavailable = (event) => {
-            if (event.data?.size) {
-              chunks.push(event.data);
-            }
+            if (event.data?.size) chunks.push(event.data);
           };
           recorder.onerror = () => finalize(file);
           recorder.onstop = () => {
@@ -215,20 +242,29 @@ export async function convertToMp4(file) {
               return;
             }
 
-            const blob = new Blob(chunks, { type: 'video/mp4' });
-            const nextName = file.name.replace(/\.[^.]+$/, '.mp4');
-            const convertedFile = new File([blob], nextName, { type: 'video/mp4' });
-            finalize(convertedFile);
-          };
+            const isWebm = mimeType.startsWith('video/webm');
+            const outputMime = isWebm ? 'video/webm' : 'video/mp4';
+            const outputExt = isWebm ? '.webm' : '.mp4';
+            const blob = new Blob(chunks, { type: outputMime });
 
-          const drawFrame = () => {
-            if (video.paused || video.ended || finalized) {
+            if (blob.size >= file.size) {
+              finalize(file);
               return;
             }
 
+            const nextName = file.name.replace(/\.[^.]+$/, outputExt);
+            finalize(new File([blob], nextName, { type: outputMime }));
+          };
+
+          const drawFrame = () => {
+            if (video.paused || video.ended || finalized) return;
             context.drawImage(video, 0, 0, width, height);
             animationFrameId = window.requestAnimationFrame(drawFrame);
           };
+
+          stopTimer = setTimeout(() => {
+            recorder?.state === 'recording' && recorder.stop();
+          }, MAX_VIDEO_SECONDS * 1000);
 
           await video.play();
           drawFrame();
