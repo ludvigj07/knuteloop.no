@@ -358,6 +358,14 @@ export function createBan(token, payload) {
   });
 }
 
+export function updateKnotFeedbackMessages(token, messages) {
+  return apiRequest('/admin/knot-feedback-messages', {
+    method: 'PATCH',
+    token,
+    body: { messages },
+  });
+}
+
 export function removeBan(token, banId) {
   return apiRequest(`/admin/bans/${banId}`, {
     method: 'DELETE',
