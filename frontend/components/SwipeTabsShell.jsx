@@ -177,6 +177,17 @@ export function SwipeTabsShell({
       return;
     }
 
+    // Skip swipe tracking when the user taps an interactive control (buttons,
+    // inputs, labels wrapping inputs). This prevents iOS from firing a fake
+    // swipe when the camera/file picker returns control to the page.
+    if (
+      event.target?.closest?.(
+        'input, textarea, select, label, button, a, [role="button"]',
+      )
+    ) {
+      return;
+    }
+
     // Don't capture the pointer yet — wait for confirmed horizontal intent.
     // This lets taps on buttons work normally while still detecting swipes.
     suppressNextClickRef.current = false;

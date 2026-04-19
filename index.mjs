@@ -1,5 +1,6 @@
 import { createServer } from 'node:http';
 import { randomUUID } from 'node:crypto';
+import sharp from 'sharp';
 import { exec } from 'node:child_process';
 import { createReadStream, promises as fs } from 'node:fs';
 import path from 'node:path';
@@ -17,6 +18,28 @@ import {
   limitNoteWords,
   MODERATION_POLICY,
 } from '../knuteloop.no/backend/src/data/appHelpers.js';
+import {
+  openAuthDb,
+  insertUser,
+  listUsers,
+  deleteSession as deleteAuthSession,
+  getSession as getAuthSession,
+  getUserById as getAuthUserById,
+  touchSession as touchAuthSession,
+} from './backend/src/auth/db.mjs';
+import { generateInviteCode, hashSecret } from './backend/src/auth/passwords.mjs';
+import {
+  handlePasswordLogin,
+  handleInviteVerify,
+  handleInviteActivate,
+  handleAdminListUsers,
+  handleAdminCreateUser,
+  handleAdminRegenerateInvite,
+  handleAdminResetPassword,
+  handleAdminSetActive,
+  handleAdminSetRussName,
+  setAuthBridge,
+} from './backend/src/auth/handlers.mjs';
 import {
   initialDuels,
   initialKnots,
@@ -760,11 +783,21 @@ function getAuthedUser(db, request) {
 
   const session = db.sessions.find((item) => item.token === token);
 
-  if (!session) {
-    return null;
+  if (session) {
+    return db.users.find((user) => user.id === session.userId) ?? null;
   }
 
-  return db.users.find((user) => user.id === session.userId) ?? null;
+  const authSession = getAuthSession(token);
+  if (!authSession || authSession.expires_at < Date.now()) {
+    return null;
+  }
+  const authUser = getAuthUserById(authSession.user_id);
+  if (!authUser || !authUser.active) return null;
+  touchAuthSession(token);
+  const jsonUser = db.users.find(
+    (user) => user.email && user.email.toLowerCase() === authUser.email.toLowerCase(),
+  );
+  return jsonUser ?? null;
 }
 
 function buildLeaderSeed(db) {
@@ -1807,12 +1840,21 @@ async function saveUploadedAsset(dataUrl, originalName, category) {
   const isVideo = VIDEO_MIME_TYPES.has(parsed.mimeType);
 
   if (!isVideo) {
+    const isImage = parsed.mimeType.startsWith('image/');
+    if (isImage) {
+      const safeName = `${category}-${Date.now()}-${randomUUID()}.webp`;
+      const outputPath = path.join(UPLOADS_DIR, safeName);
+      await sharp(parsed.buffer)
+        .rotate()
+        .resize({ width: 1600, withoutEnlargement: true })
+        .webp({ quality: 80 })
+        .toFile(outputPath);
+      return `/uploads/${safeName}`;
+    }
     const extension = path.extname(originalName || '') || getExtensionFromMime(parsed.mimeType);
     const safeName = `${category}-${Date.now()}-${randomUUID()}${extension}`;
     const outputPath = path.join(UPLOADS_DIR, safeName);
-
     await fs.writeFile(outputPath, parsed.buffer);
-
     return `/uploads/${safeName}`;
   }
 
@@ -2016,7 +2058,9 @@ async function handleProfileUpdate(request, response) {
               ...entry.profile,
               icon: body.icon ?? entry.profile.icon,
               photoUrl,
-              russName: body.russName ?? entry.profile.russName,
+              russName: assertAdmin(user)
+                ? (body.russName ?? entry.profile.russName)
+                : entry.profile.russName,
               realName: body.realName ?? entry.profile.realName,
               className: body.className ?? entry.profile.className,
               bio: body.bio ?? entry.profile.bio,
@@ -3319,8 +3363,50 @@ const server = createServer(async (request, response) => {
     }
 
     if (request.method === 'POST' && url.pathname === '/api/auth/logout') {
+      const bearer = (request.headers.authorization ?? '').replace(/^Bearer\s+/i, '').trim();
+      if (bearer) deleteAuthSession(bearer);
       await handleLogout(request, response);
       return;
+    }
+
+    if (request.method === 'POST' && url.pathname === '/api/auth/password-login') {
+      await handlePasswordLogin(request, response);
+      return;
+    }
+    if (request.method === 'POST' && url.pathname === '/api/auth/invite/verify') {
+      await handleInviteVerify(request, response);
+      return;
+    }
+    if (request.method === 'POST' && url.pathname === '/api/auth/invite/activate') {
+      await handleInviteActivate(request, response);
+      return;
+    }
+    if (request.method === 'GET' && url.pathname === '/api/admin/users') {
+      await handleAdminListUsers(request, response);
+      return;
+    }
+    if (request.method === 'POST' && url.pathname === '/api/admin/users') {
+      await handleAdminCreateUser(request, response);
+      return;
+    }
+    {
+      let m;
+      if ((m = url.pathname.match(/^\/api\/admin\/users\/(\d+)\/regenerate-invite$/)) && request.method === 'POST') {
+        await handleAdminRegenerateInvite(request, response, m[1]);
+        return;
+      }
+      if ((m = url.pathname.match(/^\/api\/admin\/users\/(\d+)\/password$/)) && request.method === 'POST') {
+        await handleAdminResetPassword(request, response, m[1]);
+        return;
+      }
+      if ((m = url.pathname.match(/^\/api\/admin\/users\/(\d+)\/active$/)) && request.method === 'PATCH') {
+        await handleAdminSetActive(request, response, m[1]);
+        return;
+      }
+      if ((m = url.pathname.match(/^\/api\/admin\/users\/(\d+)\/russ-name$/)) && request.method === 'PATCH') {
+        await handleAdminSetRussName(request, response, m[1]);
+        return;
+      }
     }
 
     if (request.method === 'GET' && url.pathname === '/api/bootstrap') {
@@ -3497,6 +3583,80 @@ const server = createServer(async (request, response) => {
 });
 
 await ensureStorage();
+openAuthDb();
+
+async function ensureJsonUserForAuth(authUser) {
+  if (!authUser?.email) return;
+  const db = await readDb();
+  const emailLower = authUser.email.toLowerCase();
+  const existing = db.users.find(
+    (u) => u.email && u.email.toLowerCase() === emailLower,
+  );
+  const desiredRussName = (authUser.russ_name ?? '').trim();
+  if (existing) {
+    let dirty = false;
+    if (existing.role !== authUser.role) {
+      existing.role = authUser.role;
+      dirty = true;
+    }
+    if (desiredRussName && existing.profile?.russName !== desiredRussName) {
+      existing.profile = { ...existing.profile, russName: desiredRussName };
+      dirty = true;
+    }
+    if (dirty) await writeDb(db);
+    return;
+  }
+  const nextId = db.users.reduce((max, u) => Math.max(max, u.id ?? 0), 0) + 1;
+  const displayName = authUser.name || authUser.email;
+  const russName = desiredRussName || displayName;
+  db.users.push({
+    id: nextId,
+    schoolId: db.schools?.[0]?.id ?? 'st-olav',
+    name: displayName,
+    group: authUser.class || '-',
+    role: authUser.role ?? 'user',
+    loginCode: '',
+    email: authUser.email,
+    basePoints: 0,
+    baseCompletedKnots: 0,
+    profile: {
+      icon: '',
+      photoUrl: '',
+      russName,
+      realName: displayName,
+      className: authUser.class || '-',
+      bio: '',
+      quote: '',
+      knownFor: '',
+      signatureKnot: '',
+      favoriteCategory: '',
+      russType: 'blue',
+      genderIdentity: 'other',
+    },
+  });
+  await writeDb(db);
+}
+
+setAuthBridge({ ensureJsonUser: ensureJsonUserForAuth });
+
+async function seedFirstAdminIfEmpty() {
+  const existing = listUsers();
+  if (existing.length > 0) return;
+  const email = process.env.BOOTSTRAP_ADMIN_EMAIL ?? 'ingve@kampsporthuset.no';
+  const name = process.env.BOOTSTRAP_ADMIN_NAME ?? 'Admin';
+  const className = process.env.BOOTSTRAP_ADMIN_CLASS ?? '-';
+  const code = generateInviteCode();
+  const hash = await hashSecret(code);
+  insertUser({ email, name, className, role: 'admin', inviteCodeHash: hash });
+  console.log('------------------------------------------------------------');
+  console.log('Ingen brukere i auth.sqlite — opprettet admin:');
+  console.log(`  E-post:    ${email}`);
+  console.log(`  Kode:      ${code}`);
+  console.log('  Aktivér:   http://localhost:5173/invite');
+  console.log('------------------------------------------------------------');
+}
+
+await seedFirstAdminIfEmpty();
 
 server.listen(PORT, () => {
   console.log(`Russeknute backend klar på http://localhost:${PORT}`);

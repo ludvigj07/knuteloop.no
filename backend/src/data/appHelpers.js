@@ -847,11 +847,10 @@ function scoreCompletedAt(completedAt) {
 
 export function buildActivityLog(profiles, submissions = []) {
   const submissionEntries = submissions
-    .filter((submission) => {
-      if (submission.status !== 'Godkjent') {
-        return false;
-      }
-
+    .filter((submission) => submission.status === 'Godkjent')
+    .map((submission, index) => {
+      const profile =
+        profiles.find((candidate) => candidate.id === submission.leaderId) ?? {};
       const normalizedSubmissionMode =
         submission.submissionMode === 'feed' ||
         submission.submissionMode === 'anonymous-feed' ||
@@ -860,18 +859,10 @@ export function buildActivityLog(profiles, submissions = []) {
           : submission.isAnonymousFeed
             ? 'anonymous-feed'
             : 'feed';
-
-      return (
-        normalizedSubmissionMode === 'feed' ||
-        normalizedSubmissionMode === 'anonymous-feed'
-      );
-    })
-    .map((submission, index) => {
-      const profile =
-        profiles.find((candidate) => candidate.id === submission.leaderId) ?? {};
       const isAnonymous =
         submission.isAnonymousFeed === true ||
-        submission.submissionMode === 'anonymous-feed';
+        normalizedSubmissionMode === 'anonymous-feed';
+      const shareDetails = normalizedSubmissionMode !== 'review';
 
       return {
         id: `submission-${submission.id}`,
@@ -893,17 +884,22 @@ export function buildActivityLog(profiles, submissions = []) {
         category: 'Innsendt',
         completedAt: submission.submittedAt ?? 'Godkjent',
         points: submission.points ?? 0,
-        note: submission.note ?? '',
-        imagePreviewUrl: submission.imagePreviewUrl ?? '',
-        videoPreviewUrl: submission.videoPreviewUrl ?? '',
-        mediaType: submission.videoPreviewUrl
-          ? 'video'
-          : submission.imagePreviewUrl
-            ? 'image'
-            : 'none',
-        imageName: submission.imageName ?? '',
-        videoName: submission.videoName ?? '',
-        hasMedia: Boolean(submission.imagePreviewUrl || submission.videoPreviewUrl),
+        note: shareDetails ? submission.note ?? '' : '',
+        imagePreviewUrl: shareDetails ? submission.imagePreviewUrl ?? '' : '',
+        videoPreviewUrl: shareDetails ? submission.videoPreviewUrl ?? '' : '',
+        mediaType: shareDetails
+          ? submission.videoPreviewUrl
+            ? 'video'
+            : submission.imagePreviewUrl
+              ? 'image'
+              : 'none'
+          : 'none',
+        imageName: shareDetails ? submission.imageName ?? '' : '',
+        videoName: shareDetails ? submission.videoName ?? '' : '',
+        hasMedia: shareDetails
+          ? Boolean(submission.imagePreviewUrl || submission.videoPreviewUrl)
+          : false,
+        shareDetails,
         isAnonymous,
         ratingAverage:
           Number.isFinite(Number(submission.ratingAverage))

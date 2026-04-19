@@ -3,6 +3,7 @@ import { MobileVideo } from '../components/MobileVideo.jsx';
 import { SectionCard } from '../components/SectionCard.jsx';
 import { StatCard } from '../components/StatCard.jsx';
 import { KNOT_FOLDERS, resolveKnotFolder } from '../data/knotFolders.js';
+import { UserAdminPanel } from '../components/UserAdminPanel.jsx';
 
 function getDuelEvidence(duel, participant) {
   if (participant === 'challenger') {
@@ -422,6 +423,7 @@ export function AdminPage({
   reports = [],
   stats,
   submissions,
+  sessionToken,
 }) {
   const [newTitle, setNewTitle] = useState('');
   const [newDescription, setNewDescription] = useState('');
@@ -1694,98 +1696,8 @@ export function AdminPage({
         </SectionCard>
       ) : null}
 
-      {activeAdminTask === 'feedback' ? (
-        <SectionCard
-          title="Knute-feedback"
-          description="Skriv egne dopaminmeldinger som vises etter innsending av knuter."
-        >
-          <div className="admin-section-toolbar">
-            <div>
-              <strong>{customFeedbackLineCount} aktive linjer</strong>
-              <p>
-                En linje per melding. Du kan bruke {'{knute}'} og {'{mode}'} som plassholdere.
-                Rare-kategorien trigges med ca 0,5% sjanse pa tvers av alle innsendinger.
-                Rare-feltet lagres som en hel tekstblokk.
-              </p>
-            </div>
-            <div className="admin-section-toolbar__actions">
-              <button
-                type="button"
-                className="action-button action-button--ghost"
-                onClick={() => setActiveAdminTask('knots')}
-              >
-                Til knuter
-              </button>
-            </div>
-          </div>
-
-          <div className="admin-task-panel">
-            <div className="admin-subsection">
-              <div className="section-card__header">
-                <h3>Rediger tekster</h3>
-                <p>Legg inn en melding per linje i feltene under. Rare kan være en lang blokk.</p>
-              </div>
-
-              <div className="admin-setup">
-                {FEEDBACK_FIELD_CONFIG.map((field) => (
-                  <label key={field.key} className="field-group">
-                    <span>{field.label}</span>
-                    <textarea
-                      className={`text-input text-input--area ${
-                        field.key === 'rare' ? 'text-input--rare-feedback' : ''
-                      }`}
-                      value={feedbackDraft[field.key] ?? ''}
-                      onChange={(event) =>
-                        handleFeedbackDraftChange(field.key, event.target.value)
-                      }
-                      placeholder={field.description}
-                      rows={field.key === 'rare' ? 14 : 4}
-                    />
-                    <small className="admin-review-toolbar__hint">{field.description}</small>
-                  </label>
-                ))}
-              </div>
-
-              <div className="admin-section-toolbar__actions">
-                <button
-                  type="button"
-                  className="action-button"
-                  onClick={handleSaveFeedbackMessages}
-                  disabled={isSavingFeedbackSettings}
-                >
-                  {isSavingFeedbackSettings ? 'Lagrer...' : 'Lagre feedback-tekster'}
-                </button>
-                <button
-                  type="button"
-                  className="action-button action-button--ghost"
-                  onClick={handleTestRareFeedback}
-                  disabled={isSavingFeedbackSettings}
-                >
-                  Test rare na
-                </button>
-                <button
-                  type="button"
-                  className="action-button action-button--ghost"
-                  onClick={handleResetFeedbackDraft}
-                  disabled={isSavingFeedbackSettings}
-                >
-                  Nullstill utkast
-                </button>
-              </div>
-
-              {feedbackSettingsMessage ? (
-                <div className="inline-feedback">
-                  <p>{feedbackSettingsMessage}</p>
-                </div>
-              ) : null}
-              {rareFeedbackPreview ? (
-                <div className="inline-feedback inline-feedback--rare-preview">
-                  <p>{rareFeedbackPreview}</p>
-                </div>
-              ) : null}
-            </div>
-          </div>
-        </SectionCard>
+      {activeAdminTask === 'users' ? (
+        <UserAdminPanel sessionToken={sessionToken} />
       ) : null}
 
       {activeAdminTask === 'overview' ? (

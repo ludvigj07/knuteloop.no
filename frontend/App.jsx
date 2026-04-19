@@ -32,6 +32,7 @@ import {
   getStoredSessionToken,
   importKnots,
   loginWithCode,
+  loginWithEmailPassword,
   logout,
   readFileAsDataUrl,
   rateSubmission,
@@ -132,6 +133,8 @@ function App() {
   const [appData, setAppData] = useState(null);
   const [pilotUsers, setPilotUsers] = useState([]);
   const [loginCode, setLoginCode] = useState('');
+  const [loginEmail, setLoginEmail] = useState('');
+  const [loginPassword, setLoginPassword] = useState('');
   const [loginError, setLoginError] = useState('');
   const [appError, setAppError] = useState('');
   const [isLoadingApp, setIsLoadingApp] = useState(true);
@@ -360,6 +363,29 @@ function App() {
     window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
   }, [activePage]);
 
+  useEffect(() => {
+    if (!sessionToken || typeof document === 'undefined') return;
+    let cancelled = false;
+    const silentRefresh = async () => {
+      try {
+        const next = await fetchBootstrap(sessionToken);
+        if (!cancelled) setAppData(next);
+      } catch {
+        // Ignore transient failures; the next user action triggers a full refresh.
+      }
+    };
+    const interval = window.setInterval(silentRefresh, 30000);
+    const onVisibility = () => {
+      if (document.visibilityState === 'visible') silentRefresh();
+    };
+    document.addEventListener('visibilitychange', onVisibility);
+    return () => {
+      cancelled = true;
+      window.clearInterval(interval);
+      document.removeEventListener('visibilitychange', onVisibility);
+    };
+  }, [sessionToken]);
+
   async function refreshAppData(token = sessionToken) {
     if (!token) {
       setAppData(null);
@@ -415,8 +441,8 @@ function App() {
   }
 
   async function handleLogin() {
-    if (!loginCode.trim()) {
-      setLoginError('Skriv inn en kode for å logge inn.');
+    if (!loginEmail.trim() || !loginPassword) {
+      setLoginError('Fyll inn e-post og passord.');
       return;
     }
 
@@ -424,10 +450,10 @@ function App() {
     setLoginError('');
 
     try {
-      const result = await loginWithCode(loginCode);
+      const result = await loginWithEmailPassword(loginEmail.trim(), loginPassword);
       storeSessionToken(result.token);
       setSessionToken(result.token);
-      setLoginCode('');
+      setLoginPassword('');
       await refreshAppData(result.token);
     } catch (error) {
       setLoginError(error.message);
@@ -770,6 +796,7 @@ function App() {
 
   function renderPageContent(page) {
     const commonPageProps = {
+      sessionToken,
       activityLog,
       achievements,
       currentUserId: currentUser.leaderId,
@@ -924,12 +951,13 @@ function App() {
       <div className="app-theme">
         <div className="app-shell">
           <LoginPage
-            code={loginCode}
+            email={loginEmail}
+            password={loginPassword}
             error={loginError || appError}
             isSubmitting={isLoggingIn}
-            onChangeCode={setLoginCode}
+            onChangeEmail={setLoginEmail}
+            onChangePassword={setLoginPassword}
             onSubmit={handleLogin}
-            pilotUsers={pilotUsers}
           />
         </div>
       </div>
