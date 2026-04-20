@@ -496,7 +496,8 @@ async function readDb() {
   const migratedRatingsDb = await migrateSubmissionRatings(migratedVideoDb);
   const migratedDuelApprovalsDb = await migrateDuelCompletionApprovals(migratedRatingsDb);
   const migratedModerationDb = await migrateModerationData(migratedDuelApprovalsDb);
-  const migratedProfileGenderDb = await migrateProfileGenderData(migratedModerationDb);
+  const migratedFeedFlagsDb = await migrateSubmissionFeedFlags(migratedModerationDb);
+  const migratedProfileGenderDb = await migrateProfileGenderData(migratedFeedFlagsDb);
   const migratedStreakDb = await migrateSubmissionStreakData(migratedProfileGenderDb);
   const migratedKnotFeedbackDb = await migrateKnotFeedbackMessages(migratedStreakDb);
   return migrateNorwegianText(migratedKnotFeedbackDb);
@@ -1606,6 +1607,45 @@ async function migrateModerationData(db) {
   return nextDb;
 }
 
+async function migrateSubmissionFeedFlags(db) {
+  let changed = false;
+
+  const submissions = (db.submissions ?? []).map((submission) => {
+    const normalizedSubmissionMode = normalizeSubmissionMode(
+      submission?.submissionMode,
+      deriveSubmissionMode(submission),
+    );
+    const nextIsAnonymousFeed = normalizedSubmissionMode === 'anonymous-feed';
+    const currentIsAnonymousFeed = submission?.isAnonymousFeed === true;
+
+    if (
+      submission?.submissionMode === normalizedSubmissionMode &&
+      currentIsAnonymousFeed === nextIsAnonymousFeed
+    ) {
+      return submission;
+    }
+
+    changed = true;
+    return {
+      ...submission,
+      submissionMode: normalizedSubmissionMode,
+      isAnonymousFeed: nextIsAnonymousFeed,
+    };
+  });
+
+  if (!changed) {
+    return db;
+  }
+
+  const nextDb = {
+    ...db,
+    submissions,
+  };
+
+  await writeDb(nextDb);
+  return nextDb;
+}
+
 async function migrateKnotFeedbackMessages(db) {
   const hasExisting =
     db.knotFeedbackMessages != null &&
@@ -1704,12 +1744,8 @@ function toPublicSubmission(db, submission, currentUserId = null) {
     submission.submissionMode,
     deriveSubmissionMode(submission),
   );
-  const isAnonymousFeed =
-    submission.isAnonymousFeed === true ||
-    normalizedSubmissionMode === 'anonymous-feed';
-  const submissionMode = isAnonymousFeed
-    ? 'anonymous-feed'
-    : normalizedSubmissionMode;
+  const submissionMode = normalizedSubmissionMode;
+  const isAnonymousFeed = submissionMode === 'anonymous-feed';
   const ratings = normalizeSubmissionRatings(submission.ratings);
   const ratingSummary = getSubmissionRatingSummary(ratings);
 
@@ -2425,10 +2461,14 @@ async function handleDeleteSubmission(request, response, submissionId) {
     return;
   }
 
-  if (!isSubmissionVisibleInFeed(submission)) {
-    sendJson(response, 400, {
-      error: 'Innsendingen er ikke synlig i feeden.',
-    });
+  const alreadyRemovedFromFeed =
+    normalizeSubmissionMode(
+      submission.submissionMode,
+      deriveSubmissionMode(submission),
+    ) === 'review' && submission.isAnonymousFeed !== true;
+
+  if (alreadyRemovedFromFeed) {
+    sendJson(response, 200, buildBootstrap(db, user));
     return;
   }
 
@@ -2439,6 +2479,7 @@ async function handleDeleteSubmission(request, response, submissionId) {
         ? {
             ...item,
             submissionMode: 'review',
+            isAnonymousFeed: false,
           }
         : item,
     ),

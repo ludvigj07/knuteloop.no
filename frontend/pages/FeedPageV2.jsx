@@ -31,6 +31,7 @@ const COMMENT_PRESETS = {
   ],
 };
 const LOCAL_FEED_COMMENTS = new Map();
+const DELETE_UNDO_DELAY_MS = 10000;
 
 function formatRatingAverage(value) {
   const numericValue = Number(value) || 0;
@@ -1009,6 +1010,7 @@ export function FeedPage({
 }) {
   const [pendingBySubmission, setPendingBySubmission] = useState({});
   const [deletingBySubmission, setDeletingBySubmission] = useState({});
+  const [pendingDelete, setPendingDelete] = useState(null);
   const [reportingBySubmission, setReportingBySubmission] = useState({});
   const [ratingDraftBySubmission, setRatingDraftBySubmission] = useState({});
   const [ratingErrorBySubmission, setRatingErrorBySubmission] = useState({});
@@ -1017,6 +1019,7 @@ export function FeedPage({
   const [reportNote, setReportNote] = useState('');
   const [reportError, setReportError] = useState('');
   const [reportFeedback, setReportFeedback] = useState('');
+  const [deleteFeedback, setDeleteFeedback] = useState('');
   const [activeMobileIndex, setActiveMobileIndex] = useState(0);
   const [commentSheetEntry, setCommentSheetEntry] = useState(null);
   const [localCommentsBySubmission, setLocalCommentsBySubmission] = useState(
@@ -1028,6 +1031,7 @@ export function FeedPage({
   const isDesktop = useDesktopFeed();
   const mobileReelRef = useRef(null);
   const cardRefMap = useRef(new Map());
+  const pendingDeleteTimeoutRef = useRef(null);
 
   const activeFeedBan =
     currentUserActiveBans.find((ban) => ban.type === 'feed') ?? null;
@@ -1036,12 +1040,26 @@ export function FeedPage({
         activeFeedBan.remainingLabel ? ` (${activeFeedBan.remainingLabel})` : ''
       }.`
     : '';
+  const hiddenSubmissionId = pendingDelete?.submissionId ?? null;
   const feedEntries = useMemo(
     () =>
       activityLog.filter(
-        (entry) => Boolean(entry.submissionId) && entry.shareDetails !== false,
+        (entry) =>
+          Boolean(entry.submissionId) &&
+          entry.shareDetails !== false &&
+          entry.submissionId !== hiddenSubmissionId,
       ),
-    [activityLog],
+    [activityLog, hiddenSubmissionId],
+  );
+
+  useEffect(
+    () => () => {
+      if (pendingDeleteTimeoutRef.current) {
+        clearTimeout(pendingDeleteTimeoutRef.current);
+        pendingDeleteTimeoutRef.current = null;
+      }
+    },
+    [],
   );
 
   useEffect(() => {
@@ -1228,32 +1246,66 @@ export function FeedPage({
       return;
     }
 
-    if (deletingBySubmission[entry.submissionId]) {
+    if (deletingBySubmission[entry.submissionId] || pendingDelete) {
       return;
     }
 
-    const shouldDelete =
-      typeof window === 'undefined' ||
-      window.confirm('Er du sikker pa at du vil slette denne feed-posten?');
+    setDeleteFeedback('');
+    setPendingDelete({
+      submissionId: entry.submissionId,
+      knotTitle: entry.knotTitle ?? '',
+    });
 
-    if (!shouldDelete) {
+    if (pendingDeleteTimeoutRef.current) {
+      clearTimeout(pendingDeleteTimeoutRef.current);
+      pendingDeleteTimeoutRef.current = null;
+    }
+
+    pendingDeleteTimeoutRef.current = setTimeout(async () => {
+      setDeletingBySubmission((current) => ({
+        ...current,
+        [entry.submissionId]: true,
+      }));
+
+      try {
+        await onDeleteSubmission(entry.submissionId);
+      } catch (error) {
+        const message =
+          error instanceof Error && error.message ? error.message : '';
+        const normalizedMessage = message.trim().toLowerCase();
+
+        if (normalizedMessage.includes('ikke synlig i feeden')) {
+          setDeleteFeedback('');
+        } else {
+          setDeleteFeedback(
+            message || 'Kunne ikke slette feed-posten akkurat na.',
+          );
+        }
+      } finally {
+        setPendingDelete((current) =>
+          current?.submissionId === entry.submissionId ? null : current,
+        );
+        setDeletingBySubmission((current) => {
+          const next = { ...current };
+          delete next[entry.submissionId];
+          return next;
+        });
+        pendingDeleteTimeoutRef.current = null;
+      }
+    }, DELETE_UNDO_DELAY_MS);
+  }
+
+  function handleUndoDelete() {
+    if (!pendingDelete) {
       return;
     }
 
-    setDeletingBySubmission((current) => ({
-      ...current,
-      [entry.submissionId]: true,
-    }));
-
-    try {
-      await onDeleteSubmission(entry.submissionId);
-    } finally {
-      setDeletingBySubmission((current) => {
-        const next = { ...current };
-        delete next[entry.submissionId];
-        return next;
-      });
+    if (pendingDeleteTimeoutRef.current) {
+      clearTimeout(pendingDeleteTimeoutRef.current);
+      pendingDeleteTimeoutRef.current = null;
     }
+
+    setPendingDelete(null);
   }
 
   function openReportModal(entry) {
@@ -1375,7 +1427,7 @@ export function FeedPage({
     }));
   }
 
-  if (!feedEntries.length) {
+  if (!feedEntries.length && !pendingDelete) {
     return (
       <section className="section-card">
         <div className="section-card__header">
@@ -1418,13 +1470,34 @@ export function FeedPage({
       ) : null}
 
       {reportFeedback ? <p className="form-feedback">{reportFeedback}</p> : null}
+      {deleteFeedback ? <p className="form-feedback">{deleteFeedback}</p> : null}
+      {pendingDelete && typeof document !== 'undefined'
+        ? createPortal(
+            <div className="feed-undo-toast" role="status" aria-live="polite">
+              <p>
+                Posten{pendingDelete.knotTitle ? ` "${pendingDelete.knotTitle}"` : ''} slettes om
+                10 sekunder.
+              </p>
+              <button
+                type="button"
+                className="feed-undo-toast__undo-button"
+                onClick={handleUndoDelete}
+                aria-label="Angre sletting"
+                title="Angre sletting"
+              >
+                {'\u21A9'}
+              </button>
+            </div>,
+            document.body,
+          )
+        : null}
 
       {isDesktop ? (
         <div className="feed-list-v3">
           {feedEntries.map((entry, index) => (
             <FeedCardDesktop
               key={entry.id}
-              canDelete={canDeletePosts}
+              canDelete={canDeletePosts && !pendingDelete}
               entry={{
                 ...entry,
                 myRating: ratingDraftBySubmission[entry.submissionId] ?? entry.myRating,
@@ -1451,7 +1524,7 @@ export function FeedPage({
           {feedEntries.map((entry, index) => (
             <FeedCardMobile
               key={entry.id}
-              canDelete={canDeletePosts}
+              canDelete={canDeletePosts && !pendingDelete}
               entry={{
                 ...entry,
                 myRating: ratingDraftBySubmission[entry.submissionId] ?? entry.myRating,

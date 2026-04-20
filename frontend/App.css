@@ -5584,6 +5584,55 @@ textarea.text-input:focus {
   flex-wrap: wrap;
 }
 
+.feed-undo-toast {
+  position: fixed;
+  left: 50%;
+  bottom: calc(78px + env(safe-area-inset-bottom, 0px));
+  transform: translateX(-50%);
+  z-index: 70;
+  width: min(520px, calc(100% - 24px));
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: 14px;
+  border: 1px solid rgba(15, 23, 42, 0.14);
+  background: rgba(255, 255, 255, 0.96);
+  box-shadow: 0 14px 30px rgba(12, 18, 29, 0.22);
+}
+
+.feed-undo-toast p {
+  margin: 0;
+  color: var(--text);
+  font-size: 0.92rem;
+}
+
+.feed-undo-toast__undo-button {
+  flex: 0 0 auto;
+  width: 42px;
+  height: 42px;
+  border-radius: 999px;
+  border: 1px solid rgba(15, 23, 42, 0.18);
+  background: #fff;
+  color: var(--text-strong);
+  font-size: 1.25rem;
+  line-height: 1;
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+}
+
+.feed-undo-toast__undo-button:hover {
+  background: rgba(15, 23, 42, 0.05);
+}
+
+@media (min-width: 901px) {
+  .feed-undo-toast {
+    bottom: 20px;
+  }
+}
+
 .admin-setup--bans {
   grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
 }

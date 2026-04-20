@@ -1406,7 +1406,7 @@
       "videoName": "",
       "videoPreviewUrl": "",
       "isAnonymousFeed": false,
-      "submissionMode": "feed",
+      "submissionMode": "review",
       "ratings": {
         "2": 3
       },
@@ -1465,7 +1465,7 @@
       "submissionMode": "anonymous-feed",
       "ratings": {
         "1": 5,
-        "6": 5
+        "6": 3
       },
       "reviewedAtRaw": "2026-04-11T14:57:05.083Z",
       "reviewedBy": 1,
@@ -1571,7 +1571,8 @@
       "isAnonymousFeed": false,
       "submissionMode": "feed",
       "ratings": {
-        "1": 5
+        "1": 5,
+        "6": 5
       },
       "reviewedAtRaw": "2026-04-11T12:04:34.780Z",
       "reviewedBy": 1,
@@ -1679,7 +1680,7 @@
       "videoName": "",
       "videoPreviewUrl": "",
       "isAnonymousFeed": false,
-      "submissionMode": "feed",
+      "submissionMode": "review",
       "ratings": {
         "1": 5
       },
@@ -2138,7 +2139,7 @@
       "imagePreviewUrl": "",
       "videoName": "",
       "videoPreviewUrl": "",
-      "isAnonymousFeed": true,
+      "isAnonymousFeed": false,
       "submissionMode": "review",
       "ratings": {},
       "reviewedAtRaw": "2026-04-09T14:39:31.690Z",
