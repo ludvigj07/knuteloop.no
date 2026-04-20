@@ -1,10 +1,14 @@
 .app-theme {
-  position: relative;
-  min-height: 100vh;
-  background:
+  --app-canvas-background:
     radial-gradient(circle at top left, rgba(255, 220, 104, 0.28), transparent 24%),
     radial-gradient(circle at 92% 8%, rgba(31, 62, 126, 0.1), transparent 22%),
-    linear-gradient(180deg, #fffaf0 0%, #fdf7ea 42%, #f8f0dd 100%) !important;
+    linear-gradient(180deg, #fffaf0 0%, #fdf7ea 42%, #f8f0dd 100%);
+  --mobile-bottom-nav-clearance: calc(88px + env(safe-area-inset-bottom, 0px));
+  --mobile-knot-action-clearance: calc(var(--mobile-bottom-nav-clearance) + 74px);
+  --mobile-swipe-cover: 12px;
+  position: relative;
+  min-height: 100vh;
+  background: var(--app-canvas-background) !important;
   color: var(--text);
   font-family: 'Inter', 'Segoe UI', sans-serif;
 }
@@ -384,11 +388,64 @@
   gap: 20px;
 }
 
+.app-theme .swipe-tabs-shell,
+.app-theme .swipe-tabs-shell__viewport,
+.app-theme .swipe-tabs-shell__track,
+.app-theme .swipe-tabs-shell__page,
+.app-theme .main-page-panel,
+.app-theme .page-layout,
+.app-theme .page-layout > * {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+}
+
+.app-theme .swipe-tabs-shell__viewport {
+  overflow-x: clip;
+  overflow-y: visible;
+}
+
+.app-theme .swipe-tabs-shell__page {
+  overflow-x: clip;
+  overflow-y: visible;
+}
+
+.app-theme .swipe-tabs-shell.is-mobile-swipe .swipe-tabs-shell__page {
+  position: relative;
+  isolation: isolate;
+  z-index: 1;
+  background: var(--app-canvas-background);
+}
+
+.app-theme .swipe-tabs-shell.is-mobile-swipe .swipe-tabs-shell__page.is-active {
+  z-index: 3;
+}
+
+.app-theme .swipe-tabs-shell.is-mobile-swipe .swipe-tabs-shell__page.is-active::before,
+.app-theme .swipe-tabs-shell.is-mobile-swipe .swipe-tabs-shell__page.is-active::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: var(--mobile-swipe-cover);
+  background: var(--app-canvas-background);
+  pointer-events: none;
+  z-index: 2;
+}
+
+.app-theme .swipe-tabs-shell.is-mobile-swipe .swipe-tabs-shell__page.is-active::before {
+  left: calc(var(--mobile-swipe-cover) * -1);
+}
+
+.app-theme .swipe-tabs-shell.is-mobile-swipe .swipe-tabs-shell__page.is-active::after {
+  right: calc(var(--mobile-swipe-cover) * -1);
+}
+
 .app-theme .knots-page {
   display: flex;
   flex-direction: column;
   gap: 22px;
-  padding: 0 0 calc(70px + env(safe-area-inset-bottom, 0px));
+  padding: 0 0 var(--mobile-bottom-nav-clearance);
   overflow: visible;
   background: transparent !important;
   border: none !important;
@@ -396,7 +453,7 @@
 }
 
 .app-theme .knots-page--mobile {
-  padding-bottom: calc(86px + env(safe-area-inset-bottom, 0px));
+  padding-bottom: calc(var(--mobile-knot-action-clearance) + 14px);
 }
 
 .app-theme .knots-page__hero {
@@ -992,7 +1049,7 @@
 
 .app-theme .knot-action-bar {
   position: fixed;
-  inset: auto 10px calc(10px + env(safe-area-inset-bottom, 0px)) 10px;
+  inset: auto 10px calc(var(--mobile-bottom-nav-clearance) + 10px) 10px;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -1044,6 +1101,10 @@
     padding: 8px 6px 18px;
   }
 
+  .app-theme .swipe-tabs-shell.is-mobile-swipe {
+    padding-bottom: var(--mobile-bottom-nav-clearance);
+  }
+
   .app-theme .knots-page {
     gap: 18px;
   }
@@ -1092,6 +1153,15 @@
 
   .app-theme .knot-folder-tabs {
     flex-wrap: nowrap;
+    gap: 10px;
+    overflow-y: hidden;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    touch-action: pan-x;
+  }
+
+  .app-theme .knot-folder-tabs::-webkit-scrollbar {
+    display: none;
   }
 
   .app-theme .knot-toolbar-compact {
@@ -1108,6 +1178,20 @@
     min-height: 40px;
     padding-inline: 12px;
     font-size: 0.82rem;
+  }
+
+  .app-theme .knot-folder-tab {
+    flex: 0 0 auto;
+    width: fit-content;
+    min-width: fit-content;
+    justify-content: flex-start;
+    padding-inline: 14px;
+    white-space: nowrap;
+    touch-action: pan-x;
+  }
+
+  .app-theme .knot-folder-tab__badge {
+    flex: 0 0 auto;
   }
 
   .app-theme .knot-row__header {

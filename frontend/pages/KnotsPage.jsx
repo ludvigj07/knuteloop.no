@@ -327,7 +327,7 @@ function KnotProgressBar({ label, approved, total }) {
 
 function KnotFolderTabs({ folders, activeFolder, folderCounts, onChangeFolder }) {
   return (
-    <div className="knot-folder-tabs" role="tablist">
+    <div className="knot-folder-tabs" role="tablist" data-swipe-lock="true">
       {folders.map((folder) => (
         <button
           key={folder.id}
@@ -740,8 +740,9 @@ function KnotBottomSheet({
         role="dialog"
         aria-modal="true"
         aria-label={`Dokumenter: ${knot?.title ?? ''}`}
+        data-swipe-lock="true"
       >
-        <div className="knot-sheet__handle-area" aria-hidden="true">
+        <div className="knot-sheet__handle-area" aria-hidden="true" data-swipe-lock="true">
           <div className="knot-sheet__handle" />
         </div>
 

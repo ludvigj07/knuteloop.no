@@ -910,9 +910,8 @@ function App() {
 
     return (
       <div className="main-page-panel">
-        {page.id === 'dashboard' ? renderHeroPanel() : null}
-
         <main className="page-layout">
+          {page.id === 'dashboard' ? renderHeroPanel() : null}
           {page.id !== 'dashboard' && page.id !== 'knuter' ? (
             <section className="page-intro page-intro--shell">
               <>

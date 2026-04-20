@@ -85,7 +85,11 @@ function FeedLightbox({ entry, onClose }) {
       >
         {'\u00D7'}
       </button>
-      <div className="feed-lightbox__content" onClick={(e) => e.stopPropagation()}>
+      <div
+        className="feed-lightbox__content"
+        data-swipe-lock="true"
+        onClick={(e) => e.stopPropagation()}
+      >
         {isVideo ? (
           <video
             className="feed-lightbox__video"
