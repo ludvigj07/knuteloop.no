@@ -913,17 +913,13 @@ function App() {
         {page.id === 'dashboard' ? renderHeroPanel() : null}
 
         <main className="page-layout">
-          {page.id !== 'dashboard' ? (
+          {page.id !== 'dashboard' && page.id !== 'knuter' ? (
             <section className="page-intro page-intro--shell">
-              {page.id === 'knuter' ? (
+              <>
+                <p className="eyebrow">Visning</p>
                 <h2>{page.title}</h2>
-              ) : (
-                <>
-                  <p className="eyebrow">Visning</p>
-                  <h2>{page.title}</h2>
-                  <p>{page.description}</p>
-                </>
-              )}
+                <p>{page.description}</p>
+              </>
             </section>
           ) : null}
           {content}

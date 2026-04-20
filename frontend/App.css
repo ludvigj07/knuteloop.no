@@ -7314,6 +7314,7 @@ textarea.text-input:focus {
   width: 100%;
   max-width: 100%;
   min-width: 0;
+  box-sizing: border-box;
 }
 
 .page-layout > *,
@@ -7343,6 +7344,7 @@ textarea.text-input:focus {
   }
 
   .swipe-tabs-shell__page {
+    padding-inline: 2px;
     padding-bottom: calc(72px + env(safe-area-inset-bottom, 0px));
   }
 

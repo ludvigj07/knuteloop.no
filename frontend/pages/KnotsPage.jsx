@@ -11,6 +11,13 @@ const KNOT_FOLDER_TABS = [
   ...KNOT_FOLDERS,
 ];
 
+const STATUS_LEGEND_ITEMS = Object.freeze([
+  { key: 'approved', label: 'Fullførte' },
+  { key: 'available', label: 'Tilgjengelige' },
+  { key: 'pending', label: 'Sendt inn' },
+  { key: 'rejected', label: 'Avslått' },
+]);
+
 const STATUS_FILTERS = ['Alle', 'Tilgjengelig', 'Sendt inn', 'Godkjent', 'Avslått'];
 
 const SORT_OPTIONS = [
@@ -288,6 +295,15 @@ function getStatusKey(status) {
   return 'available';
 }
 
+function getStatusLabel(status) {
+  const statusKey = getStatusKey(status);
+
+  if (statusKey === 'approved') return 'Fullført';
+  if (statusKey === 'pending') return 'Sendt inn';
+  if (statusKey === 'rejected') return 'Avslått';
+  return 'Tilgjengelig';
+}
+
 // ─── KnotProgressBar ─────────────────────────────────────────────────────────
 
 function KnotProgressBar({ label, approved, total }) {
@@ -502,7 +518,7 @@ function SubmissionFormContent({
       <div className="submission-form__actions">
         <button
           type="button"
-          className="action-button"
+          className="action-button action-button--hero"
           disabled={isOverWordLimit || Boolean(activeSubmissionBan)}
           onClick={onSubmit}
         >
@@ -540,6 +556,8 @@ function KnotRow({
   const effectiveMode = activeFeedBan ? SUBMISSION_MODE.REVIEW : submissionMode;
   const wordCount = getWordCount(draft.note ?? '');
   const isOverWordLimit = wordCount > 100;
+  const statusKey = getStatusKey(knot.status);
+  const statusLabel = getStatusLabel(knot.status);
   const isCompletedKnot = knot.status === 'Godkjent' || knot.status === 'Fullført';
 
   return (
@@ -551,13 +569,19 @@ function KnotRow({
       <div className="knot-row__header">
         <div className="knot-row__info">
           <div className="knot-row__title-line">
+            <span
+              className={`knot-row__status-dot is-${statusKey}`}
+              aria-hidden="true"
+            />
             <span className={`knot-row__points${isCompletedKnot ? ' is-completed' : ''}`}>
               P{knot.points}
             </span>
             <span className="knot-row__title">{knot.title}</span>
-            {knot.status === 'Sendt inn' ? (
-              <span className="pill pill--warning pill--sm">Sendt</span>
-            ) : null}
+          </div>
+          <div className="knot-row__sub">
+            <span>{statusLabel}</span>
+            {knot.difficulty ? <span>{knot.difficulty}</span> : null}
+            {knot.safety === 'review' ? <span>Krever sjekk</span> : null}
           </div>
         </div>
 
@@ -568,7 +592,7 @@ function KnotRow({
               className={`knot-row__doc-btn${isFormOpen ? ' is-active' : ''}`}
               disabled={Boolean(activeSubmissionBan) && !isFormOpen}
               onClick={onDocumentClick}
-              aria-label={isMobile ? 'Registrering' : undefined}
+              aria-label={isMobile ? 'Registrer' : undefined}
             >
               {isMobile ? (
                 <span className="knot-row__doc-btn-icon" aria-hidden="true">
@@ -595,7 +619,7 @@ function KnotRow({
                   </svg>
                 </span>
               ) : (
-                <span className="knot-row__doc-btn-label">Registrering</span>
+                <span className="knot-row__doc-btn-label">Registrer</span>
               )}
             </button>
           ) : null}
@@ -613,6 +637,7 @@ function KnotRow({
 
       {isDetailOpen ? (
         <div className="knot-row__detail">
+          <p className="knot-row__detail-label">Hva går knuten ut på?</p>
           <p className="knot-row__desc">
             {getKnotDescription(knot) || 'Ingen forklaring er lagt til ennå.'}
           </p>
@@ -926,6 +951,7 @@ export function KnotsPage({
       : sheetKnot && isRejectedStatus(sheetKnot.status)
         ? 'Send til godkjenning på nytt'
         : 'Send til godkjenning';
+  const streakCount = currentUserStreak?.current ?? 0;
 
   // ── Effects ──────────────────────────────────────────────────────────────
 
@@ -1274,22 +1300,36 @@ export function KnotsPage({
         isRare={isRareFeedbackActive}
       />
 
-      {/* Header */}
-      <div className="knots-page__header">
-        <div>
-          <h2>Knutekatalog</h2>
+      <section className="knots-page__hero" aria-labelledby="knots-page-title">
+        <div className="knots-page__hero-copy">
+          <p className="knots-page__eyebrow">Knutekatalog · {knots.length} knuter</p>
+          <h1 id="knots-page-title" className="knots-page__title font-display">
+            Hva tar du <span className="knots-page__title-highlight">i dag?</span>
+          </h1>
           <div className="knots-status-legend" aria-label="Fargeforklaring for knutestatus">
-            <span className="knots-status-legend__item is-approved">Grønn: fullførte</span>
-            <span className="knots-status-legend__item is-available">Grå: tilgjengelige</span>
-            <span className="knots-status-legend__item is-pending">Oransje: sendt inn</span>
-            <span className="knots-status-legend__item is-rejected">Rød: avslått</span>
+            {STATUS_LEGEND_ITEMS.map((item) => (
+              <span
+                key={item.key}
+                className={`knots-status-legend__item is-${item.key}`}
+              >
+                {item.label}
+              </span>
+            ))}
           </div>
         </div>
-        <div className="knots-page__points">
-          <span>{currentUserPoints}</span>
-          <small>poeng</small>
+
+        <div className="knots-page__points sticker">
+          <small>Dine poeng</small>
+          <span>{currentUserPoints}p</span>
         </div>
-      </div>
+
+        {streakCount > 0 ? (
+          <div className="knots-page__hero-streak sticker">
+            <span aria-hidden="true">🔥</span>
+            <span>{streakCount} streak</span>
+          </div>
+        ) : null}
+      </section>
 
       {/* Progress */}
       <KnotProgressBar
@@ -1315,8 +1355,21 @@ export function KnotsPage({
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
         />
+        <div className="knot-toolbar-compact__status-pills" role="group" aria-label="Statusfilter">
+          {STATUS_FILTERS.map((filter) => (
+            <button
+              key={filter}
+              type="button"
+              className={`knot-status-pill${statusFilter === filter ? ' is-active' : ''}`}
+              aria-pressed={statusFilter === filter}
+              onClick={() => setStatusFilter(filter)}
+            >
+              {filter}
+            </button>
+          ))}
+        </div>
         <select
-          className="knot-toolbar-compact__select text-input"
+          className="knot-toolbar-compact__select knot-toolbar-compact__select--status text-input"
           value={statusFilter}
           onChange={(e) => setStatusFilter(e.target.value)}
           aria-label="Statusfilter"
@@ -1367,7 +1420,7 @@ export function KnotsPage({
           </p>
           <button
             type="button"
-            className="action-button action-button--ghost action-button--compact"
+            className="action-button action-button--sticker action-button--compact"
             onClick={handleResetFilters}
           >
             Nullstill filtre
