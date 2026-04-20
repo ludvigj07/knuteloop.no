@@ -877,6 +877,7 @@ function App() {
           canDeletePosts={currentUser.role === 'admin'}
           currentUserActiveBans={currentUserActiveBans}
           onDeleteSubmission={handleDeleteSubmission}
+          onExit={() => handleChangePage('dashboard')}
           onOpenProfile={handleOpenProfile}
           onReportSubmission={handleReportSubmission}
           onRateSubmission={handleRateSubmission}
@@ -967,6 +968,7 @@ function App() {
           activePageId={currentPage.id}
           onChangePage={handleChangePage}
           renderPage={renderPageContent}
+          hideNavigation={false}
           mobileOnlySwipe
         />
       </div>

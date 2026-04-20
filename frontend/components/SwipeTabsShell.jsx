@@ -93,6 +93,7 @@ export function SwipeTabsShell({
   onChangePage,
   renderPage,
   mobileOnlySwipe = true,
+  hideNavigation = false,
 }) {
   const shellRef = useRef(null);
   const viewportRef = useRef(null);
@@ -444,52 +445,56 @@ export function SwipeTabsShell({
             </div>
           </div>
 
-          <nav className="bottom-swipe-nav" aria-label="Hovednavigasjon">
-            <div
-              className="bottom-swipe-nav__grid"
-              style={{
-                gridTemplateColumns: `repeat(${pages.length}, minmax(0, 1fr))`,
-              }}
-            >
-              {pages.map((page) => {
-                const isActive = page.id === activePageId;
+          {!hideNavigation ? (
+            <nav className="bottom-swipe-nav" aria-label="Hovednavigasjon">
+              <div
+                className="bottom-swipe-nav__grid"
+                style={{
+                  gridTemplateColumns: `repeat(${pages.length}, minmax(0, 1fr))`,
+                }}
+              >
+                {pages.map((page) => {
+                  const isActive = page.id === activePageId;
 
-                return (
-                  <button
-                    key={page.id}
-                    type="button"
-                    className={`bottom-swipe-nav__button ${isActive ? 'is-active' : ''}`}
-                    onClick={() => goToPage(page.id)}
-                  >
-                    <span className="bottom-swipe-nav__icon" aria-hidden="true">
-                      {page.icon}
-                    </span>
-                    <span className="bottom-swipe-nav__label">
-                      {page.shortLabel ?? page.label}
-                    </span>
-                  </button>
-                );
-              })}
-            </div>
-          </nav>
+                  return (
+                    <button
+                      key={page.id}
+                      type="button"
+                      className={`bottom-swipe-nav__button ${isActive ? 'is-active' : ''}`}
+                      onClick={() => goToPage(page.id)}
+                    >
+                      <span className="bottom-swipe-nav__icon" aria-hidden="true">
+                        {page.icon}
+                      </span>
+                      <span className="bottom-swipe-nav__label">
+                        {page.shortLabel ?? page.label}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            </nav>
+          ) : null}
         </>
       ) : (
         <>
-          <nav className="desktop-segmented-nav" aria-label="Hovednavigasjon">
-            {pages.map((page) => (
-              <button
-                key={page.id}
-                type="button"
-                className={`desktop-segmented-nav__button ${
-                  page.id === activePageId ? 'is-active' : ''
-                }`}
-                onClick={() => goToPage(page.id)}
-              >
-                <span aria-hidden="true">{page.icon}</span>
-                <span>{page.label}</span>
-              </button>
-            ))}
-          </nav>
+          {!hideNavigation ? (
+            <nav className="desktop-segmented-nav" aria-label="Hovednavigasjon">
+              {pages.map((page) => (
+                <button
+                  key={page.id}
+                  type="button"
+                  className={`desktop-segmented-nav__button ${
+                    page.id === activePageId ? 'is-active' : ''
+                  }`}
+                  onClick={() => goToPage(page.id)}
+                >
+                  <span aria-hidden="true">{page.icon}</span>
+                  <span>{page.label}</span>
+                </button>
+              ))}
+            </nav>
+          ) : null}
 
           <div className="desktop-segmented-nav__content">
             {renderPage(pages[activeIndex])}
