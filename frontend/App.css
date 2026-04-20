@@ -6669,7 +6669,7 @@ textarea.text-input:focus {
   flex-direction: column;
   gap: var(--space-2);
   padding: var(--space-3);
-  padding-bottom: calc(68px + env(safe-area-inset-bottom, 0px));
+  padding-bottom: calc(var(--space-4) + env(safe-area-inset-bottom, 0px));
 }
 
 .db-section-heading {
@@ -7325,6 +7325,33 @@ textarea.text-input:focus {
 @media (max-width: 640px) {
   .hero-panel__content {
     padding-inline-end: max(0.55rem, env(safe-area-inset-right, 0px));
+  }
+}
+
+/* Mobile safe-area normalization: avoid stacking multiple bottom paddings. */
+@media (max-width: 900px) {
+  #root {
+    padding-bottom: 0;
+  }
+
+  .app-shell {
+    padding-bottom: 14px;
+  }
+
+  .swipe-tabs-shell.is-mobile-swipe {
+    padding-bottom: 0;
+  }
+
+  .swipe-tabs-shell__page {
+    padding-bottom: calc(72px + env(safe-area-inset-bottom, 0px));
+  }
+
+  .db-layout {
+    padding-bottom: var(--space-3);
+  }
+
+  .knots-page--mobile {
+    padding-bottom: calc(46px + env(safe-area-inset-bottom, 0px));
   }
 }
 

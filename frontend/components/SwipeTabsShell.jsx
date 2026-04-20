@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 
 const MOBILE_BREAKPOINT = 900;
 const SWIPE_THRESHOLD_RATIO = 0.18;
@@ -49,10 +49,12 @@ export function SwipeTabsShell({
 }) {
   const shellRef = useRef(null);
   const viewportRef = useRef(null);
+  const pageRefs = useRef(new Map());
   const suppressNextClickRef = useRef(false);
   const pointerStateRef = useRef(createIdlePointerState());
 
   const [viewportWidth, setViewportWidth] = useState(0);
+  const [activePageHeight, setActivePageHeight] = useState(0);
   const [isMobileViewport, setIsMobileViewport] = useState(() => {
     if (typeof window === 'undefined') {
       return true;
@@ -91,6 +93,55 @@ export function SwipeTabsShell({
   useEffect(() => {
     setViewportWidth(getViewportWidth(viewportRef.current ?? shellRef.current));
   }, [pages.length, isMobileViewport]);
+
+  useLayoutEffect(() => {
+    if (!useSwipeNav) {
+      return undefined;
+    }
+
+    const measureActivePage = () => {
+      const element = pageRefs.current.get(activePageId);
+      const nextHeight = element
+        ? Math.ceil(
+            Math.max(
+              element.getBoundingClientRect().height,
+              element.scrollHeight,
+              element.offsetHeight,
+            ),
+          )
+        : 0;
+      setActivePageHeight((currentHeight) =>
+        currentHeight !== nextHeight ? nextHeight : currentHeight,
+      );
+    };
+
+    measureActivePage();
+    const initialFrame = requestAnimationFrame(measureActivePage);
+    const delayedFrame = requestAnimationFrame(() => {
+      requestAnimationFrame(measureActivePage);
+    });
+    window.addEventListener('resize', measureActivePage);
+
+    let observer;
+    if (typeof ResizeObserver !== 'undefined') {
+      observer = new ResizeObserver(measureActivePage);
+      const activeElement = pageRefs.current.get(activePageId);
+      if (activeElement) {
+        observer.observe(activeElement);
+      }
+    }
+
+    // Fallback for mobile browsers where ResizeObserver updates can be delayed.
+    const intervalId = window.setInterval(measureActivePage, 350);
+
+    return () => {
+      cancelAnimationFrame(initialFrame);
+      cancelAnimationFrame(delayedFrame);
+      window.clearInterval(intervalId);
+      window.removeEventListener('resize', measureActivePage);
+      observer?.disconnect();
+    };
+  }, [activePageId, pages.length, useSwipeNav]);
 
   useEffect(() => {
     if (!useSwipeNav) return undefined;
@@ -282,6 +333,13 @@ export function SwipeTabsShell({
   const trackTransform = useSwipeNav
     ? `translate3d(calc(${-activeIndex * 100}% + ${effectiveDragOffset}px), 0, 0)`
     : 'translate3d(0, 0, 0)';
+  const viewportStyle =
+    useSwipeNav && activePageHeight > 0
+      ? {
+          height: `${activePageHeight}px`,
+          transition: isDragging ? 'none' : 'height 0.22s ease',
+        }
+      : undefined;
 
   return (
     <div
@@ -293,6 +351,7 @@ export function SwipeTabsShell({
           <div
             ref={viewportRef}
             className="swipe-tabs-shell__viewport"
+            style={viewportStyle}
             onClickCapture={handleViewportClickCapture}
             onPointerDown={handlePointerDown}
             onPointerMove={handlePointerMove}
@@ -311,6 +370,13 @@ export function SwipeTabsShell({
               {pages.map((page) => (
                 <section
                   key={page.id}
+                  ref={(element) => {
+                    if (element) {
+                      pageRefs.current.set(page.id, element);
+                    } else {
+                      pageRefs.current.delete(page.id);
+                    }
+                  }}
                   className={`swipe-tabs-shell__page ${
                     activePageId === page.id ? 'is-active' : ''
                   }`}
