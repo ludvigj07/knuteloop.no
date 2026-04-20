@@ -3305,18 +3305,21 @@
 }
 
 .swipe-tabs-shell__viewport {
-  overflow: hidden;
+  overflow-x: hidden;
+  overflow-y: visible;
+  position: relative;
+  isolation: isolate;
   /* pan-y: native vertical scroll passes through; horizontal is handled by JS */
   touch-action: pan-y;
   /* Prevent text selection during horizontal drag */
   user-select: none;
   -webkit-user-select: none;
   border-radius: 28px;
-  transition: height 0.22s ease;
 }
 
 .swipe-tabs-shell__track {
   display: flex;
+  width: 100%;
   align-items: flex-start;
   will-change: transform;
 }
@@ -3332,7 +3335,9 @@
 .swipe-tabs-shell__page {
   flex: 0 0 100%;
   width: 100%;
-  min-width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  position: relative;
 }
 
 .bottom-swipe-nav {
@@ -3673,6 +3678,7 @@
 
   .swipe-tabs-shell__page {
     min-height: 0;
+    padding-bottom: calc(108px + env(safe-area-inset-bottom, 0px));
   }
 
   .status-hub-grid,
@@ -7287,5 +7293,38 @@ textarea.text-input:focus {
   white-space: pre-line;
   max-height: 360px;
   overflow: auto;
+}
+
+/* Keep hero text clear of the rounded right edge on narrow viewports. */
+.hero-panel__content {
+  min-width: 0;
+  padding-inline-end: max(0.35rem, env(safe-area-inset-right, 0px));
+}
+
+.hero-panel__content .hero-copy {
+  max-width: 100%;
+  overflow-wrap: anywhere;
+  word-break: normal;
+}
+
+/* Prevent mobile main/page wrappers from shrinking below their children. */
+.main-page-panel,
+.page-layout,
+.swipe-tabs-shell__page {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+}
+
+.page-layout > *,
+.hero-panel > *,
+.hero-panel__content {
+  min-width: 0;
+}
+
+@media (max-width: 640px) {
+  .hero-panel__content {
+    padding-inline-end: max(0.55rem, env(safe-area-inset-right, 0px));
+  }
 }
 

@@ -732,7 +732,7 @@ function App() {
   function renderHeroPanel() {
     return (
       <header className="hero-panel hero-panel--page">
-        <div>
+        <div className="hero-panel__content">
           <p className="eyebrow">Live nå</p>
           <div className="hero-chip-row">
             <span className="hero-chip">

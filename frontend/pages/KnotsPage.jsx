@@ -395,24 +395,20 @@ function SubmissionFormContent({
             className={`submission-mode-pill ${shareToAnonymousFeed ? 'is-active' : ''}`}
             aria-pressed={shareToAnonymousFeed}
             disabled={Boolean(activeFeedBan)}
-            onChange={(event) => {
-              if (event.target.checked) {
-                onUpdateMode(SUBMISSION_MODE.FEED);
-              } else {
-                onUpdateMode(SUBMISSION_MODE.REVIEW);
-              }
-            }}
-          />
-          <span>Del detaljer med feeden (bilde og beskrivelse vises)</span>
-        </label>
-        {shareToFeed || shareToAnonymousFeed ? (
-          <label
-            className="submission-mode-checkbox"
-            style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginTop: '0.25rem', cursor: activeFeedBan ? 'not-allowed' : 'pointer', paddingLeft: '1.5rem' }}
+            onClick={() =>
+              onUpdateMode(
+                shareToAnonymousFeed
+                  ? SUBMISSION_MODE.REVIEW
+                  : SUBMISSION_MODE.ANONYMOUS_FEED,
+              )
+            }
           >
             Del som anonym
           </button>
         </div>
+        <p className="submission-mode-options__optional">
+          Del detaljer med feeden (bilde og beskrivelse vises).
+        </p>
       </div>
 
       {activeFeedBan ? (

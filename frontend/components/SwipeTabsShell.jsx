@@ -5,6 +5,19 @@ const SWIPE_THRESHOLD_RATIO = 0.18;
 const SWIPE_VELOCITY_THRESHOLD = 0.45;
 const EDGE_RESISTANCE = 0.32;
 
+function createIdlePointerState() {
+  return {
+    active: false,
+    mode: 'idle',
+    pointerId: null,
+    startX: 0,
+    startY: 0,
+    lastX: 0,
+    lastTime: 0,
+    velocityX: 0,
+  };
+}
+
 function supportsHaptics() {
   return typeof navigator !== 'undefined' && typeof navigator.vibrate === 'function';
 }
@@ -35,21 +48,11 @@ export function SwipeTabsShell({
   mobileOnlySwipe = true,
 }) {
   const shellRef = useRef(null);
-  const pageRefs = useRef(new Map());
+  const viewportRef = useRef(null);
   const suppressNextClickRef = useRef(false);
-  const pointerStateRef = useRef({
-    active: false,
-    mode: 'idle',
-    pointerId: null,
-    startX: 0,
-    startY: 0,
-    lastX: 0,
-    lastTime: 0,
-    velocityX: 0,
-  });
+  const pointerStateRef = useRef(createIdlePointerState());
 
   const [viewportWidth, setViewportWidth] = useState(0);
-  const [pageHeights, setPageHeights] = useState({});
   const [isMobileViewport, setIsMobileViewport] = useState(() => {
     if (typeof window === 'undefined') {
       return true;
@@ -72,67 +75,9 @@ export function SwipeTabsShell({
   const useSwipeNav = !mobileOnlySwipe || isMobileViewport;
 
   useEffect(() => {
-    if (!useSwipeNav) {
-      return;
-    }
-
-    function collectHeights() {
-      const nextHeights = {};
-
-      pages.forEach((page) => {
-        const element = pageRefs.current.get(page.id);
-        if (!element) {
-          return;
-        }
-
-        nextHeights[page.id] = Math.ceil(element.getBoundingClientRect().height);
-      });
-
-      setPageHeights((currentHeights) => {
-        const currentKeys = Object.keys(currentHeights);
-        const nextKeys = Object.keys(nextHeights);
-
-        if (currentKeys.length !== nextKeys.length) {
-          return nextHeights;
-        }
-
-        for (const key of nextKeys) {
-          if (currentHeights[key] !== nextHeights[key]) {
-            return nextHeights;
-          }
-        }
-
-        return currentHeights;
-      });
-    }
-
-    collectHeights();
-
-    if (typeof ResizeObserver === 'undefined') {
-      return;
-    }
-
-    const observer = new ResizeObserver(collectHeights);
-
-    pages.forEach((page) => {
-      const element = pageRefs.current.get(page.id);
-      if (element) {
-        observer.observe(element);
-      }
-    });
-
-    window.addEventListener('resize', collectHeights);
-
-    return () => {
-      observer.disconnect();
-      window.removeEventListener('resize', collectHeights);
-    };
-  }, [pages, useSwipeNav]);
-
-  useEffect(() => {
     function handleResize() {
       setIsMobileViewport(window.innerWidth <= MOBILE_BREAKPOINT);
-      setViewportWidth(getViewportWidth(shellRef.current));
+      setViewportWidth(getViewportWidth(viewportRef.current ?? shellRef.current));
     }
 
     handleResize();
@@ -144,10 +89,32 @@ export function SwipeTabsShell({
   }, []);
 
   useEffect(() => {
-    setViewportWidth(getViewportWidth(shellRef.current));
+    setViewportWidth(getViewportWidth(viewportRef.current ?? shellRef.current));
   }, [pages.length, isMobileViewport]);
 
+  useEffect(() => {
+    if (!useSwipeNav) return undefined;
+
+    const abortDrag = () => {
+      pointerStateRef.current = createIdlePointerState();
+      setIsDragging(false);
+      setDragOffset(0);
+    };
+
+    window.addEventListener('pointerup', abortDrag);
+    window.addEventListener('pointercancel', abortDrag);
+    window.addEventListener('blur', abortDrag);
+
+    return () => {
+      window.removeEventListener('pointerup', abortDrag);
+      window.removeEventListener('pointercancel', abortDrag);
+      window.removeEventListener('blur', abortDrag);
+    };
+  }, [useSwipeNav]);
+
   function goToPage(pageId) {
+    resetPointerState();
+
     if (pageId === activePageId) {
       pulseHaptics(8);
       return;
@@ -158,16 +125,7 @@ export function SwipeTabsShell({
   }
 
   function resetPointerState() {
-    pointerStateRef.current = {
-      active: false,
-      mode: 'idle',
-      pointerId: null,
-      startX: 0,
-      startY: 0,
-      lastX: 0,
-      lastTime: 0,
-      velocityX: 0,
-    };
+    pointerStateRef.current = createIdlePointerState();
     setDragOffset(0);
     setIsDragging(false);
   }
@@ -320,31 +278,10 @@ export function SwipeTabsShell({
     event.stopPropagation();
   }
 
-  const trackTranslate = useSwipeNav
-    ? -activeIndex * viewportWidth + dragOffset
-    : 0;
-  const activePage = pages[activeIndex];
-  const activePageHeight = activePage ? pageHeights[activePage.id] ?? 0 : 0;
-  const swipeDirection = dragOffset === 0 ? 0 : dragOffset < 0 ? 1 : -1;
-  const adjacentPage = pages[clamp(activeIndex + swipeDirection, 0, pages.length - 1)];
-  const adjacentPageHeight = adjacentPage
-    ? pageHeights[adjacentPage.id] ?? activePageHeight
-    : activePageHeight;
-  const dragProgress =
-    viewportWidth > 0 ? clamp(Math.abs(dragOffset) / viewportWidth, 0, 1) : 0;
-  const viewportHeight =
-    isDragging && swipeDirection !== 0
-      ? Math.round(
-          activePageHeight + (adjacentPageHeight - activePageHeight) * dragProgress,
-        )
-      : activePageHeight;
-  const viewportStyle =
-    useSwipeNav && viewportHeight > 0
-      ? {
-          height: `${viewportHeight}px`,
-          transition: isDragging ? 'none' : 'height 0.22s ease',
-        }
-      : undefined;
+  const effectiveDragOffset = isDragging ? dragOffset : 0;
+  const trackTransform = useSwipeNav
+    ? `translate3d(calc(${-activeIndex * 100}% + ${effectiveDragOffset}px), 0, 0)`
+    : 'translate3d(0, 0, 0)';
 
   return (
     <div
@@ -354,32 +291,26 @@ export function SwipeTabsShell({
       {useSwipeNav ? (
         <>
           <div
+            ref={viewportRef}
             className="swipe-tabs-shell__viewport"
-            style={viewportStyle}
             onClickCapture={handleViewportClickCapture}
             onPointerDown={handlePointerDown}
             onPointerMove={handlePointerMove}
             onPointerUp={handlePointerEnd}
             onPointerCancel={handlePointerEnd}
+            onLostPointerCapture={resetPointerState}
           >
             <div
               className={`swipe-tabs-shell__track ${
                 isDragging ? 'is-dragging' : 'is-animating'
               }`}
               style={{
-                transform: `translate3d(${trackTranslate}px, 0, 0)`,
+                transform: trackTransform,
               }}
             >
               {pages.map((page) => (
                 <section
                   key={page.id}
-                  ref={(element) => {
-                    if (element) {
-                      pageRefs.current.set(page.id, element);
-                    } else {
-                      pageRefs.current.delete(page.id);
-                    }
-                  }}
                   className={`swipe-tabs-shell__page ${
                     activePageId === page.id ? 'is-active' : ''
                   }`}
