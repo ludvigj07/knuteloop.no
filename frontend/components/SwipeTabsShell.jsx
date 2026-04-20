@@ -461,13 +461,11 @@ export function SwipeTabsShell({
                       key={page.id}
                       type="button"
                       className={`bottom-swipe-nav__button ${isActive ? 'is-active' : ''}`}
+                      aria-label={page.shortLabel ?? page.label}
                       onClick={() => goToPage(page.id)}
                     >
                       <span className="bottom-swipe-nav__icon" aria-hidden="true">
                         {page.icon}
-                      </span>
-                      <span className="bottom-swipe-nav__label">
-                        {page.shortLabel ?? page.label}
                       </span>
                     </button>
                   );

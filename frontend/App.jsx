@@ -553,6 +553,7 @@ function App() {
         : {}),
       note: evidence.note ?? '',
       removeImage: evidence.removeImage === true,
+      removeVideo: evidence.removeVideo === true,
       imageName: evidence.imageName ?? '',
       imageDataUrl: evidence.imageFile
         ? await readFileAsDataUrl(evidence.imageFile)

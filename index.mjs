@@ -1,7 +1,8 @@
 import { createServer } from 'node:http';
 import { randomUUID } from 'node:crypto';
 import sharp from 'sharp';
-import { exec } from 'node:child_process';
+import ffmpegPath from 'ffmpeg-static';
+import { execFile } from 'node:child_process';
 import { createReadStream, promises as fs } from 'node:fs';
 import path from 'node:path';
 import { promisify } from 'node:util';
@@ -57,7 +58,8 @@ const DATA_DIR = path.join(APP_ROOT, 'backend', 'data');
 const UPLOADS_DIR = path.join(APP_ROOT, 'backend', 'uploads');
 const DB_FILE = path.join(DATA_DIR, 'app-db.json');
 const PORT = Number(process.env.PORT) || 3001;
-const execAsync = promisify(exec);
+const execFileAsync = promisify(execFile);
+const RESOLVED_FFMPEG_PATH = process.env.FFMPEG_PATH || ffmpegPath;
 const VIDEO_MIME_TYPES = new Set([
   'video/mp4',
   'video/quicktime',
@@ -518,8 +520,27 @@ function normalizeVideoNameToMp4(name, fallback = 'video.mp4') {
 }
 
 async function transcodeVideoToMp4(inputPath, outputPath) {
-  await execAsync(
-    `ffmpeg -y -i "${inputPath}" -vcodec h264 -acodec aac -movflags +faststart "${outputPath}"`,
+  if (!RESOLVED_FFMPEG_PATH) {
+    throw new Error(
+      'Finner ikke ffmpeg-binaren. Sett FFMPEG_PATH eller installer ffmpeg.',
+    );
+  }
+
+  await execFileAsync(
+    RESOLVED_FFMPEG_PATH,
+    [
+      '-y',
+      '-i',
+      inputPath,
+      '-vcodec',
+      'h264',
+      '-acodec',
+      'aac',
+      '-movflags',
+      '+faststart',
+      outputPath,
+    ],
+    { windowsHide: true },
   );
 }
 
@@ -2195,6 +2216,7 @@ async function handleCreateSubmission(request, response) {
     const hasNewImage = Boolean(imagePreviewUrl);
     const hasNewVideo = Boolean(videoPreviewUrl);
     const shouldRemoveImage = body.removeImage === true && !hasNewImage;
+    const shouldRemoveVideo = body.removeVideo === true && !hasNewVideo;
     const incomingNote = limitNoteWords(body.note);
     const currentSubmissionMode = normalizeSubmissionMode(
       existingPendingSubmission.submissionMode,
@@ -2214,9 +2236,9 @@ async function handleCreateSubmission(request, response) {
     }
 
     if (
-      hasNewVideo &&
+      (hasNewVideo || shouldRemoveVideo) &&
       existingPendingSubmission.videoPreviewUrl &&
-      existingPendingSubmission.videoPreviewUrl !== videoPreviewUrl
+      (!hasNewVideo || existingPendingSubmission.videoPreviewUrl !== videoPreviewUrl)
     ) {
       await deleteLocalUploadIfNeeded(existingPendingSubmission.videoPreviewUrl);
     }
@@ -2240,10 +2262,14 @@ async function handleCreateSubmission(request, response) {
                   : (submission.imagePreviewUrl ?? ''),
               videoName: hasNewVideo
                 ? (body.videoName ?? submission.videoName ?? '')
-                : (submission.videoName ?? ''),
+                : shouldRemoveVideo
+                  ? ''
+                  : (submission.videoName ?? ''),
               videoPreviewUrl: hasNewVideo
                 ? videoPreviewUrl
-                : (submission.videoPreviewUrl ?? ''),
+                : shouldRemoveVideo
+                  ? ''
+                  : (submission.videoPreviewUrl ?? ''),
               submissionMode: nextSubmissionMode,
               isAnonymousFeed: nextIsAnonymousFeed,
             }
