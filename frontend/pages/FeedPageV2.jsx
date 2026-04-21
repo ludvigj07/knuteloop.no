@@ -381,17 +381,26 @@ function FeedRatingRow({
   const ratingCount = Number(entry.ratingCount) || 0;
   const summaryLabel = getRatingSummaryLabel(ratingAverage, ratingCount);
   const isOverlay = variant === 'overlay';
+  const isInline = variant === 'inline';
 
   return (
     <div
-      className={`feed-card-v3__reactions ${isOverlay ? 'feed-card-v3__reactions--overlay' : ''}`}
+      className={`feed-card-v3__reactions ${isOverlay ? 'feed-card-v3__reactions--overlay' : ''} ${
+        isInline ? 'feed-card-v3__reactions--inline' : ''
+      }`}
       aria-label="Stjernerating"
     >
-      <div className={`feed-rating ${isOverlay ? 'feed-rating--overlay' : ''}`}>
+      <div className={`feed-rating ${isOverlay ? 'feed-rating--overlay' : ''} ${isInline ? 'feed-rating--inline' : ''}`}>
+        {isOverlay && !isInline ? (
+          <p className={`feed-rating__summary ${isOverlay ? 'feed-rating__summary--overlay' : ''}`}>
+            {summaryLabel}
+          </p>
+        ) : null}
         <div
-          className="feed-rating__stars"
+          className={`feed-rating__stars ${isInline ? 'feed-rating__stars--inline' : ''}`}
           role="group"
           aria-label="Gi 1 til 5 stjerner"
+          title={isInline && disabledReason ? disabledReason : undefined}
           onMouseLeave={() => setHoverRating(null)}
         >
           {STAR_VALUES.map((value) => {
@@ -403,7 +412,7 @@ function FeedRatingRow({
                 type="button"
                 className={`feed-rating-star ${isActive ? 'is-active' : ''} ${
                   isOverlay ? 'feed-rating-star--overlay' : ''
-                }`}
+                } ${isInline ? 'feed-rating-star--inline' : ''}`}
                 disabled={isSubmitting || isDisabled}
                 onMouseEnter={() => setHoverRating(value)}
                 onFocus={() => setHoverRating(value)}
@@ -420,15 +429,20 @@ function FeedRatingRow({
             );
           })}
         </div>
-        <p className={`feed-rating__summary ${isOverlay ? 'feed-rating__summary--overlay' : ''}`}>
-          {summaryLabel}
-        </p>
-        {disabledReason ? (
+        {isInline ? (
+          <p className="feed-rating__summary feed-rating__summary--inline">{summaryLabel}</p>
+        ) : null}
+        {!isInline && !isOverlay ? (
+          <p className={`feed-rating__summary ${isOverlay ? 'feed-rating__summary--overlay' : ''}`}>
+            {summaryLabel}
+          </p>
+        ) : null}
+        {!isInline && disabledReason ? (
           <p className={`feed-rating__hint ${isOverlay ? 'feed-rating__hint--overlay' : ''}`}>
             {disabledReason}
           </p>
         ) : null}
-        {errorMessage ? <p className="feed-rating__error">{errorMessage}</p> : null}
+        {!isInline && errorMessage ? <p className="feed-rating__error">{errorMessage}</p> : null}
       </div>
     </div>
   );
@@ -573,21 +587,6 @@ function FeedCommentPreview({ comments, onOpenComments, commentCount, isDisabled
         </p>
       )}
     </div>
-  );
-}
-
-function FeedCommentFab({ count, onOpenComments, isDisabled = false }) {
-  return (
-    <button
-      type="button"
-      className="feed-reel-card__comment-fab"
-      onClick={onOpenComments}
-      disabled={isDisabled}
-      aria-label="Apne kommentarer"
-    >
-      <span className="feed-reel-card__comment-icon">{'\u{1F4AC}'}</span>
-      <span className="feed-reel-card__comment-count">{count}</span>
-    </button>
   );
 }
 
@@ -774,7 +773,6 @@ function FeedCardMobile({
   onReport,
   onRate,
   ratingError,
-  commentCount,
   feedInteractionsDisabled,
   feedInteractionMessage,
   registerCardRef,
@@ -821,7 +819,7 @@ function FeedCardMobile({
             />
             <FeedReportButton
               entry={entry}
-              isSubmitting={isReporting}
+              isSubmitting={isReporting || feedInteractionsDisabled}
               onReport={onReport}
               variant="hud"
             />
@@ -830,18 +828,42 @@ function FeedCardMobile({
 
         <div className="feed-reel-card__bottom-hud">
           <div className="feed-reel-card__info-stack">
-            <button
-              type="button"
-              className="feed-reel-card__identity"
-              onClick={() => onOpenProfile?.(entry.studentId)}
-              disabled={!entry.studentId || entry.isAnonymous}
-            >
-              <FeedProfileAvatar entry={entry} />
-              <div className="feed-reel-card__identity-copy">
-                <strong>{entry.studentName}</strong>
-                <p>{entry.studentGroup}</p>
+            <div className="feed-reel-card__identity-row">
+              <button
+                type="button"
+                className="feed-reel-card__identity"
+                onClick={() => onOpenProfile?.(entry.studentId)}
+                disabled={!entry.studentId || entry.isAnonymous}
+              >
+                <FeedProfileAvatar entry={entry} />
+                <div className="feed-reel-card__identity-copy">
+                  <strong>{entry.studentName}</strong>
+                  <p>{entry.studentGroup}</p>
+                </div>
+              </button>
+
+              <div className="feed-reel-card__rating-column">
+                <FeedRatingRow
+                  entry={entry}
+                  isSubmitting={isSubmitting}
+                  onRate={onRate}
+                  errorMessage={ratingError}
+                  isDisabled={feedInteractionsDisabled}
+                  disabledReason={feedInteractionMessage}
+                  variant="inline"
+                />
+                <button
+                  type="button"
+                  className="feed-reel-card__comment-inline-button"
+                  onClick={() => onOpenComments(entry)}
+                  disabled={feedInteractionsDisabled}
+                  aria-label="Apne kommentarer"
+                  title="Apne kommentarer"
+                >
+                  {'\u{1F4AC}'}
+                </button>
               </div>
-            </button>
+            </div>
 
             <div className="feed-reel-card__meta-pills">
               <span className="feed-reel-card__meta-pill feed-reel-card__meta-pill--points">
@@ -859,23 +881,7 @@ function FeedCardMobile({
                 {noteText ? <p className="feed-reel-card__note">{noteText}</p> : null}
               </div>
             ) : null}
-
-            <FeedRatingRow
-              entry={entry}
-              isSubmitting={isSubmitting}
-              onRate={onRate}
-              errorMessage={ratingError}
-              isDisabled={feedInteractionsDisabled}
-              disabledReason={feedInteractionMessage}
-              variant="overlay"
-            />
           </div>
-
-          <FeedCommentFab
-            count={commentCount}
-            onOpenComments={() => onOpenComments(entry)}
-            isDisabled={feedInteractionsDisabled}
-          />
         </div>
 
         <div className="feed-reel-card__index-indicator">
@@ -1542,9 +1548,6 @@ export function FeedPage({
               onOpenProfile={onOpenProfile}
               onReport={openReportModal}
               onRate={handleRate}
-              commentCount={
-                (localCommentsBySubmission[String(entry.submissionId)] ?? []).length
-              }
               feedInteractionsDisabled={Boolean(activeFeedBan)}
               feedInteractionMessage={feedInteractionMessage}
               registerCardRef={registerCardRef}

@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { MobileVideo } from '../components/MobileVideo.jsx';
 import { isGoldKnot } from '../data/badgeSystem.js';
+import { NOTE_MAX_CHARS, NOTE_MAX_WORDS } from '../data/appHelpers.js';
 import { KNOT_FOLDERS, resolveKnotFolder } from '../data/knotFolders.js';
 
 const MOBILE_BREAKPOINT = 900;
@@ -121,6 +122,10 @@ function getWordCount(text) {
   const trimmedText = text.trim();
   if (!trimmedText) return 0;
   return trimmedText.split(/\s+/).length;
+}
+
+function getCharacterCount(text) {
+  return typeof text === 'string' ? text.length : 0;
 }
 
 function revokeObjectUrl(url) {
@@ -356,7 +361,9 @@ function SubmissionFormContent({
   activeFeedBan,
   activeSubmissionBan,
   wordCount,
+  characterCount,
   isOverWordLimit,
+  isOverCharacterLimit,
   buttonLabel,
   onUpdateNote,
   onUpdateMode,
@@ -393,9 +400,10 @@ function SubmissionFormContent({
           placeholder="Kort forklaring på hvordan knuten ble gjort. Maks 100 ord."
           value={draft.note ?? ''}
           onChange={(e) => onUpdateNote(e.target.value)}
+          maxLength={NOTE_MAX_CHARS}
         />
-        <span className={`word-counter ${isOverWordLimit ? 'is-invalid' : ''}`}>
-          {wordCount}/100 ord
+        <span className={`word-counter ${isOverWordLimit || isOverCharacterLimit ? 'is-invalid' : ''}`}>
+          {wordCount}/{NOTE_MAX_WORDS} ord - {characterCount}/{NOTE_MAX_CHARS} tegn
         </span>
       </label>
 
@@ -601,7 +609,7 @@ function SubmissionFormContent({
         <button
           type="button"
           className="action-button action-button--hero"
-          disabled={isOverWordLimit || Boolean(activeSubmissionBan)}
+          disabled={isOverWordLimit || isOverCharacterLimit || Boolean(activeSubmissionBan)}
           onClick={onSubmit}
         >
           {buttonLabel}
@@ -638,7 +646,9 @@ function KnotRow({
   const submissionMode = normalizeSubmissionMode(draft.submissionMode);
   const effectiveMode = activeFeedBan ? SUBMISSION_MODE.REVIEW : submissionMode;
   const wordCount = getWordCount(draft.note ?? '');
-  const isOverWordLimit = wordCount > 100;
+  const characterCount = getCharacterCount(draft.note ?? '');
+  const isOverWordLimit = wordCount > NOTE_MAX_WORDS;
+  const isOverCharacterLimit = characterCount > NOTE_MAX_CHARS;
   const statusKey = getStatusKey(knot.status);
   const statusLabel = getStatusLabel(knot.status);
   const isCompletedKnot = knot.status === 'Godkjent' || knot.status === 'Fullført';
@@ -748,7 +758,9 @@ function KnotRow({
             activeFeedBan={activeFeedBan}
             activeSubmissionBan={activeSubmissionBan}
             wordCount={wordCount}
+            characterCount={characterCount}
             isOverWordLimit={isOverWordLimit}
+            isOverCharacterLimit={isOverCharacterLimit}
             buttonLabel={buttonLabel}
             onUpdateNote={onUpdateNote}
             onUpdateMode={onUpdateMode}
@@ -789,7 +801,9 @@ function KnotBottomSheet({
   const submissionMode = normalizeSubmissionMode(draft.submissionMode);
   const effectiveMode = activeFeedBan ? SUBMISSION_MODE.REVIEW : submissionMode;
   const wordCount = getWordCount(draft.note ?? '');
-  const isOverWordLimit = wordCount > 100;
+  const characterCount = getCharacterCount(draft.note ?? '');
+  const isOverWordLimit = wordCount > NOTE_MAX_WORDS;
+  const isOverCharacterLimit = characterCount > NOTE_MAX_CHARS;
 
   useEffect(() => {
     if (isOpen) {
@@ -858,7 +872,9 @@ function KnotBottomSheet({
               activeFeedBan={activeFeedBan}
               activeSubmissionBan={activeSubmissionBan}
               wordCount={wordCount}
+              characterCount={characterCount}
               isOverWordLimit={isOverWordLimit}
+              isOverCharacterLimit={isOverCharacterLimit}
               buttonLabel={buttonLabel}
               onUpdateNote={onUpdateNote}
               onUpdateMode={onUpdateMode}
@@ -1131,7 +1147,8 @@ export function KnotsPage({
   // ── Draft handlers ───────────────────────────────────────────────────────
 
   function updateDraftNote(knotId, note) {
-    setDrafts((d) => ({ ...d, [knotId]: { ...d[knotId], note } }));
+    const normalizedNote = typeof note === 'string' ? note.slice(0, NOTE_MAX_CHARS) : '';
+    setDrafts((d) => ({ ...d, [knotId]: { ...d[knotId], note: normalizedNote } }));
   }
 
   function updateDraftSubmissionMode(knotId, submissionMode) {
@@ -1253,6 +1270,19 @@ export function KnotsPage({
     const effectiveSubmissionMode = activeFeedBan
       ? SUBMISSION_MODE.REVIEW
       : submissionMode;
+    const draftWordCount = getWordCount(draft.note ?? '');
+    const draftCharacterCount = getCharacterCount(draft.note ?? '');
+    if (draftWordCount > NOTE_MAX_WORDS) {
+      setFeedbackMessage(`Hold forklaringen under ${NOTE_MAX_WORDS} ord.`);
+      setIsRareFeedbackActive(false);
+      return;
+    }
+    if (draftCharacterCount > NOTE_MAX_CHARS) {
+      setFeedbackMessage(`Hold forklaringen under ${NOTE_MAX_CHARS} tegn.`);
+      setIsRareFeedbackActive(false);
+      return;
+    }
+
     const knot = knots.find((k) => k.id === knotId);
     const wasPending = knot?.status === 'Sendt inn';
 

@@ -1364,9 +1364,16 @@ export function buildDashboardData(
   };
 }
 
-export function limitNoteWords(note, maxWords = 100) {
-  const words = (note ?? '')
-    .trim()
+export const NOTE_MAX_WORDS = 100;
+export const NOTE_MAX_CHARS = 700;
+
+export function limitNoteWords(
+  note,
+  maxWords = NOTE_MAX_WORDS,
+  maxChars = NOTE_MAX_CHARS,
+) {
+  const normalizedNote = typeof note === 'string' ? note.trim().slice(0, maxChars) : '';
+  const words = normalizedNote
     .split(/\s+/)
     .filter(Boolean);
 
