@@ -789,6 +789,33 @@
   ],
   "submissions": [
     {
+      "id": "submission-1776813653028",
+      "knotId": "knot-4",
+      "knotTitle": "Lag en heiarop-video for klassen",
+      "knotCategory": "Kreativ",
+      "student": "Admin",
+      "leaderId": 6,
+      "submittedAtRaw": "2026-04-21T23:20:52.351Z",
+      "status": "Venter",
+      "points": 35,
+      "basePoints": 35,
+      "streakBonusPoints": 0,
+      "streakQualified": false,
+      "streakDay": null,
+      "streakDayKey": null,
+      "note": "Lættis alarm hahahahahahhahahahahah haha hahag haha",
+      "imageName": "image.jpg",
+      "imagePreviewUrl": "/uploads/submission-image-1776813652364-e1e9439d-fb16-4d91-8cba-2d19bee7ea96.webp",
+      "videoName": "",
+      "videoPreviewUrl": "",
+      "isAnonymousFeed": false,
+      "submissionMode": "feed",
+      "ratings": {},
+      "reviewedAtRaw": null,
+      "reviewedBy": null,
+      "profileHidden": false
+    },
+    {
       "id": "submission-1776716523503",
       "knotId": "knot-3",
       "knotTitle": "Møt opp med røde sokker hele dagen",
@@ -837,7 +864,9 @@
       "videoPreviewUrl": "/uploads/submission-video-1776716512863-c22fcff5-f439-4ccd-b1a5-74fd07e3b6f8.mp4",
       "isAnonymousFeed": false,
       "submissionMode": "feed",
-      "ratings": {},
+      "ratings": {
+        "6": 5
+      },
       "reviewedAtRaw": "2026-04-20T20:23:04.322Z",
       "reviewedBy": 6,
       "profileHidden": false
@@ -979,7 +1008,9 @@
       "videoPreviewUrl": "",
       "isAnonymousFeed": false,
       "submissionMode": "feed",
-      "ratings": {},
+      "ratings": {
+        "6": 5
+      },
       "reviewedAtRaw": "2026-04-16T12:28:18.991Z",
       "reviewedBy": 6,
       "profileHidden": false
@@ -1006,7 +1037,9 @@
       "videoPreviewUrl": "",
       "isAnonymousFeed": true,
       "submissionMode": "anonymous-feed",
-      "ratings": {},
+      "ratings": {
+        "6": 5
+      },
       "reviewedAtRaw": "2026-04-16T12:28:20.785Z",
       "reviewedBy": 6,
       "profileHidden": false
@@ -1060,7 +1093,9 @@
       "videoPreviewUrl": "",
       "isAnonymousFeed": false,
       "submissionMode": "feed",
-      "ratings": {},
+      "ratings": {
+        "6": 3
+      },
       "reviewedAtRaw": "2026-04-16T12:28:22.664Z",
       "reviewedBy": 6,
       "profileHidden": false

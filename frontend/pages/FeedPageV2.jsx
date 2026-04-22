@@ -32,6 +32,11 @@ const COMMENT_PRESETS = {
 };
 const LOCAL_FEED_COMMENTS = new Map();
 const DELETE_UNDO_DELAY_MS = 10000;
+const COMMENT_SEND_FEEDBACK_MS = 180;
+const COMMENT_COMPOSER_CLOSE_MS = 155;
+const COMMENT_HIGHLIGHT_MS = 3000;
+const COMMENT_SWIPE_THRESHOLD_PX = 44;
+const COMMENT_SWIPE_CLOSE_OFFSET_PX = 220;
 
 function formatRatingAverage(value) {
   const numericValue = Number(value) || 0;
@@ -570,7 +575,7 @@ function FeedCommentPreview({ comments, onOpenComments, commentCount, isDisabled
           onClick={onOpenComments}
           disabled={isDisabled}
         >
-          Kommenter
+          Kommentarer
         </button>
       </div>
       {previewComments.length ? (
@@ -583,7 +588,7 @@ function FeedCommentPreview({ comments, onOpenComments, commentCount, isDisabled
         </div>
       ) : (
         <p className="feed-comment-preview__empty">
-          Apne kommentarfeltet for a sende en lokal emoji eller en ferdig tekst.
+          Apne kommentarene og trykk i skrivefeltet for a sende en lokal reaksjon.
         </p>
       )}
     </div>
@@ -593,18 +598,49 @@ function FeedCommentPreview({ comments, onOpenComments, commentCount, isDisabled
 function FeedCommentSheet({
   entry,
   comments,
-  draftText,
-  selectedEmoji,
   selectedTab,
+  composerState,
+  pendingSendFeedback,
+  latestSubmittedCommentId,
   onClose,
-  onSelectEmoji,
+  onOpenComposer,
+  onCloseComposer,
   onSelectPresetTab,
-  onSelectPreset,
-  onChangeDraft,
-  onSubmit,
+  onSubmitEmoji,
+  onSubmitPreset,
   isDisabled = false,
   disabledReason = '',
 }) {
+  const commentListRef = useRef(null);
+  const swipeTimeoutRef = useRef(null);
+  const isComposerVisible = composerState !== 'closed';
+  const isComposerClosing = composerState === 'closing';
+  const isComposerOpen = composerState === 'open';
+  const isComposerBusy = Boolean(pendingSendFeedback) || isComposerClosing;
+  const [swipeGesture, setSwipeGesture] = useState({
+    zone: null,
+    pointerId: null,
+    startY: 0,
+    offset: 0,
+    settling: null,
+  });
+  const isSwipeSettling = swipeGesture.settling !== null;
+  const isSwipeLocked = isComposerBusy || isSwipeSettling;
+  const isSheetDragging = swipeGesture.zone === 'sheet';
+  const isComposerDragging = swipeGesture.zone === 'composer';
+  const sheetDragOffset =
+    isSheetDragging || swipeGesture.settling === 'close-sheet'
+      ? Math.max(0, swipeGesture.offset)
+      : 0;
+  const composerDragOffset =
+    isComposerDragging && swipeGesture.offset > 0 ? swipeGesture.offset : 0;
+  const sheetStyle = {
+    transform: sheetDragOffset ? `translateY(${sheetDragOffset}px)` : undefined,
+  };
+  const composerShellStyle = {
+    transform: composerDragOffset ? `translateY(${composerDragOffset}px)` : undefined,
+  };
+
   useEffect(() => {
     if (typeof document === 'undefined') {
       return undefined;
@@ -629,6 +665,131 @@ function FeedCommentSheet({
     return () => document.removeEventListener('keydown', onKey);
   }, [onClose]);
 
+  useEffect(() => {
+    const listNode = commentListRef.current;
+
+    if (!listNode || !latestSubmittedCommentId || listNode.scrollTop <= 24) {
+      return;
+    }
+
+    listNode.scrollTo({
+      top: 0,
+      behavior: 'smooth',
+    });
+  }, [latestSubmittedCommentId]);
+
+  useEffect(
+    () => () => {
+      if (swipeTimeoutRef.current) {
+        clearTimeout(swipeTimeoutRef.current);
+        swipeTimeoutRef.current = null;
+      }
+    },
+    [],
+  );
+
+  useEffect(() => {
+    setSwipeGesture({
+      zone: null,
+      pointerId: null,
+      startY: 0,
+      offset: 0,
+      settling: null,
+    });
+  }, [composerState]);
+
+  function resetSwipeGesture() {
+    setSwipeGesture({
+      zone: null,
+      pointerId: null,
+      startY: 0,
+      offset: 0,
+      settling: null,
+    });
+  }
+
+  function startSwipe(zone, event) {
+    if (isSwipeLocked) {
+      return;
+    }
+
+    if (event.pointerType === 'mouse' && event.button !== 0) {
+      return;
+    }
+
+    event.currentTarget.setPointerCapture?.(event.pointerId);
+    setSwipeGesture({
+      zone,
+      pointerId: event.pointerId,
+      startY: event.clientY,
+      offset: 0,
+      settling: null,
+    });
+  }
+
+  function updateSwipe(event) {
+    if (swipeGesture.pointerId !== event.pointerId) {
+      return;
+    }
+
+    const deltaY = event.clientY - swipeGesture.startY;
+
+    if (deltaY <= 0) {
+      if (swipeGesture.offset !== 0) {
+        setSwipeGesture((current) => ({ ...current, offset: 0 }));
+      }
+      return;
+    }
+
+    event.preventDefault();
+    setSwipeGesture((current) => ({
+      ...current,
+      offset: Math.min(deltaY, COMMENT_SWIPE_CLOSE_OFFSET_PX),
+    }));
+  }
+
+  function completeComposerSheetClose(fromOffset = COMMENT_SWIPE_THRESHOLD_PX) {
+    setSwipeGesture({
+      zone: 'sheet',
+      pointerId: null,
+      startY: 0,
+      offset: Math.max(fromOffset, COMMENT_SWIPE_CLOSE_OFFSET_PX),
+      settling: 'close-sheet',
+    });
+
+    if (swipeTimeoutRef.current) {
+      clearTimeout(swipeTimeoutRef.current);
+    }
+
+    swipeTimeoutRef.current = window.setTimeout(() => {
+      swipeTimeoutRef.current = null;
+      onClose();
+    }, COMMENT_COMPOSER_CLOSE_MS);
+  }
+
+  function endSwipe(event) {
+    if (swipeGesture.pointerId !== event.pointerId) {
+      return;
+    }
+
+    event.currentTarget.releasePointerCapture?.(event.pointerId);
+
+    if (swipeGesture.zone === 'sheet' && swipeGesture.offset >= COMMENT_SWIPE_THRESHOLD_PX) {
+      completeComposerSheetClose(swipeGesture.offset);
+      return;
+    }
+
+    if (swipeGesture.zone === 'composer' && swipeGesture.offset >= COMMENT_SWIPE_THRESHOLD_PX) {
+      if (!isDisabled && isComposerVisible) {
+        onCloseComposer();
+      }
+      resetSwipeGesture();
+      return;
+    }
+
+    resetSwipeGesture();
+  }
+
   return createPortal(
     <div
       className="feed-sheet-backdrop"
@@ -640,105 +801,50 @@ function FeedCommentSheet({
       }}
     >
       <section
-        className="feed-sheet"
-        data-swipe-lock="true"
+        className={`feed-sheet ${isComposerVisible ? 'is-composer-open' : ''} ${
+          isSwipeSettling ? 'is-swipe-settling' : ''
+        }`}
         role="dialog"
         aria-modal="true"
         aria-labelledby="feed-comment-sheet-title"
+        style={sheetStyle}
       >
-        <div className="feed-sheet__handle" />
-        <div className="feed-sheet__header">
-          <div>
-            <p className="eyebrow">Kommentarer</p>
-            <h3 id="feed-comment-sheet-title">{entry.knotTitle}</h3>
-            <p className="feed-sheet__subtitle">{getCommentsCountLabel(comments.length)}</p>
-          </div>
-          <button type="button" className="feed-sheet__close" onClick={onClose}>
-            {'\u00D7'}
-          </button>
-        </div>
-
-        <div className="feed-sheet__composer">
-          <div className="feed-sheet__emoji-row">
-            {COMMENT_EMOJIS.map((emoji) => (
-              <button
-                key={emoji}
-                type="button"
-                className={`feed-emoji-button ${selectedEmoji === emoji ? 'is-active' : ''}`}
-                onClick={() => onSelectEmoji(emoji)}
-                disabled={isDisabled}
-              >
-                {emoji}
-              </button>
-            ))}
-          </div>
-
-          <div className="feed-sheet__tabs">
-            {PRESET_TAB_ORDER.map((tab) => (
-              <button
-                key={tab}
-                type="button"
-                className={`feed-sheet__tab ${selectedTab === tab ? 'is-active' : ''}`}
-                onClick={() => onSelectPresetTab(tab)}
-              >
-                {tab}
-              </button>
-            ))}
-          </div>
-
-          <div className="feed-sheet__preset-grid">
-            {COMMENT_PRESETS[selectedTab].map((preset) => (
-              <button
-                key={preset}
-                type="button"
-                className="feed-preset-button"
-                onClick={() => onSelectPreset(preset)}
-                disabled={isDisabled}
-              >
-                {preset}
-              </button>
-            ))}
-          </div>
-
-          <label className="field-group">
-            <span>Skriv kommentar</span>
-            <textarea
-              className="text-input text-input--area feed-sheet__textarea"
-              value={draftText}
-              onChange={(event) => onChangeDraft(event.target.value)}
-              placeholder="Skriv noe eller velg en av tekstene over."
-              disabled={isDisabled}
-              maxLength={180}
-            />
-          </label>
-
-          {disabledReason ? <p className="feed-sheet__disabled-note">{disabledReason}</p> : null}
-
-          <div className="feed-sheet__actions">
-            <button
-              type="button"
-              className="action-button action-button--ghost"
-              onClick={onClose}
-            >
-              Lukk
-            </button>
-            <button
-              type="button"
-              className="action-button"
-              onClick={onSubmit}
-              disabled={isDisabled || (!draftText.trim() && !selectedEmoji)}
-            >
-              Send lokalt
+        <div
+          className={`feed-sheet__dismiss-zone ${isSheetDragging ? 'is-dragging' : ''}`}
+          onPointerDown={(event) => startSwipe('sheet', event)}
+          onPointerMove={updateSwipe}
+          onPointerUp={endSwipe}
+          onPointerCancel={resetSwipeGesture}
+        >
+          <div className="feed-sheet__handle" />
+          <div className="feed-sheet__header">
+            <div>
+              <p className="eyebrow">Kommentarer</p>
+              <h3 id="feed-comment-sheet-title">{entry.knotTitle}</h3>
+              <p className="feed-sheet__subtitle">{getCommentsCountLabel(comments.length)}</p>
+            </div>
+            <button type="button" className="feed-sheet__close" onClick={onClose}>
+              {'\u00D7'}
             </button>
           </div>
         </div>
 
-        <div className="feed-sheet__comment-list">
+        <div ref={commentListRef} className="feed-sheet__comment-list">
           {comments.length ? (
             comments.map((comment) => (
-              <article key={comment.id} className="feed-sheet__comment">
+              <article
+                key={comment.id}
+                className={`feed-sheet__comment ${
+                  latestSubmittedCommentId === comment.id ? 'is-highlighted' : ''
+                }`}
+              >
                 <div className="feed-sheet__comment-top">
-                  <strong>{comment.author}</strong>
+                  <div className="feed-sheet__comment-top-copy">
+                    <strong>{comment.author}</strong>
+                    {latestSubmittedCommentId === comment.id ? (
+                      <span className="feed-sheet__comment-badge">Din kommentar</span>
+                    ) : null}
+                  </div>
                   <span>{comment.createdAtLabel}</span>
                 </div>
                 <p>{comment.text}</p>
@@ -750,6 +856,111 @@ function FeedCommentSheet({
               <p>Det du sender her vises med en gang i denne økten, men lagres ikke i backend.</p>
             </div>
           )}
+        </div>
+
+        <div
+          className={`feed-sheet__composer-shell ${isComposerDragging ? 'is-dragging' : ''}`}
+          style={composerShellStyle}
+          onPointerDownCapture={(event) => startSwipe('composer', event)}
+          onPointerMoveCapture={updateSwipe}
+          onPointerUpCapture={endSwipe}
+          onPointerCancelCapture={resetSwipeGesture}
+        >
+          <div className="feed-sheet__composer-controls">
+            <div className="feed-sheet__composer-gesture-zone">
+              <button
+                type="button"
+                className={`feed-sheet__composer-trigger ${isComposerOpen ? 'is-open' : ''}`}
+                onClick={onOpenComposer}
+                disabled={isDisabled || isComposerBusy || isSwipeSettling}
+                aria-expanded={isComposerVisible}
+              >
+                <span className="feed-sheet__composer-placeholder">Skriv en kommentar</span>
+                {!isComposerVisible ? (
+                  <span className="feed-sheet__composer-trigger-icon" aria-hidden="true">
+                    +
+                  </span>
+                ) : null}
+              </button>
+
+              {isComposerVisible ? (
+                <button
+                  type="button"
+                  className={`feed-sheet__composer-close ${isComposerClosing ? 'is-closing' : ''}`}
+                  onClick={onCloseComposer}
+                  disabled={isDisabled || isComposerBusy || isSwipeSettling}
+                  aria-label="Lukk skrivefelt"
+                  title="Lukk skrivefelt"
+                >
+                  {'\u2212'}
+                </button>
+              ) : null}
+            </div>
+          </div>
+
+          {disabledReason ? <p className="feed-sheet__disabled-note">{disabledReason}</p> : null}
+
+          <div
+            className={`feed-sheet__composer-stage ${
+              isComposerVisible ? 'is-open' : 'is-collapsed'
+            } ${isComposerClosing ? 'is-closing' : ''}`}
+            aria-hidden={!isComposerVisible}
+          >
+            {isComposerVisible ? (
+              <div className={`feed-sheet__composer ${isComposerClosing ? 'is-closing' : ''}`}>
+                <div className="feed-sheet__emoji-row">
+                  {COMMENT_EMOJIS.map((emoji) => (
+                    <button
+                      key={emoji}
+                      type="button"
+                      className={`feed-emoji-button ${
+                        pendingSendFeedback?.kind === 'emoji' && pendingSendFeedback.value === emoji
+                          ? 'is-pending'
+                          : ''
+                      }`}
+                      onClick={() => onSubmitEmoji(emoji)}
+                      disabled={isDisabled || isComposerBusy}
+                    >
+                      {emoji}
+                    </button>
+                  ))}
+                </div>
+
+                <div className="feed-sheet__tabs">
+                  {PRESET_TAB_ORDER.map((tab) => (
+                    <button
+                      key={tab}
+                      type="button"
+                      className={`feed-sheet__tab ${selectedTab === tab ? 'is-active' : ''}`}
+                      onClick={() => onSelectPresetTab(tab)}
+                      disabled={isDisabled || isComposerBusy}
+                    >
+                      {tab}
+                    </button>
+                  ))}
+                </div>
+
+                <div className="feed-sheet__preset-grid">
+                  {COMMENT_PRESETS[selectedTab].map((preset) => (
+                    <button
+                      key={preset}
+                      type="button"
+                      className={`feed-preset-button ${
+                        pendingSendFeedback?.kind === 'preset' &&
+                        pendingSendFeedback.value === preset
+                          ? 'is-pending'
+                          : ''
+                      }`}
+                      onClick={() => onSubmitPreset(preset)}
+                      disabled={isDisabled || isComposerBusy}
+                    >
+                      {preset}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            ) : null}
+          </div>
         </div>
       </section>
     </div>,
@@ -1031,13 +1242,16 @@ export function FeedPage({
   const [localCommentsBySubmission, setLocalCommentsBySubmission] = useState(
     () => getLocalCommentsSnapshot(),
   );
-  const [commentDraftBySubmission, setCommentDraftBySubmission] = useState({});
-  const [commentEmojiBySubmission, setCommentEmojiBySubmission] = useState({});
   const [commentTabBySubmission, setCommentTabBySubmission] = useState({});
+  const [commentComposerStateBySubmission, setCommentComposerStateBySubmission] = useState({});
+  const [commentSendFeedbackBySubmission, setCommentSendFeedbackBySubmission] = useState({});
+  const [latestSubmittedCommentIdBySubmission, setLatestSubmittedCommentIdBySubmission] =
+    useState({});
   const isDesktop = useDesktopFeed();
   const mobileReelRef = useRef(null);
   const cardRefMap = useRef(new Map());
   const pendingDeleteTimeoutRef = useRef(null);
+  const commentTimerRef = useRef(new Map());
 
   const activeFeedBan =
     currentUserActiveBans.find((ban) => ban.type === 'feed') ?? null;
@@ -1064,6 +1278,15 @@ export function FeedPage({
         clearTimeout(pendingDeleteTimeoutRef.current);
         pendingDeleteTimeoutRef.current = null;
       }
+
+      commentTimerRef.current.forEach((timers) => {
+        Object.values(timers).forEach((timerId) => {
+          if (timerId) {
+            clearTimeout(timerId);
+          }
+        });
+      });
+      commentTimerRef.current.clear();
     },
     [],
   );
@@ -1362,19 +1585,98 @@ export function FeedPage({
     }
   }
 
+  function clearCommentTimer(submissionId, timerKey) {
+    const timers = commentTimerRef.current.get(submissionId);
+
+    if (!timers?.[timerKey]) {
+      return;
+    }
+
+    clearTimeout(timers[timerKey]);
+    delete timers[timerKey];
+
+    if (!Object.keys(timers).length) {
+      commentTimerRef.current.delete(submissionId);
+    }
+  }
+
+  function scheduleCommentTimer(submissionId, timerKey, callback, delayMs) {
+    clearCommentTimer(submissionId, timerKey);
+
+    const timers = commentTimerRef.current.get(submissionId) ?? {};
+    timers[timerKey] = window.setTimeout(() => {
+      const activeTimers = commentTimerRef.current.get(submissionId);
+
+      if (activeTimers) {
+        delete activeTimers[timerKey];
+        if (!Object.keys(activeTimers).length) {
+          commentTimerRef.current.delete(submissionId);
+        } else {
+          commentTimerRef.current.set(submissionId, activeTimers);
+        }
+      }
+
+      callback();
+    }, delayMs);
+
+    commentTimerRef.current.set(submissionId, timers);
+  }
+
+  function clearCommentSendFeedback(submissionId) {
+    setCommentSendFeedbackBySubmission((current) => {
+      if (!current[submissionId]) {
+        return current;
+      }
+
+      const next = { ...current };
+      delete next[submissionId];
+      return next;
+    });
+  }
+
+  function setCommentComposerState(submissionId, nextState) {
+    setCommentComposerStateBySubmission((current) => ({
+      ...current,
+      [submissionId]: nextState,
+    }));
+  }
+
   function openCommentSheet(entry) {
     setCommentSheetEntry(entry);
+    if (entry?.submissionId) {
+      const submissionId = String(entry.submissionId);
+      clearCommentSendFeedback(submissionId);
+      clearCommentTimer(submissionId, 'sendFeedback');
+      clearCommentTimer(submissionId, 'closeComposer');
+      setCommentComposerState(submissionId, 'closed');
+    }
   }
 
   function closeCommentSheet() {
+    if (commentSheetEntry?.submissionId) {
+      const submissionId = String(commentSheetEntry.submissionId);
+      clearCommentSendFeedback(submissionId);
+      clearCommentTimer(submissionId, 'sendFeedback');
+      clearCommentTimer(submissionId, 'closeComposer');
+    }
     setCommentSheetEntry(null);
   }
 
-  function handleSelectCommentEmoji(submissionId, emoji) {
-    setCommentEmojiBySubmission((current) => ({
-      ...current,
-      [submissionId]: current[submissionId] === emoji ? '' : emoji,
-    }));
+  function handleOpenCommentComposer(submissionId) {
+    clearCommentTimer(submissionId, 'closeComposer');
+    setCommentComposerState(submissionId, 'open');
+  }
+
+  function handleCloseCommentComposer(submissionId) {
+    clearCommentSendFeedback(submissionId);
+    clearCommentTimer(submissionId, 'closeComposer');
+    setCommentComposerState(submissionId, 'closing');
+    scheduleCommentTimer(
+      submissionId,
+      'closeComposer',
+      () => setCommentComposerState(submissionId, 'closed'),
+      COMMENT_COMPOSER_CLOSE_MS,
+    );
   }
 
   function handleSelectCommentTab(submissionId, tab) {
@@ -1384,53 +1686,86 @@ export function FeedPage({
     }));
   }
 
-  function handleSelectCommentPreset(submissionId, preset) {
-    setCommentDraftBySubmission((current) => ({
-      ...current,
-      [submissionId]: preset,
-    }));
-  }
-
-  function handleCommentDraftChange(submissionId, value) {
-    setCommentDraftBySubmission((current) => ({
-      ...current,
-      [submissionId]: value,
-    }));
-  }
-
-  function handleSubmitLocalComment(entry) {
+  function handleSubmitLocalComment(entry, presetText = '', emojiOverride = '') {
     if (!entry?.submissionId || activeFeedBan) {
       return;
     }
 
     const submissionId = String(entry.submissionId);
-    const draftText = commentDraftBySubmission[submissionId] ?? '';
-    const selectedEmoji = commentEmojiBySubmission[submissionId] ?? '';
+    const composerState = commentComposerStateBySubmission[submissionId] ?? 'closed';
+    if (commentSendFeedbackBySubmission[submissionId] || composerState === 'closing') {
+      return;
+    }
+
+    const draftText = typeof presetText === 'string' ? presetText : '';
+    const selectedEmoji = COMMENT_EMOJIS.includes(emojiOverride) ? emojiOverride : '';
     const nextComment = createLocalComment(draftText, selectedEmoji);
 
     if (!nextComment.text) {
       return;
     }
 
-    setLocalCommentsBySubmission((current) => {
-      const nextComments = [nextComment, ...(current[submissionId] ?? [])];
-      const nextState = {
-        ...current,
-        [submissionId]: nextComments,
-      };
+    const nextFeedback =
+      selectedEmoji && !draftText
+        ? { kind: 'emoji', value: selectedEmoji }
+        : { kind: 'preset', value: draftText };
 
-      LOCAL_FEED_COMMENTS.set(submissionId, nextComments);
-      return nextState;
-    });
+    clearCommentTimer(submissionId, 'highlight');
+    clearCommentTimer(submissionId, 'sendFeedback');
+    clearCommentTimer(submissionId, 'closeComposer');
 
-    setCommentDraftBySubmission((current) => ({
+    setCommentSendFeedbackBySubmission((current) => ({
       ...current,
-      [submissionId]: '',
+      [submissionId]: nextFeedback,
     }));
-    setCommentEmojiBySubmission((current) => ({
-      ...current,
-      [submissionId]: '',
-    }));
+
+    scheduleCommentTimer(
+      submissionId,
+      'sendFeedback',
+      () => {
+        setLocalCommentsBySubmission((current) => {
+          const nextComments = [nextComment, ...(current[submissionId] ?? [])];
+          const nextState = {
+            ...current,
+            [submissionId]: nextComments,
+          };
+
+          LOCAL_FEED_COMMENTS.set(submissionId, nextComments);
+          return nextState;
+        });
+        setLatestSubmittedCommentIdBySubmission((current) => ({
+          ...current,
+          [submissionId]: nextComment.id,
+        }));
+        setCommentComposerState(submissionId, 'closing');
+
+        scheduleCommentTimer(
+          submissionId,
+          'closeComposer',
+          () => {
+            clearCommentSendFeedback(submissionId);
+            setCommentComposerState(submissionId, 'closed');
+          },
+          COMMENT_COMPOSER_CLOSE_MS,
+        );
+        scheduleCommentTimer(
+          submissionId,
+          'highlight',
+          () =>
+            setLatestSubmittedCommentIdBySubmission((current) => {
+              if (current[submissionId] !== nextComment.id) {
+                return current;
+              }
+
+              const next = { ...current };
+              delete next[submissionId];
+              return next;
+            }),
+          COMMENT_HIGHLIGHT_MS,
+        );
+      },
+      COMMENT_SEND_FEEDBACK_MS,
+    );
   }
 
   if (!feedEntries.length && !pendingDelete) {
@@ -1447,8 +1782,12 @@ export function FeedPage({
   const activeCommentSubmissionId = String(commentSheetEntry?.submissionId ?? '');
   const activeCommentTab =
     commentTabBySubmission[activeCommentSubmissionId] ?? PRESET_TAB_ORDER[0];
-  const activeCommentDraft = commentDraftBySubmission[activeCommentSubmissionId] ?? '';
-  const activeCommentEmoji = commentEmojiBySubmission[activeCommentSubmissionId] ?? '';
+  const activeCommentComposerState =
+    commentComposerStateBySubmission[activeCommentSubmissionId] ?? 'closed';
+  const activeCommentSendFeedback =
+    commentSendFeedbackBySubmission[activeCommentSubmissionId] ?? null;
+  const activeLatestSubmittedCommentId =
+    latestSubmittedCommentIdBySubmission[activeCommentSubmissionId] ?? '';
   const activeComments = commentSheetEntry?.submissionId
     ? localCommentsBySubmission[String(commentSheetEntry.submissionId)] ?? []
     : [];
@@ -1560,23 +1899,18 @@ export function FeedPage({
         <FeedCommentSheet
           entry={commentSheetEntry}
           comments={activeComments}
-          draftText={activeCommentDraft}
-          selectedEmoji={activeCommentEmoji}
           selectedTab={activeCommentTab}
+          composerState={activeCommentComposerState}
+          pendingSendFeedback={activeCommentSendFeedback}
+          latestSubmittedCommentId={activeLatestSubmittedCommentId}
           onClose={closeCommentSheet}
-          onSelectEmoji={(emoji) =>
-            handleSelectCommentEmoji(activeCommentSubmissionId, emoji)
-          }
+          onOpenComposer={() => handleOpenCommentComposer(activeCommentSubmissionId)}
+          onCloseComposer={() => handleCloseCommentComposer(activeCommentSubmissionId)}
           onSelectPresetTab={(tab) =>
             handleSelectCommentTab(activeCommentSubmissionId, tab)
           }
-          onSelectPreset={(preset) =>
-            handleSelectCommentPreset(activeCommentSubmissionId, preset)
-          }
-          onChangeDraft={(value) =>
-            handleCommentDraftChange(activeCommentSubmissionId, value)
-          }
-          onSubmit={() => handleSubmitLocalComment(commentSheetEntry)}
+          onSubmitEmoji={(emoji) => handleSubmitLocalComment(commentSheetEntry, '', emoji)}
+          onSubmitPreset={(preset) => handleSubmitLocalComment(commentSheetEntry, preset)}
           isDisabled={Boolean(activeFeedBan)}
           disabledReason={feedInteractionMessage}
         />
