@@ -244,6 +244,12 @@
   color: var(--background) !important;
 }
 
+.app-theme .bottom-swipe-nav__button.is-active::before {
+  background: var(--foreground) !important;
+  border-color: var(--foreground) !important;
+  box-shadow: none !important;
+}
+
 .app-theme .nav-button.is-active *,
 .app-theme .desktop-segmented-nav__button.is-active *,
 .app-theme .bottom-swipe-nav__button.is-active * {
@@ -258,6 +264,16 @@
 .app-theme .action-button--hero:hover {
   transform: translate(-1px, -1px);
   box-shadow: 4px 4px 0 0 var(--foreground) !important;
+}
+
+.app-theme .nav-button.is-active,
+.app-theme .desktop-segmented-nav__button.is-active,
+.app-theme .bottom-swipe-nav__button.is-active,
+.app-theme .nav-button.is-active:hover,
+.app-theme .desktop-segmented-nav__button.is-active:hover,
+.app-theme .bottom-swipe-nav__button.is-active:hover {
+  transform: none !important;
+  box-shadow: 2px 2px 0 0 color-mix(in srgb, var(--background) 76%, var(--foreground) 24%) !important;
 }
 
 .app-theme .action-button:active:not(:disabled),
@@ -373,13 +389,28 @@
 }
 
 .app-theme .bottom-swipe-nav__button {
-  min-height: 56px;
-  gap: 4px;
+  inline-size: min(100%, 52px);
+  block-size: 52px;
+  min-height: 52px;
+  padding: 0;
+  justify-self: center;
+  gap: 0;
 }
 
 .app-theme .bottom-swipe-nav__label {
   font-size: 0.68rem;
   letter-spacing: 0;
+}
+
+.app-theme .bottom-swipe-nav {
+  border-radius: 999px !important;
+  padding: 8px 10px;
+}
+
+.app-theme .bottom-swipe-nav__grid {
+  align-items: center;
+  justify-items: center;
+  gap: 6px;
 }
 
 .app-theme .desktop-segmented-nav__content,
@@ -1115,6 +1146,20 @@
   .app-theme .bottom-swipe-nav__button {
     min-height: 46px;
     font-size: 0.82rem;
+  }
+
+  .app-theme .bottom-swipe-nav {
+    padding: 7px 8px;
+  }
+
+  .app-theme .bottom-swipe-nav__grid {
+    gap: 4px;
+  }
+
+  .app-theme .bottom-swipe-nav__button {
+    inline-size: min(100%, 44px);
+    block-size: 44px;
+    min-height: 44px;
   }
 
   .app-theme .knots-page__hero {

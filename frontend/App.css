@@ -3342,40 +3342,65 @@
 
 .bottom-swipe-nav {
   position: fixed;
-  inset: auto 12px env(safe-area-inset-bottom, 0px) 12px;
-  padding: 10px;
-  border-radius: 26px;
+  inset: auto 12px calc(8px + env(safe-area-inset-bottom, 0px)) 12px;
+  padding: 8px 10px;
+  border-radius: 999px;
   background: rgba(255, 255, 255, 0.88);
   border: 1px solid rgba(15, 23, 42, 0.08);
-  box-shadow: 0 10px 32px rgba(15, 23, 42, 0.14);
+  box-shadow:
+    0 14px 36px rgba(15, 23, 42, 0.16),
+    inset 0 1px 0 rgba(255, 255, 255, 0.72);
   backdrop-filter: blur(12px);
   z-index: 40;
 }
 
 .bottom-swipe-nav__grid {
   display: grid;
-  gap: 8px;
+  align-items: center;
+  justify-items: center;
+  gap: 6px;
 }
 
 .bottom-swipe-nav__button {
+  position: relative;
   display: grid;
-  gap: 4px;
-  justify-items: center;
-  align-content: center;
-  min-height: 60px;
+  place-items: center;
+  inline-size: min(100%, 52px);
+  block-size: 52px;
+  min-height: 52px;
+  padding: 0;
   border: 0;
-  border-radius: 18px;
-  background: transparent;
-  color: var(--text-muted);
+  border-radius: 999px;
+  background: transparent !important;
+  color: var(--text-soft) !important;
   font: inherit;
   font-weight: 700;
   cursor: pointer;
-  opacity: 0.66;
+  justify-self: center;
+  opacity: 1;
+  overflow: hidden;
   transition:
     transform 0.18s ease,
     background-color 0.18s ease,
     color 0.18s ease,
+    box-shadow 0.18s ease,
     opacity 0.18s ease;
+}
+
+.bottom-swipe-nav__button::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: rgba(255, 255, 255, 0.72);
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.72);
+  transform: scale(0.96);
+  transition:
+    transform 0.18s ease,
+    background-color 0.18s ease,
+    border-color 0.18s ease,
+    box-shadow 0.18s ease;
 }
 
 .bottom-swipe-nav__button:active {
@@ -3383,14 +3408,26 @@
 }
 
 .bottom-swipe-nav__button.is-active {
-  background: var(--primary-soft);
-  color: var(--primary);
+  background: transparent !important;
+  color: var(--primary) !important;
   opacity: 1;
-  transform: scale(1.06);
+  transform: none;
+  box-shadow: none;
+}
+
+.bottom-swipe-nav__button.is-active::before {
+  background: var(--primary-soft);
+  border-color: rgba(15, 23, 42, 0.12);
+  box-shadow: none;
+  transform: scale(1);
 }
 
 .bottom-swipe-nav__icon {
-  font-size: 1.2rem;
+  position: relative;
+  z-index: 1;
+  display: grid;
+  place-items: center;
+  font-size: 1.18rem;
   line-height: 1;
 }
 
@@ -3715,16 +3752,17 @@
 
   .bottom-swipe-nav {
     inset-inline: 8px;
-    padding: 8px;
+    padding: 7px 8px;
   }
 
   .bottom-swipe-nav__grid {
-    gap: 6px;
+    gap: 4px;
   }
 
   .bottom-swipe-nav__button {
-    min-height: 58px;
-    border-radius: 16px;
+    inline-size: min(100%, 46px);
+    block-size: 46px;
+    min-height: 46px;
   }
 
   .bottom-swipe-nav__label {
@@ -4375,6 +4413,23 @@
   background: #fff !important;
   border: 1px solid var(--border) !important;
   box-shadow: var(--shadow-soft) !important;
+}
+
+.bottom-swipe-nav {
+  border-radius: 999px !important;
+}
+
+.bottom-swipe-nav__button {
+  border-color: transparent !important;
+  background: transparent !important;
+}
+
+.bottom-swipe-nav__button:hover {
+  background: transparent !important;
+}
+
+.bottom-swipe-nav__button.is-active {
+  background: transparent !important;
 }
 
 .text-input,
@@ -5067,18 +5122,18 @@ textarea.text-input:focus {
 
   .bottom-swipe-nav {
     inset: auto 8px env(safe-area-inset-bottom, 0px) 8px;
-    padding: 8px;
-    border-radius: 20px;
+    padding: 7px 8px;
+    border-radius: 999px;
   }
 
   .bottom-swipe-nav__grid {
-    gap: 6px;
+    gap: 4px;
   }
 
   .bottom-swipe-nav__button {
-    min-height: 46px;
-    border-radius: 14px;
-    gap: 3px;
+    inline-size: min(100%, 44px);
+    block-size: 44px;
+    min-height: 44px;
   }
 
   .bottom-swipe-nav__label {
