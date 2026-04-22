@@ -120,10 +120,6 @@ export function DashboardPage({
         }`
       : 'Du er øverst';
 
-  const dailyLabel =
-    dailyKnot?.status === 'Sendt inn' || dailyKnot?.status === 'Godkjent'
-      ? 'Se knuten'
-      : 'Ta knuten';
   const weeklyTopPost = dashboard.weeklyTopPost ?? null;
   const weeklyPostMinRatings =
     Number.isFinite(Number(dashboard.weeklyPostMinRatings)) &&
@@ -195,7 +191,7 @@ export function DashboardPage({
       {/* ══ 2. DAGENS KNUTE — kompakt stripe ═════════════════════════════════ */}
       {dailyKnot ? (
         <section className="db-daily-strip">
-          <span className="db-daily-strip__icon" aria-hidden="true">🌟</span>
+          <span className="db-daily-strip__icon" aria-hidden="true">☀️</span>
           <div className="db-daily-strip__text">
             <span className="db-daily-strip__eyebrow">Dagens knute</span>
             <span className="db-daily-strip__title">{dailyKnot.title}</span>
@@ -205,13 +201,38 @@ export function DashboardPage({
             type="button"
             className="action-button action-button--compact db-daily-strip__btn"
             onClick={() => onOpenDailyKnot(dailyKnot.id)}
+            aria-label={`Åpne dagens knute: ${dailyKnot.title}`}
           >
-            {dailyLabel}
+            Åpne knute
           </button>
         </section>
       ) : null}
 
       {/* ══ 3. TOPP 3 PÅ SKOLEN ══════════════════════════════════════════════ */}
+      {schoolTopThree.length > 0 ? (
+        <section className="db-top3">
+          <h3 className="db-section-heading">Topp 3 på skolen</h3>
+          <div className="db-top3__list">
+            {schoolTopThree.map((leader, i) => (
+              <button
+                key={leader.id}
+                type="button"
+                className={`db-top3-row${leader.id === currentUserId ? ' db-top3-row--self' : ''}`}
+                onClick={() => onOpenProfile(leader.id)}
+              >
+                <span className="db-top3-row__medal">{MEDALS[i]}</span>
+                <MiniAvatar person={leader} />
+                <div className="db-top3-row__info">
+                  <strong>{leader.russName ?? leader.name}</strong>
+                  <span>{leader.className ?? leader.group ?? 'Russ'}</span>
+                </div>
+                <span className="db-top3-row__pts">{leader.points}p</span>
+              </button>
+            ))}
+          </div>
+        </section>
+      ) : null}
+
       <section
         className={`db-weekly-post ${weeklyTopPost ? '' : 'db-weekly-post--empty'}`}
         aria-live="polite"
@@ -281,59 +302,7 @@ export function DashboardPage({
         )}
       </section>
 
-      {schoolTopThree.length > 0 ? (
-        <section className="db-top3">
-          <h3 className="db-section-heading">Topp 3 på skolen</h3>
-          <div className="db-top3__list">
-            {schoolTopThree.map((leader, i) => (
-              <button
-                key={leader.id}
-                type="button"
-                className={`db-top3-row${leader.id === currentUserId ? ' db-top3-row--self' : ''}`}
-                onClick={() => onOpenProfile(leader.id)}
-              >
-                <span className="db-top3-row__medal">{MEDALS[i]}</span>
-                <MiniAvatar person={leader} />
-                <div className="db-top3-row__info">
-                  <strong>{leader.russName ?? leader.name}</strong>
-                  <span>{leader.className ?? leader.group ?? 'Russ'}</span>
-                </div>
-                <span className="db-top3-row__pts">{leader.points}p</span>
-              </button>
-            ))}
-          </div>
-        </section>
-      ) : null}
-
       {/* ══ 4. RIVALER ═══════════════════════════════════════════════════════ */}
-      {dashboard.rivals.length > 0 ? (
-        <section className="db-rivals">
-          <h3 className="db-section-heading">Rundt deg på lista</h3>
-          <div className="db-rivals__list">
-            {dashboard.rivals.map((rival) => (
-              <div key={rival.id} className="db-rival-item">
-                <MiniAvatar person={rival} />
-                <div className="db-rival-item__info">
-                  <strong>{rival.russName ?? rival.name}</strong>
-                  <span>
-                    {rival.pointsGap > 0
-                      ? `${rival.pointsGap}p foran`
-                      : `${Math.abs(rival.pointsGap)}p bak`}
-                  </span>
-                </div>
-                <button
-                  type="button"
-                  className="action-button action-button--ghost action-button--compact"
-                  onClick={() => onOpenProfile(rival.id)}
-                >
-                  Profil
-                </button>
-              </div>
-            ))}
-          </div>
-        </section>
-      ) : null}
-
       {/* ══ 5. ANBEFALT KNUTE ════════════════════════════════════════════════ */}
       {dashboard.recommendedKnot ? (
         <section className="db-recommend">

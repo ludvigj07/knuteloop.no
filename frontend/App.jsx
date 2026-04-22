@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import './App.css';
 import './styles/blaruss-refresh.css';
 import { SwipeTabsShell } from './components/SwipeTabsShell.jsx';
@@ -139,6 +139,8 @@ function App() {
   const [appError, setAppError] = useState('');
   const [isLoadingApp, setIsLoadingApp] = useState(true);
   const [isLoggingIn, setIsLoggingIn] = useState(false);
+  const [knuterSettledToken, setKnuterSettledToken] = useState(0);
+  const skipNextPageTopResetRef = useRef(false);
 
   const currentUser = appData?.currentUser ?? null;
   const knots = appData?.knots ?? EMPTY_ARRAY;
@@ -249,7 +251,40 @@ function App() {
     thisDayTotal: duelAvailability.thisDayTotal ?? 0,
     activeCount: duels.filter((duel) => duel.status === 'active').length,
   };
-  const dashboardData =
+  const weeklyVideoTestPost = useMemo(() => {
+    const videoEntry = activityLog.find(
+      (entry) =>
+        entry?.submissionId &&
+        entry?.mediaType === 'video' &&
+        Boolean(entry?.videoPreviewUrl),
+    );
+
+    if (!videoEntry) {
+      return null;
+    }
+
+    return {
+      id: videoEntry.id ?? `submission-${videoEntry.submissionId}`,
+      submissionId: videoEntry.submissionId,
+      studentId: videoEntry.isAnonymous ? null : (videoEntry.studentId ?? null),
+      studentName: videoEntry.studentName ?? 'Anonym',
+      studentPhotoUrl: videoEntry.studentPhotoUrl ?? '',
+      studentIcon: videoEntry.studentIcon ?? '',
+      isAnonymous: videoEntry.isAnonymous === true,
+      knotTitle: videoEntry.knotTitle ?? 'Video-post',
+      note: videoEntry.note ?? '',
+      points: Number(videoEntry.points ?? 0),
+      completedAt: videoEntry.completedAt ?? 'Nylig',
+      ratingAverage: Number(videoEntry.ratingAverage ?? 0),
+      ratingCount: Number(videoEntry.ratingCount ?? 0),
+      weeklyScore: Number(videoEntry.ratingAverage ?? 0),
+      mediaType: 'video',
+      videoPreviewUrl: videoEntry.videoPreviewUrl ?? '',
+      videoName: videoEntry.videoName ?? '',
+    };
+  }, [activityLog]);
+
+  const baseDashboardData =
     currentUser && currentLeader
       ? buildDashboardData(
           currentUser.leaderId,
@@ -271,6 +306,12 @@ function App() {
           weeklyPostMinRatings: 10,
           currentLeader: null,
         };
+  const dashboardData = weeklyVideoTestPost
+    ? {
+        ...baseDashboardData,
+        weeklyTopPost: weeklyVideoTestPost,
+      }
+    : baseDashboardData;
 
   const approvedKnots = knots.filter((knot) => knot.status === 'Godkjent').length;
   const pendingSubmissions = submissions.filter(
@@ -360,6 +401,11 @@ function App() {
       return;
     }
 
+    if (skipNextPageTopResetRef.current) {
+      skipNextPageTopResetRef.current = false;
+      return;
+    }
+
     window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
   }, [activePage]);
 
@@ -435,10 +481,17 @@ function App() {
   }
 
   function handleOpenDailyKnot(knotId = null) {
+    skipNextPageTopResetRef.current = true;
     setFocusedKnotId(knotId);
     setFocusedKnotScrollRequest((current) => current + 1);
     setActivePage('knuter');
   }
+
+  const handlePageSettled = useCallback((pageId) => {
+    if (pageId === 'knuter') {
+      setKnuterSettledToken((current) => current + 1);
+    }
+  }, []);
 
   async function handleLogin() {
     if (!loginEmail.trim() || !loginPassword) {
@@ -731,66 +784,51 @@ function App() {
   }
 
   function renderHeroPanel() {
+    const leaderAbove = displayLeaders.find(
+      (leader) => leader.rank === (currentLeader?.rank ?? 0) - 1,
+    );
+    const pointsBehind = leaderAbove
+      ? Math.max((leaderAbove.points ?? 0) - (currentLeader?.points ?? 0), 0)
+      : 0;
+    const leaderAboveName = leaderAbove?.russName ?? leaderAbove?.name ?? 'ukjent';
+
     return (
       <header className="hero-panel hero-panel--page">
         <div className="hero-panel__content">
-          <p className="eyebrow">Live nå</p>
-          <div className="hero-chip-row">
-            <span className="hero-chip">
-              {currentProfile?.leaderboardTitle ?? 'Klar for oversikten'}
-            </span>
-            <span className="hero-chip hero-chip--accent">
-              Plass #{currentLeader?.rank ?? '-'}
-            </span>
+          <div className="hero-panel__topbar">
+            <div className="hero-panel__utility">
+              <button
+                type="button"
+                className="hero-icon-button"
+                onClick={handleLogout}
+                aria-label="Innstillinger og logg ut"
+                title="Innstillinger"
+              >
+                ⚙
+              </button>
+            </div>
           </div>
-          <h1>Russeknuteportalen</h1>
-          <p className="hero-copy">
-            {currentProfile?.russName ?? currentUser?.name}, dagens knute er klar,
-            og fellesskapet deler nye øyeblikk gjennom hele dagen.
+          <h1>
+            Heisann{' '}
+            <span className="hero-name-accent">
+              {currentProfile?.russName ?? currentUser?.name ?? 'russ'}
+            </span>
+          </h1>
+          <p className="hero-copy hero-copy--status font-display">
+            {leaderAbove ? (
+              <>
+                Du er{' '}
+                <span className="hero-copy__points">
+                  <span className="hero-copy__points-value">{pointsBehind}</span> poeng
+                </span>{' '}
+                bak {leaderAboveName}.
+              </>
+            ) : (
+              'Du leder topplisten.'
+            )}
           </p>
-          <div className="hero-actions">
-            <button
-              type="button"
-              className="action-button hero-action-button"
-              onClick={() => handleOpenDailyKnot(dailyKnot?.id ?? null)}
-            >
-              Ta dagens knute
-            </button>
-            <button
-              type="button"
-              className="action-button action-button--ghost hero-action-button"
-              onClick={() => handleChangePage('leaderboard')}
-            >
-              Se oversikten
-            </button>
-            <button
-              type="button"
-              className="action-button action-button--ghost hero-action-button"
-              onClick={handleLogout}
-            >
-              Logg ut
-            </button>
-          </div>
         </div>
 
-        <div className="hero-meta">
-          <div className="hero-stat">
-            <span>Plassering</span>
-            <strong>#{currentLeader?.rank ?? '-'}</strong>
-          </div>
-          <div className="hero-stat">
-            <span>Poeng</span>
-            <strong>{currentLeader?.points ?? 0}</strong>
-          </div>
-          <div className="hero-stat">
-            <span>Godkjent</span>
-            <strong>{approvedKnots}</strong>
-          </div>
-          <div className="hero-stat">
-            <span>Venter</span>
-            <strong>{pendingSubmissions}</strong>
-          </div>
-        </div>
       </header>
     );
   }
@@ -813,6 +851,7 @@ function App() {
       duels,
       focusedKnotId,
       focusedKnotScrollRequest,
+      knuterSettledToken,
       bans,
       knots,
       leaders: displayLeaders,
@@ -968,6 +1007,7 @@ function App() {
           pages={visiblePages}
           activePageId={currentPage.id}
           onChangePage={handleChangePage}
+          onPageSettled={handlePageSettled}
           renderPage={renderPageContent}
           hideNavigation={false}
           mobileOnlySwipe

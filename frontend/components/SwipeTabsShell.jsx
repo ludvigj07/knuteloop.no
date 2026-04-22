@@ -91,6 +91,7 @@ export function SwipeTabsShell({
   pages,
   activePageId,
   onChangePage,
+  onPageSettled,
   renderPage,
   mobileOnlySwipe = true,
   hideNavigation = false,
@@ -211,6 +212,19 @@ export function SwipeTabsShell({
       window.removeEventListener('blur', handleWindowBlur);
     };
   }, [useSwipeNav]);
+
+  useEffect(() => {
+    if (typeof onPageSettled !== 'function') {
+      return undefined;
+    }
+
+    const settleDelay = useSwipeNav ? 220 : 0;
+    const timer = window.setTimeout(() => {
+      onPageSettled(activePageId);
+    }, settleDelay);
+
+    return () => window.clearTimeout(timer);
+  }, [activePageId, onPageSettled, useSwipeNav]);
 
   function goToPage(pageId) {
     resetPointerState();

@@ -624,6 +624,7 @@ function SubmissionFormContent({
 function KnotRow({
   knot,
   isDetailOpen,
+  isHighlighted,
   isFormOpen,
   isMobile,
   canSubmit,
@@ -656,7 +657,7 @@ function KnotRow({
   return (
     <div
       ref={focusedRef}
-      className={`knot-row${isCompletedKnot ? ' is-completed' : ''}${isDetailOpen ? ' is-detail-open' : ''}${isFormOpen ? ' is-form-open' : ''}`}
+      className={`knot-row${isCompletedKnot ? ' is-completed' : ''}${isHighlighted ? ' is-highlighted' : ''}${isDetailOpen ? ' is-detail-open' : ''}${isFormOpen ? ' is-form-open' : ''}`}
       data-status={getStatusKey(knot.status)}
     >
       <div className="knot-row__header">
@@ -673,7 +674,21 @@ function KnotRow({
           </div>
           <div className="knot-row__sub">
             <span>{statusLabel}</span>
-            {knot.difficulty ? <span>{knot.difficulty}</span> : null}
+            {knot.difficulty ? (
+              <span className="knot-row__difficulty-inline">
+                {knot.difficulty}
+                {isHighlighted ? (
+                  <span className="knot-row__highlight-badge knot-row__highlight-badge--inline is-highlighted">
+                    Dagens knute
+                  </span>
+                ) : null}
+              </span>
+            ) : null}
+            {!knot.difficulty && isHighlighted ? (
+              <span className="knot-row__highlight-badge knot-row__highlight-badge--inline is-highlighted">
+                Dagens knute
+              </span>
+            ) : null}
             {knot.safety === 'review' ? <span>Krever sjekk</span> : null}
           </div>
         </div>
@@ -942,6 +957,7 @@ export function KnotsPage({
   currentUserStreak = null,
   focusedKnotId,
   focusedKnotScrollRequest = 0,
+  knuterSettledToken = 0,
   isPageActive = true,
   knotFeedbackMessages = {},
   knots,
@@ -964,6 +980,7 @@ export function KnotsPage({
   const [feedbackMessage, setFeedbackMessage] = useState('');
   const [isRareFeedbackActive, setIsRareFeedbackActive] = useState(false);
   const [drafts, setDrafts] = useState({});
+  const [highlightedKnotId, setHighlightedKnotId] = useState(null);
   const [isMobileViewport, setIsMobileViewport] = useState(() => {
     if (typeof window === 'undefined') return false;
     return window.innerWidth <= MOBILE_BREAKPOINT;
@@ -972,7 +989,9 @@ export function KnotsPage({
 
   const draftsRef = useRef(drafts);
   const focusedCardRef = useRef(null);
+  const handledFocusOpenRequestRef = useRef(0);
   const handledScrollRequestRef = useRef(0);
+  const highlightTimeoutRef = useRef(null);
 
   // ── Derived ──────────────────────────────────────────────────────────────
 
@@ -1093,18 +1112,48 @@ export function KnotsPage({
   }, [feedbackMessage, isRareFeedbackActive]);
 
   useEffect(() => {
-    if (!focusedKnotId || !isPageActive) return;
+    if (
+      !focusedKnotId ||
+      !isPageActive ||
+      focusedKnotScrollRequest <= 0 ||
+      handledFocusOpenRequestRef.current === focusedKnotScrollRequest
+    ) {
+      return;
+    }
+
     const nextFocused = knots.find((k) => k.id === focusedKnotId);
     if (!nextFocused) return;
+
+    handledFocusOpenRequestRef.current = focusedKnotScrollRequest;
     const t = window.setTimeout(() => {
       setActiveFolder(resolveKnotFolder(nextFocused) || ALL_KNOTS_FOLDER_ID);
       setSearchQuery('');
       setStatusFilter('Alle');
       setSortKey('standard');
-      setOpenDetailId(null);
+      setOpenFormId(null);
+      setSheetKnotId(null);
+      setOpenDetailId(nextFocused.id);
+      setHighlightedKnotId(nextFocused.id);
+      if (highlightTimeoutRef.current) {
+        window.clearTimeout(highlightTimeoutRef.current);
+      }
+      highlightTimeoutRef.current = window.setTimeout(() => {
+        setHighlightedKnotId((current) =>
+          current === nextFocused.id ? null : current,
+        );
+      }, 4000);
     }, 0);
     return () => window.clearTimeout(t);
-  }, [focusedKnotId, isPageActive, knots]);
+  }, [focusedKnotId, focusedKnotScrollRequest, isPageActive, knots]);
+
+  useEffect(
+    () => () => {
+      if (highlightTimeoutRef.current) {
+        window.clearTimeout(highlightTimeoutRef.current);
+      }
+    },
+    [],
+  );
 
   useEffect(
     () => () => {
@@ -1119,8 +1168,8 @@ export function KnotsPage({
   useEffect(() => {
     if (
       !focusedKnotId ||
-      !focusedCardRef.current ||
       !isPageActive ||
+      (isMobileViewport && knuterSettledToken < focusedKnotScrollRequest) ||
       focusedKnotScrollRequest <= 0 ||
       handledScrollRequestRef.current === focusedKnotScrollRequest
     ) {
@@ -1128,17 +1177,127 @@ export function KnotsPage({
     }
 
     handledScrollRequestRef.current = focusedKnotScrollRequest;
-    const delay = isMobileViewport ? 280 : 0;
-    const t = window.setTimeout(() => {
-      focusedCardRef.current?.scrollIntoView({
-        behavior: 'smooth',
-        block: isMobileViewport ? 'center' : 'start',
-      });
-    }, delay);
-    return () => window.clearTimeout(t);
+    let cancelled = false;
+    let attempts = 0;
+    let settledPassScheduled = false;
+    const maxAttempts = isMobileViewport ? 8 : 4;
+    const retryDelay = 90;
+    const initialDelay = isMobileViewport ? 90 : 0;
+    const timerIds = [];
+
+    function scrollFocusedCard() {
+      const element = focusedCardRef.current;
+      if (!element) return false;
+
+      const rect = element.getBoundingClientRect();
+      const viewportHeight =
+        typeof window !== 'undefined' ? window.innerHeight : 0;
+      const topOffset = isMobileViewport
+        ? Math.max(Math.round(viewportHeight * 0.27), 104)
+        : 96;
+      const isiOSWebKit =
+        typeof navigator !== 'undefined' &&
+        /iP(hone|od|ad)/i.test(navigator.userAgent ?? '');
+      const scrollBehavior = isiOSWebKit ? 'auto' : 'smooth';
+
+      if (typeof window === 'undefined') {
+        element.scrollIntoView({
+          behavior: scrollBehavior,
+          block: isMobileViewport ? 'center' : 'start',
+        });
+        return true;
+      }
+
+      const currentScrollY = window.scrollY;
+      const windowTargetTop = Math.max(
+        Math.round(currentScrollY + rect.top - topOffset),
+        0,
+      );
+
+      let scrollContainer = element.parentElement;
+      while (scrollContainer && scrollContainer !== document.body) {
+        const style = window.getComputedStyle(scrollContainer);
+        const canScrollY = /(auto|scroll|overlay)/.test(style.overflowY);
+        if (canScrollY && scrollContainer.scrollHeight > scrollContainer.clientHeight) {
+          break;
+        }
+        scrollContainer = scrollContainer.parentElement;
+      }
+
+      if (scrollContainer && scrollContainer !== document.body) {
+        const containerRect = scrollContainer.getBoundingClientRect();
+        const targetWithinContainer = Math.max(
+            Math.round(
+              scrollContainer.scrollTop +
+                (rect.top - containerRect.top) -
+                (isMobileViewport ? 40 : 16),
+            ),
+            0,
+          );
+
+        scrollContainer.scrollTo({
+          top: targetWithinContainer,
+          left: 0,
+          behavior: scrollBehavior,
+        });
+
+        if (isiOSWebKit) {
+          scrollContainer.scrollTop = targetWithinContainer;
+        }
+      } else {
+        window.scrollTo({
+          top: windowTargetTop,
+          left: 0,
+          behavior: scrollBehavior,
+        });
+
+        if (isiOSWebKit) {
+          const scrollingElement =
+            document.scrollingElement ?? document.documentElement;
+          scrollingElement.scrollTop = windowTargetTop;
+          document.documentElement.scrollTop = windowTargetTop;
+          document.body.scrollTop = windowTargetTop;
+        }
+      }
+
+      return true;
+    }
+
+    function tryScroll() {
+      if (cancelled) return;
+
+      const didScroll = scrollFocusedCard();
+      if (didScroll) {
+        if (!settledPassScheduled) {
+          settledPassScheduled = true;
+          const settleTimer = window.setTimeout(() => {
+            if (!cancelled) {
+              scrollFocusedCard();
+            }
+          }, isMobileViewport ? 260 : 100);
+          timerIds.push(settleTimer);
+        }
+        return;
+      }
+
+      attempts += 1;
+      if (attempts >= maxAttempts) return;
+
+      const retryTimer = window.setTimeout(tryScroll, retryDelay);
+      timerIds.push(retryTimer);
+    }
+
+    const initialTimer = window.setTimeout(tryScroll, initialDelay);
+    timerIds.push(initialTimer);
+
+    return () => {
+      cancelled = true;
+      timerIds.forEach((timerId) => window.clearTimeout(timerId));
+    };
   }, [
     focusedKnotId,
     focusedKnotScrollRequest,
+    knuterSettledToken,
     isMobileViewport,
     isPageActive,
     visibleKnots.length,
@@ -1591,6 +1750,7 @@ export function KnotsPage({
                 key={knot.id}
                 knot={knot}
                 isDetailOpen={openDetailId === knot.id}
+                isHighlighted={highlightedKnotId === knot.id}
                 isFormOpen={openFormId === knot.id}
                 isMobile={isMobileViewport}
                 canSubmit={canSubmit}

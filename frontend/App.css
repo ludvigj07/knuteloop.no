@@ -6069,6 +6069,7 @@ textarea.text-input:focus {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
+  position: relative;
   gap: var(--space-2);
   min-height: 64px;
   padding: 0 var(--space-3);
@@ -6132,6 +6133,13 @@ textarea.text-input:focus {
   gap: var(--space-1);
   flex-wrap: wrap;
   line-height: 1.4;
+}
+
+.knot-row__difficulty-inline {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
 }
 
 .knot-row__cta {
@@ -6246,10 +6254,91 @@ textarea.text-input:focus {
 
 /* Detail accordion */
 
+@keyframes knot-detail-reveal {
+  from {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes knot-row-highlight-fade {
+  0% {
+    background: rgba(86, 136, 255, 0.2);
+  }
+  70% {
+    background: rgba(86, 136, 255, 0.12);
+  }
+  100% {
+    background: transparent;
+  }
+}
+
+@keyframes knot-detail-badge-fade {
+  from {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  to {
+    opacity: 0;
+    transform: translateY(-2px);
+  }
+}
+
 .knot-row__detail {
   padding: var(--space-2) var(--space-3) var(--space-3);
   border-top: 1px solid var(--line-color);
   background: var(--surface);
+  transform-origin: top center;
+  animation: knot-detail-reveal 220ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.knot-row.is-highlighted .knot-row__header {
+  animation: knot-row-highlight-fade 4000ms ease forwards;
+}
+
+.knot-row__highlight-badge {
+  display: inline-flex;
+  align-items: center;
+  min-height: 22px;
+  padding: 0 8px;
+  border-radius: 999px;
+  background: rgba(86, 136, 255, 0.14);
+  color: #2349a4;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  text-transform: none;
+  white-space: nowrap;
+  max-width: min(46vw, 180px);
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.knot-row__highlight-badge--inline {
+  min-height: 18px;
+  padding: 0 7px;
+  font-size: 0.66rem;
+  line-height: 1.1;
+  max-width: min(42vw, 150px);
+}
+
+.knot-row__highlight-badge.is-highlighted {
+  animation: knot-detail-badge-fade 4000ms ease forwards;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .knot-row__detail {
+    animation: none;
+  }
+
+  .knot-row.is-highlighted .knot-row__header,
+  .knot-row__highlight-badge.is-highlighted {
+    animation: none;
+  }
 }
 
 .knot-row__desc {
