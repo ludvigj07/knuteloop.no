@@ -180,6 +180,42 @@ export async function handleLogout(request, response) {
   sendJson(response, 200, { ok: true });
 }
 
+export async function handleChangeOwnPassword(request, response) {
+  const user = getAuthedUserFromRequest(request);
+
+  if (!user) {
+    sendJson(response, 401, { error: 'Ikke logget inn.' });
+    return;
+  }
+
+  const body = await readJsonBody(request);
+  const currentPassword =
+    typeof body.currentPassword === 'string' ? body.currentPassword : '';
+  const newPassword = typeof body.newPassword === 'string' ? body.newPassword : '';
+
+  if (!currentPassword || !newPassword) {
+    sendJson(response, 400, { error: 'Fyll inn nåværende og nytt passord.' });
+    return;
+  }
+
+  const currentPasswordMatches = await verifySecret(currentPassword, user.password_hash);
+  if (!currentPasswordMatches) {
+    sendJson(response, 401, { error: 'Nåværende passord er feil.' });
+    return;
+  }
+
+  const passwordError = validatePasswordStrength(newPassword);
+  if (passwordError) {
+    sendJson(response, 400, { error: passwordError });
+    return;
+  }
+
+  const nextHash = await hashSecret(newPassword);
+  setUserPassword(user.id, nextHash);
+  deleteSessionsForUser(user.id);
+  sendJson(response, 200, { ok: true });
+}
+
 export async function handleInviteVerify(request, response) {
   const body = await readJsonBody(request);
   const email = normalizeEmail(body.email);

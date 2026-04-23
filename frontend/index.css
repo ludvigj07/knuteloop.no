@@ -1,80 +1,91 @@
-﻿:root {
-  /* ── Primary action color (blue default — overridden per theme) ── */
-  --primary: #ff63EB;
-  --primary-strong: #1D4ED8;
-  --primary-soft: rgba(37, 99, 235, 0.12);
+@import url('https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@700;800&family=Inter:wght@400;500;600&display=swap');
+
+:root {
+  --background-hsl: 48 60% 96%;
+  --foreground-hsl: 220 50% 12%;
+  --primary-hsl: 222 75% 28%;
+  --primary-foreground-hsl: 48 60% 96%;
+  --accent-hsl: 46 100% 58%;
+  --accent-foreground-hsl: 220 50% 12%;
+  --card-hsl: 0 0% 100%;
+  --secondary-hsl: 48 40% 92%;
+  --muted-hsl: 45 30% 93%;
+  --muted-foreground-hsl: 220 15% 40%;
+  --border-hsl: 220 25% 14%;
+
+  --background: hsl(var(--background-hsl));
+  --foreground: hsl(var(--foreground-hsl));
+  --primary: hsl(var(--primary-hsl));
+  --primary-foreground: hsl(var(--primary-foreground-hsl));
+  --accent: hsl(var(--accent-hsl));
+  --accent-foreground: hsl(var(--accent-foreground-hsl));
+  --card: hsl(var(--card-hsl));
+  --secondary: hsl(var(--secondary-hsl));
+  --muted: hsl(var(--muted-hsl));
+  --muted-foreground: hsl(var(--muted-foreground-hsl));
+  --border: hsl(var(--border-hsl));
+
+  --bg: var(--background);
+  --surface-0: var(--background);
+  --surface-1: var(--card);
+  --surface-2: var(--card);
+  --surface-3: var(--secondary);
+  --surface: var(--card);
+  --surface-elevated: var(--card);
+  --surface-soft: var(--secondary);
+  --surface-media: var(--muted);
+  --feature-soft: color-mix(in srgb, var(--secondary) 85%, white 15%);
+  --feature-strong: color-mix(in srgb, var(--secondary) 70%, white 30%);
+  --surface-border: color-mix(in srgb, var(--border) 18%, transparent);
+  --surface-border-strong: var(--border);
+  --line-color: color-mix(in srgb, var(--border) 14%, transparent);
+
+  --text: var(--foreground);
+  --text-strong: var(--foreground);
+  --text-soft: color-mix(in srgb, var(--primary) 78%, var(--foreground) 22%);
+  --text-muted: var(--muted-foreground);
+  --text-secondary: var(--muted-foreground);
+
+  --primary-strong: color-mix(in srgb, var(--primary) 80%, var(--foreground) 20%);
+  --primary-soft: color-mix(in srgb, var(--primary) 14%, transparent);
   --brand-primary: var(--primary);
 
-  /* ── Reward / points accent (amber — same across all themes) ── */
-  --gold: #F59E0B;
-  --gold-soft: rgba(245, 158, 11, 0.14);
-  --gold-border: rgba(245, 158, 11, 0.30);
-  --highlight-soft: rgba(245, 158, 11, 0.09);
-  --badge-soft: rgba(245, 158, 11, 0.12);
-
-  /* ── Surfaces ── */
-  --bg: #F5F5F5;
-  --card: #ffffff;
-  --surface: #ffffff;
-  --surface-elevated: #ffffff;
-  --surface-soft: #EEF0F5;
-  --surface-media: #E8EBF2;
-  --surface-border: rgba(26, 26, 46, 0.10);
-  --surface-border-strong: rgba(37, 99, 235, 0.24);
-  --border: var(--surface-border);
-  --line-color: var(--surface-border);
-  --surface-0: var(--bg);
-  --surface-1: var(--surface);
-  --surface-2: var(--surface-elevated);
-  --surface-3: var(--surface-soft);
-  --feature-soft: #f4f6fa;
-  --feature-strong: #eef3fb;
-
-  /* ── Text ── */
-  --text: #1A1A2E;
-  --text-strong: #1A1A2E;
-  --text-soft: #374151;
-  --text-muted: #6B7280;
-  --text-secondary: #6B7280;
-
-  /* ── Semantic ── */
-  --success: #22C55E;
-  --success-bg: rgba(34, 197, 94, 0.12);
-  --warning: #F97316;
-  --warning-bg: rgba(249, 115, 22, 0.12);
-  --danger: #EF4444;
-  --danger-strong: #DC2626;
-  --danger-muted: rgba(239, 68, 68, 0.45);
-  --danger-bg: rgba(239, 68, 68, 0.12);
-
-  /* ── Accent aliases ── */
-  --accent: var(--primary);
-  --accent-strong: var(--primary-strong);
-  --accent-bg: var(--primary-soft);
-  --accent-border: rgba(37, 99, 235, 0.28);
+  --accent-strong: color-mix(in srgb, var(--accent) 45%, var(--foreground) 55%);
+  --accent-bg: color-mix(in srgb, var(--accent) 16%, white 84%);
+  --accent-border: color-mix(in srgb, var(--accent) 30%, var(--border) 70%);
   --accent-cyan: var(--primary);
-  --secondary: var(--primary);
   --energy: var(--primary);
 
-  /* ── Shadows ── */
-  --shadow: 0 8px 24px rgba(26, 26, 46, 0.09);
-  --shadow-soft: 0 3px 10px rgba(26, 26, 46, 0.07);
+  --gold: var(--accent);
+  --gold-soft: color-mix(in srgb, var(--accent) 18%, white 82%);
+  --gold-border: color-mix(in srgb, var(--accent) 34%, var(--border) 66%);
+  --highlight-soft: color-mix(in srgb, var(--accent) 12%, white 88%);
+  --badge-soft: color-mix(in srgb, var(--accent) 15%, white 85%);
+
+  --success: #34b772;
+  --success-bg: rgba(52, 183, 114, 0.14);
+  --warning: #efb025;
+  --warning-bg: rgba(239, 176, 37, 0.16);
+  --danger: #dc5b56;
+  --danger-strong: #bf433e;
+  --danger-muted: rgba(220, 91, 86, 0.44);
+  --danger-bg: rgba(220, 91, 86, 0.12);
+
+  --shadow: 4px 4px 0 0 var(--foreground);
+  --shadow-soft: 2px 2px 0 0 color-mix(in srgb, var(--foreground) 85%, transparent);
   --glow-primary: none;
   --glow-secondary: none;
   --glow-cyan: none;
 
-  /* ── Shape ── */
-  --radius: 10px;
-  --radius-sm: 14px;
-  --radius-md: 18px;
-  --radius-lg: 24px;
-  --radius-xl: 28px;
+  --radius: 1.25rem;
+  --radius-sm: 0.9rem;
+  --radius-md: 1.1rem;
+  --radius-lg: 1.35rem;
+  --radius-xl: 1.6rem;
 
-  /* ── Touch targets ── */
   --tap-size: 52px;
   --tap-min: 44px;
 
-  /* ── Spacing scale ── */
   --space-1: 4px;
   --space-2: 8px;
   --space-3: 12px;
@@ -83,22 +94,20 @@
   --space-6: 24px;
   --space-8: 32px;
 
-  /* ── Fluid font scale ── */
-  --text-xs:   clamp(0.72rem, 2.2vw, 0.78rem);
-  --text-sm:   clamp(0.82rem, 2.6vw, 0.875rem);
-  --text-base: clamp(0.9rem,  3vw,   1rem);
-  --text-lg:   clamp(1rem,    3.5vw, 1.125rem);
-  --text-xl:   clamp(1.1rem,  4vw,   1.25rem);
+  --text-xs: clamp(0.72rem, 2.2vw, 0.8rem);
+  --text-sm: clamp(0.84rem, 2.5vw, 0.92rem);
+  --text-base: clamp(0.95rem, 3vw, 1rem);
+  --text-lg: clamp(1.05rem, 3.7vw, 1.18rem);
+  --text-xl: clamp(1.25rem, 4.4vw, 1.5rem);
 
-  /* ── Icon sizes ── */
   --icon-sm: 18px;
   --icon-md: 22px;
   --icon-lg: 28px;
 
-  font-family: 'Poppins', 'Inter', 'Segoe UI', sans-serif;
+  font-family: 'Inter', 'Segoe UI', sans-serif;
   line-height: 1.5;
   font-weight: 400;
-  color: var(--text-muted);
+  color: var(--text);
   background: var(--bg);
   color-scheme: light;
   font-synthesis: none;
@@ -107,109 +116,10 @@
   -moz-osx-font-smoothing: grayscale;
 }
 
-/* ── Shared light base (all three themes) ── */
-[data-theme='friendly'],
-[data-theme='red'],
-[data-theme='blue'] {
-  /* Surfaces */
-  --bg: #F5F5F5;
-  --card: #ffffff;
-  --surface: #ffffff;
-  --surface-elevated: #ffffff;
-  --surface-soft: #EEF0F5;
-  --surface-media: #E8EBF2;
-  --surface-0: #F5F5F5;
-  --surface-1: #ffffff;
-  --surface-2: #ffffff;
-  --surface-3: #EEF0F5;
-  --surface-border: rgba(26, 26, 46, 0.10);
-  --border: rgba(26, 26, 46, 0.10);
-  --line-color: rgba(26, 26, 46, 0.10);
-  --feature-soft: #f4f6fa;
-  --feature-strong: #eef3fb;
-  --shadow: 0 8px 24px rgba(26, 26, 46, 0.09);
-  --shadow-soft: 0 3px 10px rgba(26, 26, 46, 0.07);
-
-  /* Text */
-  --text: #1A1A2E;
-  --text-strong: #1A1A2E;
-  --text-soft: #374151;
-  --text-muted: #6B7280;
-  --text-secondary: #6B7280;
-
-  /* Reward accent — amber, consistent across all themes */
-  --gold: #F59E0B;
-  --gold-soft: rgba(245, 158, 11, 0.14);
-  --gold-border: rgba(245, 158, 11, 0.30);
-  --highlight-soft: rgba(245, 158, 11, 0.09);
-  --badge-soft: rgba(245, 158, 11, 0.12);
-
-  /* Semantic */
-  --success: #22C55E;
-  --success-bg: rgba(34, 197, 94, 0.12);
-  --warning: #F97316;
-  --warning-bg: rgba(249, 115, 22, 0.12);
-  --danger: #EF4444;
-  --danger-strong: #DC2626;
-  --danger-muted: rgba(239, 68, 68, 0.45);
-  --danger-bg: rgba(239, 68, 68, 0.12);
-
-  color-scheme: light;
-}
-
-/* Friendly (default / no russType) — amber/gold identity */
-[data-theme='friendly'] {
-  --primary: #F59E0B;
-  --primary-strong: #D97706;
-  --primary-soft: rgba(245, 158, 11, 0.13);
-  --secondary: #F59E0B;
-  --accent: #F59E0B;
-  --accent-bg: rgba(245, 158, 11, 0.11);
-  --accent-border: rgba(245, 158, 11, 0.28);
-  --accent-strong: #D97706;
-  --accent-cyan: #F59E0B;
-  --energy: #F59E0B;
-  --brand-primary: #F59E0B;
-  --surface-border-strong: rgba(245, 158, 11, 0.24);
-}
-
-/* Rødruss — rød identitet */
-[data-theme='red'] {
-  --primary: #DC2626;
-  --primary-strong: #B91C1C;
-  --primary-soft: rgba(220, 38, 38, 0.12);
-  --secondary: #DC2626;
-  --accent: #DC2626;
-  --accent-bg: rgba(220, 38, 38, 0.09);
-  --accent-border: rgba(220, 38, 38, 0.26);
-  --accent-strong: #B91C1C;
-  --accent-cyan: #DC2626;
-  --energy: #DC2626;
-  --brand-primary: #DC2626;
-  --surface-border-strong: rgba(220, 38, 38, 0.20);
-}
-
-/* Blåruss — blå identitet */
-[data-theme='blue'] {
-  --primary: #2563EB;
-  --primary-strong: #1D4ED8;
-  --primary-soft: rgba(37, 99, 235, 0.12);
-  --secondary: #2563EB;
-  --accent: #2563EB;
-  --accent-bg: rgba(37, 99, 235, 0.09);
-  --accent-border: rgba(37, 99, 235, 0.26);
-  --accent-strong: #1D4ED8;
-  --accent-cyan: #2563EB;
-  --energy: #2563EB;
-  --brand-primary: #2563EB;
-  --surface-border-strong: rgba(37, 99, 235, 0.20);
-}
-
 *,
 *::before,
 *::after {
   box-sizing: border-box;
-  /* Prevent text from breaking layouts on any screen width */
   overflow-wrap: break-word;
   word-break: break-word;
 }
@@ -223,6 +133,7 @@ body {
   min-width: 320px;
   min-height: 100vh;
   background: var(--bg);
+  color: var(--text);
 }
 
 button,
@@ -237,25 +148,23 @@ h1,
 h2,
 h3 {
   margin: 0;
-  font-family: 'Poppins', 'Inter', 'Segoe UI', sans-serif;
-  line-height: 1.08;
+  font-family: 'Bricolage Grotesque', 'Inter', 'Segoe UI', sans-serif;
+  font-weight: 800;
+  line-height: 0.98;
+  letter-spacing: -0.03em;
+  color: var(--text-strong);
 }
 
 h1 {
-  font-size: clamp(2.1rem, 4.6vw, 3.8rem);
-  letter-spacing: -0.02em;
-  color: var(--text-strong);
+  font-size: clamp(2.4rem, 5vw, 4.5rem);
 }
 
 h2 {
-  font-size: clamp(1.4rem, 2.6vw, 2.1rem);
-  color: var(--text-strong);
-  margin-bottom: 8px;
+  font-size: clamp(1.55rem, 3.4vw, 2.35rem);
 }
 
 h3 {
-  font-size: 1.08rem;
-  color: var(--text-strong);
+  font-size: clamp(1.05rem, 2.2vw, 1.2rem);
 }
 
 p {
@@ -273,7 +182,7 @@ code,
 
 code {
   padding: 4px 8px;
-  background: rgba(31, 42, 56, 0.06);
+  background: color-mix(in srgb, var(--foreground) 6%, white 94%);
 }
 
 #root {
@@ -281,7 +190,6 @@ code {
   width: 100%;
   max-width: none;
   margin: 0;
-  /* Account for notch/home-bar on iOS and Android */
   padding: 0 0 max(24px, env(safe-area-inset-bottom, 0px));
   text-align: left;
   border: 0;
@@ -290,25 +198,63 @@ code {
 
 .eyebrow {
   margin-bottom: 8px;
-  color: var(--primary-strong);
+  color: var(--primary);
   font-size: 0.78rem;
-  font-weight: 700;
+  font-weight: 800;
   letter-spacing: 0.06em;
   text-transform: uppercase;
 }
 
-::selection {
-  background: rgba(74, 144, 226, 0.22);
-  color: var(--text-strong);
+.font-display {
+  font-family: 'Bricolage Grotesque', 'Inter', 'Segoe UI', sans-serif;
+  letter-spacing: -0.03em;
 }
 
-/* Global focus-visible: visible ring for keyboard/touch, invisible on mouse */
+.sticker {
+  border: 2px solid var(--foreground);
+  box-shadow: 4px 4px 0 0 var(--foreground);
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.sticker:hover {
+  transform: translate(-2px, -2px);
+  box-shadow: 6px 6px 0 0 var(--foreground);
+}
+
+.sticker:active {
+  transform: translate(2px, 2px);
+  box-shadow: 0 0 0 0 var(--foreground);
+}
+
+.action-button--hero {
+  background: var(--accent) !important;
+  color: var(--accent-foreground) !important;
+  border-radius: 999px !important;
+  font-family: 'Bricolage Grotesque', 'Inter', 'Segoe UI', sans-serif !important;
+  font-weight: 800 !important;
+  letter-spacing: 0.02em !important;
+  text-transform: uppercase;
+}
+
+.action-button--sticker {
+  background: var(--card) !important;
+  color: var(--foreground) !important;
+  border-radius: 999px !important;
+  font-family: 'Bricolage Grotesque', 'Inter', 'Segoe UI', sans-serif !important;
+  font-weight: 700 !important;
+}
+
+::selection {
+  background: color-mix(in srgb, var(--accent) 42%, white 58%);
+  color: var(--foreground);
+}
+
 button:focus-visible,
 a:focus-visible,
 input:focus-visible,
 select:focus-visible,
 textarea:focus-visible,
-[role="button"]:focus-visible {
+[role='button']:focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: 2px;
 }
@@ -316,5 +262,9 @@ textarea:focus-visible,
 @media (max-width: 900px) {
   :root {
     font-size: 16px;
+  }
+
+  #root {
+    padding-bottom: 0;
   }
 }

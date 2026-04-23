@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import streakFlameIcon from '../assets/streak-flame.svg';
+import { MobileVideo } from '../components/MobileVideo.jsx';
 
 // ─── Animated counter ─────────────────────────────────────────────────────────
 
@@ -122,10 +123,6 @@ export function DashboardPage({
         }`
       : 'Du er øverst';
 
-  const dailyLabel =
-    dailyKnot?.status === 'Sendt inn' || dailyKnot?.status === 'Godkjent'
-      ? 'Se knuten'
-      : 'Ta knuten';
   const weeklyTopPost = dashboard.weeklyTopPost ?? null;
   const weeklyPostMinRatings =
     Number.isFinite(Number(dashboard.weeklyPostMinRatings)) &&
@@ -133,6 +130,10 @@ export function DashboardPage({
       ? Number(dashboard.weeklyPostMinRatings)
       : 10;
   const weeklyPostNotePreview = shortenNote(weeklyTopPost?.note ?? '');
+  const weeklyHasImage =
+    weeklyTopPost?.mediaType === 'image' && Boolean(weeklyTopPost?.imagePreviewUrl);
+  const weeklyHasVideo =
+    weeklyTopPost?.mediaType === 'video' && Boolean(weeklyTopPost?.videoPreviewUrl);
 
   return (
     <div className="db-layout">
@@ -197,7 +198,7 @@ export function DashboardPage({
       {/* ══ 2. DAGENS KNUTE — kompakt stripe ═════════════════════════════════ */}
       {dailyKnot ? (
         <section className="db-daily-strip">
-          <span className="db-daily-strip__icon" aria-hidden="true">🌟</span>
+          <span className="db-daily-strip__icon" aria-hidden="true">☀️</span>
           <div className="db-daily-strip__text">
             <span className="db-daily-strip__eyebrow">Dagens knute</span>
             <span className="db-daily-strip__title">{dailyKnot.title}</span>
@@ -207,13 +208,38 @@ export function DashboardPage({
             type="button"
             className="action-button action-button--compact db-daily-strip__btn"
             onClick={() => onOpenDailyKnot(dailyKnot.id)}
+            aria-label={`Åpne dagens knute: ${dailyKnot.title}`}
           >
-            {dailyLabel}
+            Åpne knute
           </button>
         </section>
       ) : null}
 
       {/* ══ 3. TOPP 3 PÅ SKOLEN ══════════════════════════════════════════════ */}
+      {schoolTopThree.length > 0 ? (
+        <section className="db-top3">
+          <h3 className="db-section-heading">Topp 3 på skolen</h3>
+          <div className="db-top3__list">
+            {schoolTopThree.map((leader, i) => (
+              <button
+                key={leader.id}
+                type="button"
+                className={`db-top3-row${leader.id === currentUserId ? ' db-top3-row--self' : ''}`}
+                onClick={() => onOpenProfile(leader.id)}
+              >
+                <span className="db-top3-row__medal">{MEDALS[i]}</span>
+                <MiniAvatar person={leader} />
+                <div className="db-top3-row__info">
+                  <strong>{leader.russName ?? leader.name}</strong>
+                  <span>{leader.className ?? leader.group ?? 'Russ'}</span>
+                </div>
+                <span className="db-top3-row__pts">{leader.points}p</span>
+              </button>
+            ))}
+          </div>
+        </section>
+      ) : null}
+
       <section
         className={`db-weekly-post ${weeklyTopPost ? '' : 'db-weekly-post--empty'}`}
         aria-live="polite"
@@ -264,6 +290,31 @@ export function DashboardPage({
               </button>
             )}
 
+            {weeklyHasImage ? (
+              <div className="db-weekly-post__media-wrap">
+                <img
+                  className="db-weekly-post__media db-weekly-post__media--image"
+                  src={weeklyTopPost.imagePreviewUrl}
+                  alt={weeklyTopPost.knotTitle}
+                  loading="lazy"
+                />
+              </div>
+            ) : null}
+            {weeklyHasVideo ? (
+              <div className="db-weekly-post__media-wrap">
+                <MobileVideo
+                  className="db-weekly-post__media db-weekly-post__media--video"
+                  src={weeklyTopPost.videoPreviewUrl}
+                  controls
+                  autoPlay={false}
+                  muted
+                  playsInline
+                  loop={false}
+                  preload="metadata"
+                />
+              </div>
+            ) : null}
+
             <strong className="db-weekly-post__title">{weeklyTopPost.knotTitle}</strong>
             {weeklyPostNotePreview ? (
               <p className="db-weekly-post__note">"{weeklyPostNotePreview}"</p>
@@ -283,71 +334,30 @@ export function DashboardPage({
         )}
       </section>
 
-      {schoolTopThree.length > 0 ? (
-        <section className="db-top3">
-          <h3 className="db-section-heading">Topp 3 på skolen</h3>
-          <div className="db-top3__list">
-            {schoolTopThree.map((leader, i) => (
-              <button
-                key={leader.id}
-                type="button"
-                className={`db-top3-row${leader.id === currentUserId ? ' db-top3-row--self' : ''}`}
-                onClick={() => onOpenProfile(leader.id)}
-              >
-                <span className="db-top3-row__medal">{MEDALS[i]}</span>
-                <MiniAvatar person={leader} />
-                <div className="db-top3-row__info">
-                  <strong>{leader.russName ?? leader.name}</strong>
-                  <span>{leader.className ?? leader.group ?? 'Russ'}</span>
-                </div>
-                <span className="db-top3-row__pts">{leader.points}p</span>
-              </button>
-            ))}
-          </div>
-        </section>
-      ) : null}
-
       {/* ══ 4. RIVALER ═══════════════════════════════════════════════════════ */}
-      {dashboard.rivals.length > 0 ? (
-        <section className="db-rivals">
-          <h3 className="db-section-heading">Rundt deg på lista</h3>
-          <div className="db-rivals__list">
-            {dashboard.rivals.map((rival) => (
-              <div key={rival.id} className="db-rival-item">
-                <MiniAvatar person={rival} />
-                <div className="db-rival-item__info">
-                  <strong>{rival.russName ?? rival.name}</strong>
-                  <span>
-                    {rival.pointsGap > 0
-                      ? `${rival.pointsGap}p foran`
-                      : `${Math.abs(rival.pointsGap)}p bak`}
-                  </span>
-                </div>
-                <button
-                  type="button"
-                  className="action-button action-button--ghost action-button--compact"
-                  onClick={() => onOpenProfile(rival.id)}
-                >
-                  Profil
-                </button>
-              </div>
-            ))}
-          </div>
-        </section>
-      ) : null}
-
       {/* ══ 5. ANBEFALT KNUTE ════════════════════════════════════════════════ */}
       {dashboard.recommendedKnot ? (
         <section className="db-recommend">
-          <h3 className="db-section-heading">Anbefalt knute</h3>
+          <div className="db-recommend__header">
+            <h3 className="db-section-heading db-recommend__heading">Anbefalt knute</h3>
+            <span className="db-recommend__pts">
+              {dashboard.recommendedKnot.points}p
+            </span>
+          </div>
           <div className="db-recommend__card">
-            <div className="db-recommend__top">
-              <span className="pill pill--soft">{dashboard.recommendedKnot.category}</span>
-              <span className="db-recommend__pts">{dashboard.recommendedKnot.points}p</span>
+            <div className="db-recommend__main">
+              <strong className="db-recommend__title">{dashboard.recommendedKnot.title}</strong>
+              <button
+                type="button"
+                className="action-button action-button--compact db-recommend__btn"
+                onClick={() => onOpenDailyKnot(dashboard.recommendedKnot.id)}
+                aria-label={`Ta anbefalt knute: ${dashboard.recommendedKnot.title}`}
+              >
+                Ta knute
+              </button>
             </div>
-            <strong className="db-recommend__title">{dashboard.recommendedKnot.title}</strong>
             {dashboard.recommendedKnot.description ? (
-              <p>{dashboard.recommendedKnot.description}</p>
+              <p className="db-recommend__description">{dashboard.recommendedKnot.description}</p>
             ) : null}
           </div>
         </section>

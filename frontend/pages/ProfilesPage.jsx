@@ -290,6 +290,7 @@ export function ProfilesPage({
           role="dialog"
           aria-modal="true"
           aria-labelledby="profile-modal-title"
+          data-swipe-lock="true"
           onClick={(event) => event.stopPropagation()}
           onPointerDown={(event) => event.stopPropagation()}
         >

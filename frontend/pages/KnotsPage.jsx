@@ -1,6 +1,8 @@
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
+import { MobileVideo } from '../components/MobileVideo.jsx';
 import { isGoldKnot } from '../data/badgeSystem.js';
+import { NOTE_MAX_CHARS, NOTE_MAX_WORDS } from '../data/appHelpers.js';
 import { KNOT_FOLDERS, resolveKnotFolder } from '../data/knotFolders.js';
 
 const MOBILE_BREAKPOINT = 900;
@@ -10,6 +12,13 @@ const KNOT_FOLDER_TABS = [
   { id: ALL_KNOTS_FOLDER_ID, description: 'Alle knuter samlet pa tvers av mapper.' },
   ...KNOT_FOLDERS,
 ];
+
+const STATUS_LEGEND_ITEMS = Object.freeze([
+  { key: 'approved', label: 'Fullførte' },
+  { key: 'available', label: 'Tilgjengelige' },
+  { key: 'pending', label: 'Sendt inn' },
+  { key: 'rejected', label: 'Avslått' },
+]);
 
 const STATUS_FILTERS = ['Alle', 'Tilgjengelig', 'Sendt inn', 'Godkjent', 'Avslått'];
 
@@ -113,6 +122,10 @@ function getWordCount(text) {
   const trimmedText = text.trim();
   if (!trimmedText) return 0;
   return trimmedText.split(/\s+/).length;
+}
+
+function getCharacterCount(text) {
+  return typeof text === 'string' ? text.length : 0;
 }
 
 function revokeObjectUrl(url) {
@@ -277,6 +290,8 @@ function buildDraftFromSubmission(submission) {
     note: submission.note ?? '',
     imageName: submission.imageName ?? '',
     imagePreviewUrl: submission.imagePreviewUrl ?? '',
+    videoName: submission.videoName ?? '',
+    videoPreviewUrl: submission.videoPreviewUrl ?? '',
     submissionMode: normalizeSubmissionMode(submission.submissionMode),
   };
 }
@@ -286,6 +301,15 @@ function getStatusKey(status) {
   if (status === 'Sendt inn') return 'pending';
   if (isRejectedStatus(status)) return 'rejected';
   return 'available';
+}
+
+function getStatusLabel(status) {
+  const statusKey = getStatusKey(status);
+
+  if (statusKey === 'approved') return 'Fullført';
+  if (statusKey === 'pending') return 'Sendt inn';
+  if (statusKey === 'rejected') return 'Avslått';
+  return 'Tilgjengelig';
 }
 
 // ─── KnotProgressBar ─────────────────────────────────────────────────────────
@@ -311,7 +335,7 @@ function KnotProgressBar({ label, approved, total }) {
 
 function KnotFolderTabs({ folders, activeFolder, folderCounts, onChangeFolder }) {
   return (
-    <div className="knot-folder-tabs" role="tablist">
+    <div className="knot-folder-tabs" role="tablist" data-swipe-lock="true">
       {folders.map((folder) => (
         <button
           key={folder.id}
@@ -337,7 +361,9 @@ function SubmissionFormContent({
   activeFeedBan,
   activeSubmissionBan,
   wordCount,
+  characterCount,
   isOverWordLimit,
+  isOverCharacterLimit,
   buttonLabel,
   onUpdateNote,
   onUpdateMode,
@@ -374,9 +400,10 @@ function SubmissionFormContent({
           placeholder="Kort forklaring på hvordan knuten ble gjort. Maks 100 ord."
           value={draft.note ?? ''}
           onChange={(e) => onUpdateNote(e.target.value)}
+          maxLength={NOTE_MAX_CHARS}
         />
-        <span className={`word-counter ${isOverWordLimit ? 'is-invalid' : ''}`}>
-          {wordCount}/100 ord
+        <span className={`word-counter ${isOverWordLimit || isOverCharacterLimit ? 'is-invalid' : ''}`}>
+          {wordCount}/{NOTE_MAX_WORDS} ord - {characterCount}/{NOTE_MAX_CHARS} tegn
         </span>
       </label>
 
@@ -398,22 +425,25 @@ function SubmissionFormContent({
           >
             Del som bruker
           </button>
-          {shareToFeed || shareToAnonymousFeed ? (
-            <button
-              type="button"
-              className={`submission-mode-pill ${shareToAnonymousFeed ? 'is-active' : ''}`}
-              aria-pressed={shareToAnonymousFeed}
-              disabled={Boolean(activeFeedBan)}
-              onClick={() =>
-                onUpdateMode(
-                  shareToAnonymousFeed ? SUBMISSION_MODE.FEED : SUBMISSION_MODE.ANONYMOUS_FEED,
-                )
-              }
-            >
-              Del som anonym
-            </button>
-          ) : null}
+          <button
+            type="button"
+            className={`submission-mode-pill ${shareToAnonymousFeed ? 'is-active' : ''}`}
+            aria-pressed={shareToAnonymousFeed}
+            disabled={Boolean(activeFeedBan)}
+            onClick={() =>
+              onUpdateMode(
+                shareToAnonymousFeed
+                  ? SUBMISSION_MODE.REVIEW
+                  : SUBMISSION_MODE.ANONYMOUS_FEED,
+              )
+            }
+          >
+            Del som anonym
+          </button>
         </div>
+        <p className="submission-mode-options__optional">
+          Del detaljer med feeden (bilde og beskrivelse vises).
+        </p>
       </div>
 
       {activeFeedBan ? (
@@ -495,37 +525,60 @@ function SubmissionFormContent({
         </div>
 
         <div className="upload-field upload-field--compact">
-          <span>Last opp video (maks 20 sek, 30 MB)</span>
-          <div className="upload-capture-row" style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
-            <label className="action-button action-button--ghost" style={{ cursor: 'pointer' }}>
-              Ta video
+          <span>{showDesktopPasteHint ? 'Video (maks 20 sek, 30 MB)' : 'Last opp video (maks 20 sek, 30 MB)'}</span>
+
+          {showDesktopPasteHint ? (
+            <div className="upload-file-row">
               <input
                 type="file"
                 accept="video/*"
-                capture="environment"
-                style={{ position: 'absolute', width: 1, height: 1, opacity: 0, pointerEvents: 'none' }}
+                className="upload-file-input"
                 onChange={handleVideoInputChange}
               />
-            </label>
-            <label className="action-button action-button--ghost" style={{ cursor: 'pointer' }}>
-              Velg video
-              <input
-                type="file"
-                accept="video/*"
-                style={{ position: 'absolute', width: 1, height: 1, opacity: 0, pointerEvents: 'none' }}
-                onChange={handleVideoInputChange}
-              />
-            </label>
-          </div>
-          <small>{draft.videoName || 'Valgfritt videobevis'}</small>
-          <button
-            type="button"
-            className="upload-remove-btn upload-remove-btn--mobile"
-            onClick={onRemoveVideo}
-            disabled={!hasVideo}
-          >
-            Slett video
-          </button>
+              <span className="upload-file-name">{draft.videoName || 'Ingen fil valgt'}</span>
+              <button
+                type="button"
+                className="upload-remove-btn"
+                onClick={onRemoveVideo}
+                disabled={!hasVideo}
+              >
+                Slett video
+              </button>
+            </div>
+          ) : (
+            <>
+              <div className="upload-capture-row" style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+                <label className="action-button action-button--ghost" style={{ cursor: 'pointer' }}>
+                  Ta video
+                  <input
+                    type="file"
+                    accept="video/*"
+                    capture="environment"
+                    style={{ position: 'absolute', width: 1, height: 1, opacity: 0, pointerEvents: 'none' }}
+                    onChange={handleVideoInputChange}
+                  />
+                </label>
+                <label className="action-button action-button--ghost" style={{ cursor: 'pointer' }}>
+                  Velg video
+                  <input
+                    type="file"
+                    accept="video/*"
+                    style={{ position: 'absolute', width: 1, height: 1, opacity: 0, pointerEvents: 'none' }}
+                    onChange={handleVideoInputChange}
+                  />
+                </label>
+              </div>
+              <small>{draft.videoName || 'Valgfritt videobevis'}</small>
+              <button
+                type="button"
+                className="upload-remove-btn upload-remove-btn--mobile"
+                onClick={onRemoveVideo}
+                disabled={!hasVideo}
+              >
+                Slett video
+              </button>
+            </>
+          )}
         </div>
       </div>
 
@@ -540,7 +593,14 @@ function SubmissionFormContent({
           {draft.videoPreviewUrl ? (
             <div className="evidence-card">
               <span>Videopreview</span>
-              <video src={draft.videoPreviewUrl} controls preload="metadata" playsInline muted />
+              <MobileVideo
+                controls
+                preload="metadata"
+                muted
+                playsInline
+                src={draft.videoPreviewUrl}
+              />
+
             </div>
           ) : null}
         </div>
@@ -549,8 +609,8 @@ function SubmissionFormContent({
       <div className="submission-form__actions">
         <button
           type="button"
-          className="action-button"
-          disabled={isOverWordLimit || Boolean(activeSubmissionBan)}
+          className="action-button action-button--hero"
+          disabled={isOverWordLimit || isOverCharacterLimit || Boolean(activeSubmissionBan)}
           onClick={onSubmit}
         >
           {buttonLabel}
@@ -565,6 +625,7 @@ function SubmissionFormContent({
 function KnotRow({
   knot,
   isDetailOpen,
+  isHighlighted,
   isFormOpen,
   isMobile,
   canSubmit,
@@ -587,25 +648,51 @@ function KnotRow({
   const submissionMode = normalizeSubmissionMode(draft.submissionMode);
   const effectiveMode = activeFeedBan ? SUBMISSION_MODE.REVIEW : submissionMode;
   const wordCount = getWordCount(draft.note ?? '');
-  const isOverWordLimit = wordCount > 100;
+  const characterCount = getCharacterCount(draft.note ?? '');
+  const isOverWordLimit = wordCount > NOTE_MAX_WORDS;
+  const isOverCharacterLimit = characterCount > NOTE_MAX_CHARS;
+  const statusKey = getStatusKey(knot.status);
+  const statusLabel = getStatusLabel(knot.status);
+  const isAvailableKnot = statusKey === 'available';
+  const difficultyInline = knot.difficulty ? (
+    <span className="knot-row__difficulty-inline">
+      {knot.difficulty}
+      {isHighlighted ? (
+        <span className="knot-row__highlight-badge knot-row__highlight-badge--inline is-highlighted">
+          Dagens knute
+        </span>
+      ) : null}
+    </span>
+  ) : null;
   const isCompletedKnot = knot.status === 'Godkjent' || knot.status === 'Fullført';
 
   return (
     <div
       ref={focusedRef}
-      className={`knot-row${isCompletedKnot ? ' is-completed' : ''}${isDetailOpen ? ' is-detail-open' : ''}${isFormOpen ? ' is-form-open' : ''}`}
+      className={`knot-row${isCompletedKnot ? ' is-completed' : ''}${isHighlighted ? ' is-highlighted' : ''}${isDetailOpen ? ' is-detail-open' : ''}${isFormOpen ? ' is-form-open' : ''}`}
       data-status={getStatusKey(knot.status)}
     >
       <div className="knot-row__header">
         <div className="knot-row__info">
           <div className="knot-row__title-line">
+            <span
+              className={`knot-row__status-dot is-${statusKey}`}
+              aria-hidden="true"
+            />
             <span className={`knot-row__points${isCompletedKnot ? ' is-completed' : ''}`}>
               P{knot.points}
             </span>
             <span className="knot-row__title">{knot.title}</span>
-            {knot.status === 'Sendt inn' ? (
-              <span className="pill pill--warning pill--sm">Sendt</span>
+          </div>
+          <div className="knot-row__sub">
+            {isAvailableKnot ? difficultyInline : <span>{statusLabel}</span>}
+            {!isAvailableKnot ? difficultyInline : null}
+            {!knot.difficulty && isHighlighted ? (
+              <span className="knot-row__highlight-badge knot-row__highlight-badge--inline is-highlighted">
+                Dagens knute
+              </span>
             ) : null}
+            {knot.safety === 'review' ? <span>Krever sjekk</span> : null}
           </div>
         </div>
 
@@ -616,7 +703,7 @@ function KnotRow({
               className={`knot-row__doc-btn${isFormOpen ? ' is-active' : ''}`}
               disabled={Boolean(activeSubmissionBan) && !isFormOpen}
               onClick={onDocumentClick}
-              aria-label={isMobile ? 'Registrering' : undefined}
+              aria-label={isMobile ? 'Registrer' : undefined}
             >
               {isMobile ? (
                 <span className="knot-row__doc-btn-icon" aria-hidden="true">
@@ -643,7 +730,7 @@ function KnotRow({
                   </svg>
                 </span>
               ) : (
-                <span className="knot-row__doc-btn-label">Registrering</span>
+                <span className="knot-row__doc-btn-label">Registrer</span>
               )}
             </button>
           ) : null}
@@ -661,6 +748,7 @@ function KnotRow({
 
       {isDetailOpen ? (
         <div className="knot-row__detail">
+          <p className="knot-row__detail-label">Hva går knuten ut på?</p>
           <p className="knot-row__desc">
             {getKnotDescription(knot) || 'Ingen forklaring er lagt til ennå.'}
           </p>
@@ -688,7 +776,9 @@ function KnotRow({
             activeFeedBan={activeFeedBan}
             activeSubmissionBan={activeSubmissionBan}
             wordCount={wordCount}
+            characterCount={characterCount}
             isOverWordLimit={isOverWordLimit}
+            isOverCharacterLimit={isOverCharacterLimit}
             buttonLabel={buttonLabel}
             onUpdateNote={onUpdateNote}
             onUpdateMode={onUpdateMode}
@@ -729,7 +819,9 @@ function KnotBottomSheet({
   const submissionMode = normalizeSubmissionMode(draft.submissionMode);
   const effectiveMode = activeFeedBan ? SUBMISSION_MODE.REVIEW : submissionMode;
   const wordCount = getWordCount(draft.note ?? '');
-  const isOverWordLimit = wordCount > 100;
+  const characterCount = getCharacterCount(draft.note ?? '');
+  const isOverWordLimit = wordCount > NOTE_MAX_WORDS;
+  const isOverCharacterLimit = characterCount > NOTE_MAX_CHARS;
 
   useEffect(() => {
     if (isOpen) {
@@ -765,8 +857,9 @@ function KnotBottomSheet({
         role="dialog"
         aria-modal="true"
         aria-label={`Dokumenter: ${knot?.title ?? ''}`}
+        data-swipe-lock="true"
       >
-        <div className="knot-sheet__handle-area" aria-hidden="true">
+        <div className="knot-sheet__handle-area" aria-hidden="true" data-swipe-lock="true">
           <div className="knot-sheet__handle" />
         </div>
 
@@ -797,7 +890,9 @@ function KnotBottomSheet({
               activeFeedBan={activeFeedBan}
               activeSubmissionBan={activeSubmissionBan}
               wordCount={wordCount}
+              characterCount={characterCount}
               isOverWordLimit={isOverWordLimit}
+              isOverCharacterLimit={isOverCharacterLimit}
               buttonLabel={buttonLabel}
               onUpdateNote={onUpdateNote}
               onUpdateMode={onUpdateMode}
@@ -865,6 +960,7 @@ export function KnotsPage({
   currentUserStreak = null,
   focusedKnotId,
   focusedKnotScrollRequest = 0,
+  knuterSettledToken = 0,
   isPageActive = true,
   knotFeedbackMessages = {},
   knots,
@@ -887,6 +983,7 @@ export function KnotsPage({
   const [feedbackMessage, setFeedbackMessage] = useState('');
   const [isRareFeedbackActive, setIsRareFeedbackActive] = useState(false);
   const [drafts, setDrafts] = useState({});
+  const [highlightedKnotId, setHighlightedKnotId] = useState(null);
   const [isMobileViewport, setIsMobileViewport] = useState(() => {
     if (typeof window === 'undefined') return false;
     return window.innerWidth <= MOBILE_BREAKPOINT;
@@ -895,7 +992,9 @@ export function KnotsPage({
 
   const draftsRef = useRef(drafts);
   const focusedCardRef = useRef(null);
+  const handledFocusOpenRequestRef = useRef(0);
   const handledScrollRequestRef = useRef(0);
+  const highlightTimeoutRef = useRef(null);
 
   // ── Derived ──────────────────────────────────────────────────────────────
 
@@ -977,6 +1076,7 @@ export function KnotsPage({
       : sheetKnot && isRejectedStatus(sheetKnot.status)
         ? 'Send til godkjenning på nytt'
         : 'Send til godkjenning';
+  const streakCount = currentUserStreak?.current ?? 0;
 
   // ── Effects ──────────────────────────────────────────────────────────────
 
@@ -1015,23 +1115,54 @@ export function KnotsPage({
   }, [feedbackMessage, isRareFeedbackActive]);
 
   useEffect(() => {
-    if (!focusedKnotId || !isPageActive) return;
+    if (
+      !focusedKnotId ||
+      !isPageActive ||
+      focusedKnotScrollRequest <= 0 ||
+      handledFocusOpenRequestRef.current === focusedKnotScrollRequest
+    ) {
+      return;
+    }
+
     const nextFocused = knots.find((k) => k.id === focusedKnotId);
     if (!nextFocused) return;
+
+    handledFocusOpenRequestRef.current = focusedKnotScrollRequest;
     const t = window.setTimeout(() => {
       setActiveFolder(resolveKnotFolder(nextFocused) || ALL_KNOTS_FOLDER_ID);
       setSearchQuery('');
       setStatusFilter('Alle');
       setSortKey('standard');
-      setOpenDetailId(null);
+      setOpenFormId(null);
+      setSheetKnotId(null);
+      setOpenDetailId(nextFocused.id);
+      setHighlightedKnotId(nextFocused.id);
+      if (highlightTimeoutRef.current) {
+        window.clearTimeout(highlightTimeoutRef.current);
+      }
+      highlightTimeoutRef.current = window.setTimeout(() => {
+        setHighlightedKnotId((current) =>
+          current === nextFocused.id ? null : current,
+        );
+      }, 4000);
     }, 0);
     return () => window.clearTimeout(t);
-  }, [focusedKnotId, isPageActive, knots]);
+  }, [focusedKnotId, focusedKnotScrollRequest, isPageActive, knots]);
+
+  useEffect(
+    () => () => {
+      if (highlightTimeoutRef.current) {
+        window.clearTimeout(highlightTimeoutRef.current);
+      }
+    },
+    [],
+  );
 
   useEffect(
     () => () => {
       Object.values(draftsRef.current).forEach((d) => {
         revokeObjectUrl(d.imagePreviewUrl);
+        revokeObjectUrl(d.videoPreviewUrl);
       });
     },
     [],
@@ -1040,8 +1171,8 @@ export function KnotsPage({
   useEffect(() => {
     if (
       !focusedKnotId ||
-      !focusedCardRef.current ||
       !isPageActive ||
+      (isMobileViewport && knuterSettledToken < focusedKnotScrollRequest) ||
       focusedKnotScrollRequest <= 0 ||
       handledScrollRequestRef.current === focusedKnotScrollRequest
     ) {
@@ -1049,17 +1180,127 @@ export function KnotsPage({
     }
 
     handledScrollRequestRef.current = focusedKnotScrollRequest;
-    const delay = isMobileViewport ? 280 : 0;
-    const t = window.setTimeout(() => {
-      focusedCardRef.current?.scrollIntoView({
-        behavior: 'smooth',
-        block: isMobileViewport ? 'center' : 'start',
-      });
-    }, delay);
-    return () => window.clearTimeout(t);
+    let cancelled = false;
+    let attempts = 0;
+    let settledPassScheduled = false;
+    const maxAttempts = isMobileViewport ? 8 : 4;
+    const retryDelay = 90;
+    const initialDelay = isMobileViewport ? 90 : 0;
+    const timerIds = [];
+
+    function scrollFocusedCard() {
+      const element = focusedCardRef.current;
+      if (!element) return false;
+
+      const rect = element.getBoundingClientRect();
+      const viewportHeight =
+        typeof window !== 'undefined' ? window.innerHeight : 0;
+      const topOffset = isMobileViewport
+        ? Math.max(Math.round(viewportHeight * 0.27), 104)
+        : 96;
+      const isiOSWebKit =
+        typeof navigator !== 'undefined' &&
+        /iP(hone|od|ad)/i.test(navigator.userAgent ?? '');
+      const scrollBehavior = isiOSWebKit ? 'auto' : 'smooth';
+
+      if (typeof window === 'undefined') {
+        element.scrollIntoView({
+          behavior: scrollBehavior,
+          block: isMobileViewport ? 'center' : 'start',
+        });
+        return true;
+      }
+
+      const currentScrollY = window.scrollY;
+      const windowTargetTop = Math.max(
+        Math.round(currentScrollY + rect.top - topOffset),
+        0,
+      );
+
+      let scrollContainer = element.parentElement;
+      while (scrollContainer && scrollContainer !== document.body) {
+        const style = window.getComputedStyle(scrollContainer);
+        const canScrollY = /(auto|scroll|overlay)/.test(style.overflowY);
+        if (canScrollY && scrollContainer.scrollHeight > scrollContainer.clientHeight) {
+          break;
+        }
+        scrollContainer = scrollContainer.parentElement;
+      }
+
+      if (scrollContainer && scrollContainer !== document.body) {
+        const containerRect = scrollContainer.getBoundingClientRect();
+        const targetWithinContainer = Math.max(
+            Math.round(
+              scrollContainer.scrollTop +
+                (rect.top - containerRect.top) -
+                (isMobileViewport ? 40 : 16),
+            ),
+            0,
+          );
+
+        scrollContainer.scrollTo({
+          top: targetWithinContainer,
+          left: 0,
+          behavior: scrollBehavior,
+        });
+
+        if (isiOSWebKit) {
+          scrollContainer.scrollTop = targetWithinContainer;
+        }
+      } else {
+        window.scrollTo({
+          top: windowTargetTop,
+          left: 0,
+          behavior: scrollBehavior,
+        });
+
+        if (isiOSWebKit) {
+          const scrollingElement =
+            document.scrollingElement ?? document.documentElement;
+          scrollingElement.scrollTop = windowTargetTop;
+          document.documentElement.scrollTop = windowTargetTop;
+          document.body.scrollTop = windowTargetTop;
+        }
+      }
+
+      return true;
+    }
+
+    function tryScroll() {
+      if (cancelled) return;
+
+      const didScroll = scrollFocusedCard();
+      if (didScroll) {
+        if (!settledPassScheduled) {
+          settledPassScheduled = true;
+          const settleTimer = window.setTimeout(() => {
+            if (!cancelled) {
+              scrollFocusedCard();
+            }
+          }, isMobileViewport ? 260 : 100);
+          timerIds.push(settleTimer);
+        }
+        return;
+      }
+
+      attempts += 1;
+      if (attempts >= maxAttempts) return;
+
+      const retryTimer = window.setTimeout(tryScroll, retryDelay);
+      timerIds.push(retryTimer);
+    }
+
+    const initialTimer = window.setTimeout(tryScroll, initialDelay);
+    timerIds.push(initialTimer);
+
+    return () => {
+      cancelled = true;
+      timerIds.forEach((timerId) => window.clearTimeout(timerId));
+    };
   }, [
     focusedKnotId,
     focusedKnotScrollRequest,
+    knuterSettledToken,
     isMobileViewport,
     isPageActive,
     visibleKnots.length,
@@ -1068,7 +1309,8 @@ export function KnotsPage({
   // ── Draft handlers ───────────────────────────────────────────────────────
 
   function updateDraftNote(knotId, note) {
-    setDrafts((d) => ({ ...d, [knotId]: { ...d[knotId], note } }));
+    const normalizedNote = typeof note === 'string' ? note.slice(0, NOTE_MAX_CHARS) : '';
+    setDrafts((d) => ({ ...d, [knotId]: { ...d[knotId], note: normalizedNote } }));
   }
 
   function updateDraftSubmissionMode(knotId, submissionMode) {
@@ -1082,39 +1324,29 @@ export function KnotsPage({
     }));
   }
 
-  async function updateDraftFile(knotId, type, file) {
-    if (!file) return;
-    if (type !== 'image' && type !== 'video') return;
+  const updateDraftFile = useCallback(async (knotId, type, file) => {
+    if ((type !== 'image' && type !== 'video') || !file) return;
+    const previewField = type === 'image' ? 'imagePreviewUrl' : 'videoPreviewUrl';
+    const nameField = type === 'image' ? 'imageName' : 'videoName';
+    const fileField = type === 'image' ? 'imageFile' : 'videoFile';
+    const removeField = type === 'image' ? 'removeImage' : 'removeVideo';
     const nextPreviewUrl = URL.createObjectURL(file);
 
     setDrafts((d) => {
       const cur = d[knotId] ?? {};
-      if (type === 'image') {
-        revokeObjectUrl(cur.imagePreviewUrl);
-        return {
-          ...d,
-          [knotId]: {
-            ...cur,
-            imageName: file.name,
-            imageFile: file,
-            imagePreviewUrl: nextPreviewUrl,
-            removeImage: false,
-          },
-        };
-      }
-      revokeObjectUrl(cur.videoPreviewUrl);
+      revokeObjectUrl(cur[previewField]);
       return {
         ...d,
         [knotId]: {
           ...cur,
-          videoName: file.name,
-          videoFile: file,
-          videoPreviewUrl: nextPreviewUrl,
-          removeVideo: false,
+          [nameField]: file.name,
+          [fileField]: file,
+          [previewField]: nextPreviewUrl,
+          [removeField]: false,
         },
       };
     });
-  }
+  }, []);
 
   function clearDraftImage(knotId) {
     setDrafts((d) => {
@@ -1156,7 +1388,7 @@ export function KnotsPage({
     });
   }
 
-  async function handlePasteImageForKnot(knotId, event) {
+  const handlePasteImageForKnot = useCallback(async (knotId, event) => {
     if (event?.defaultPrevented) {
       return;
     }
@@ -1173,7 +1405,7 @@ export function KnotsPage({
     await updateDraftFile(knotId, 'image', normalizedImage);
     setFeedbackMessage('Bilde limt inn fra utklippstavla.');
     setIsRareFeedbackActive(false);
-  }
+  }, [updateDraftFile]);
 
   function resetDraft(knotId) {
     setDrafts((d) => {
@@ -1200,6 +1432,19 @@ export function KnotsPage({
     const effectiveSubmissionMode = activeFeedBan
       ? SUBMISSION_MODE.REVIEW
       : submissionMode;
+    const draftWordCount = getWordCount(draft.note ?? '');
+    const draftCharacterCount = getCharacterCount(draft.note ?? '');
+    if (draftWordCount > NOTE_MAX_WORDS) {
+      setFeedbackMessage(`Hold forklaringen under ${NOTE_MAX_WORDS} ord.`);
+      setIsRareFeedbackActive(false);
+      return;
+    }
+    if (draftCharacterCount > NOTE_MAX_CHARS) {
+      setFeedbackMessage(`Hold forklaringen under ${NOTE_MAX_CHARS} tegn.`);
+      setIsRareFeedbackActive(false);
+      return;
+    }
+
     const knot = knots.find((k) => k.id === knotId);
     const wasPending = knot?.status === 'Sendt inn';
 
@@ -1359,22 +1604,36 @@ export function KnotsPage({
         isRare={isRareFeedbackActive}
       />
 
-      {/* Header */}
-      <div className="knots-page__header">
-        <div>
-          <h2>Knutekatalog</h2>
+      <section className="knots-page__hero" aria-labelledby="knots-page-title">
+        <div className="knots-page__hero-copy">
+          <p className="knots-page__eyebrow">Knutekatalog · {knots.length} knuter</p>
+          <h1 id="knots-page-title" className="knots-page__title font-display">
+            Hva tar du <span className="knots-page__title-highlight">i dag?</span>
+          </h1>
           <div className="knots-status-legend" aria-label="Fargeforklaring for knutestatus">
-            <span className="knots-status-legend__item is-approved">Grønn: fullførte</span>
-            <span className="knots-status-legend__item is-available">Grå: tilgjengelige</span>
-            <span className="knots-status-legend__item is-pending">Oransje: sendt inn</span>
-            <span className="knots-status-legend__item is-rejected">Rød: avslått</span>
+            {STATUS_LEGEND_ITEMS.map((item) => (
+              <span
+                key={item.key}
+                className={`knots-status-legend__item is-${item.key}`}
+              >
+                {item.label}
+              </span>
+            ))}
           </div>
         </div>
-        <div className="knots-page__points">
-          <span>{currentUserPoints}</span>
-          <small>poeng</small>
+
+        <div className="knots-page__points sticker">
+          <small>Dine poeng</small>
+          <span>{currentUserPoints}p</span>
         </div>
-      </div>
+
+        {streakCount > 0 ? (
+          <div className="knots-page__hero-streak sticker">
+            <span aria-hidden="true">🔥</span>
+            <span>{streakCount} streak</span>
+          </div>
+        ) : null}
+      </section>
 
       {/* Progress */}
       <KnotProgressBar
@@ -1400,8 +1659,21 @@ export function KnotsPage({
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
         />
+        <div className="knot-toolbar-compact__status-pills" role="group" aria-label="Statusfilter">
+          {STATUS_FILTERS.map((filter) => (
+            <button
+              key={filter}
+              type="button"
+              className={`knot-status-pill${statusFilter === filter ? ' is-active' : ''}`}
+              aria-pressed={statusFilter === filter}
+              onClick={() => setStatusFilter(filter)}
+            >
+              {filter}
+            </button>
+          ))}
+        </div>
         <select
-          className="knot-toolbar-compact__select text-input"
+          className="knot-toolbar-compact__select knot-toolbar-compact__select--status text-input"
           value={statusFilter}
           onChange={(e) => setStatusFilter(e.target.value)}
           aria-label="Statusfilter"
@@ -1452,7 +1724,7 @@ export function KnotsPage({
           </p>
           <button
             type="button"
-            className="action-button action-button--ghost action-button--compact"
+            className="action-button action-button--sticker action-button--compact"
             onClick={handleResetFilters}
           >
             Nullstill filtre
@@ -1481,6 +1753,7 @@ export function KnotsPage({
                 key={knot.id}
                 knot={knot}
                 isDetailOpen={openDetailId === knot.id}
+                isHighlighted={highlightedKnotId === knot.id}
                 isFormOpen={openFormId === knot.id}
                 isMobile={isMobileViewport}
                 canSubmit={canSubmit}

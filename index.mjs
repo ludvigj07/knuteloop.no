@@ -40,6 +40,7 @@ import {
 } from './backend/src/auth/db.mjs';
 import { generateInviteCode, hashSecret } from './backend/src/auth/passwords.mjs';
 import {
+  handleChangeOwnPassword,
   handlePasswordLogin,
   handleInviteVerify,
   handleInviteActivate,
@@ -69,7 +70,7 @@ const UPLOADS_DIR = path.join(APP_ROOT, 'backend', 'uploads');
 const DB_FILE = path.join(DATA_DIR, 'app-db.json');
 const PORT = Number(process.env.PORT) || 3001;
 const execFileAsync = promisify(execFile);
-const FFMPEG_BINARY = ffmpegPath ?? 'ffmpeg';
+const FFMPEG_BINARY = process.env.FFMPEG_PATH || ffmpegPath;
 const ALLOWED_ORIGIN = process.env.ALLOWED_ORIGIN ?? '*';
 const VIDEO_MIME_TYPES = new Set([
   'video/mp4',
@@ -509,7 +510,8 @@ async function readDb() {
   const migratedRatingsDb = await migrateSubmissionRatings(migratedVideoDb);
   const migratedDuelApprovalsDb = await migrateDuelCompletionApprovals(migratedRatingsDb);
   const migratedModerationDb = await migrateModerationData(migratedDuelApprovalsDb);
-  const migratedProfileGenderDb = await migrateProfileGenderData(migratedModerationDb);
+  const migratedFeedFlagsDb = await migrateSubmissionFeedFlags(migratedModerationDb);
+  const migratedProfileGenderDb = await migrateProfileGenderData(migratedFeedFlagsDb);
   const migratedStreakDb = await migrateSubmissionStreakData(migratedProfileGenderDb);
   const migratedKnotFeedbackDb = await migrateKnotFeedbackMessages(migratedStreakDb);
   return migrateNorwegianText(migratedKnotFeedbackDb);
@@ -563,15 +565,25 @@ async function drainTranscodeQueue() {
 }
 
 async function transcodeVideoToMp4(inputPath, outputPath) {
-  await execFileAsync(FFMPEG_BINARY, [
-    '-y',
-    '-t', String(MAX_VIDEO_SECONDS),
-    '-i', inputPath,
-    '-vcodec', 'h264',
-    '-acodec', 'aac',
-    '-movflags', '+faststart',
-    outputPath,
-  ]);
+  if (!FFMPEG_BINARY) {
+    throw new Error(
+      'Finner ikke ffmpeg-binaren. Sett FFMPEG_PATH eller installer ffmpeg.',
+    );
+  }
+
+  await execFileAsync(
+    FFMPEG_BINARY,
+    [
+      '-y',
+      '-t', String(MAX_VIDEO_SECONDS),
+      '-i', inputPath,
+      '-vcodec', 'h264',
+      '-acodec', 'aac',
+      '-movflags', '+faststart',
+      outputPath,
+    ],
+    { windowsHide: true },
+  );
 }
 
 async function maybeMigrateStoredVideo(fileUrl, category) {
@@ -1699,6 +1711,45 @@ async function migrateModerationData(db) {
   return nextDb;
 }
 
+async function migrateSubmissionFeedFlags(db) {
+  let changed = false;
+
+  const submissions = (db.submissions ?? []).map((submission) => {
+    const normalizedSubmissionMode = normalizeSubmissionMode(
+      submission?.submissionMode,
+      deriveSubmissionMode(submission),
+    );
+    const nextIsAnonymousFeed = normalizedSubmissionMode === 'anonymous-feed';
+    const currentIsAnonymousFeed = submission?.isAnonymousFeed === true;
+
+    if (
+      submission?.submissionMode === normalizedSubmissionMode &&
+      currentIsAnonymousFeed === nextIsAnonymousFeed
+    ) {
+      return submission;
+    }
+
+    changed = true;
+    return {
+      ...submission,
+      submissionMode: normalizedSubmissionMode,
+      isAnonymousFeed: nextIsAnonymousFeed,
+    };
+  });
+
+  if (!changed) {
+    return db;
+  }
+
+  const nextDb = {
+    ...db,
+    submissions,
+  };
+
+  await writeDb(nextDb);
+  return nextDb;
+}
+
 async function migrateKnotFeedbackMessages(db) {
   const hasExisting =
     db.knotFeedbackMessages != null &&
@@ -1797,12 +1848,8 @@ function toPublicSubmission(db, submission, currentUserId = null) {
     submission.submissionMode,
     deriveSubmissionMode(submission),
   );
-  const isAnonymousFeed =
-    submission.isAnonymousFeed === true ||
-    normalizedSubmissionMode === 'anonymous-feed';
-  const submissionMode = isAnonymousFeed
-    ? 'anonymous-feed'
-    : normalizedSubmissionMode;
+  const submissionMode = normalizedSubmissionMode;
+  const isAnonymousFeed = submissionMode === 'anonymous-feed';
   const ratings = normalizeSubmissionRatings(submission.ratings);
   const ratingSummary = getSubmissionRatingSummary(ratings);
 
@@ -1981,6 +2028,7 @@ function buildBootstrap(db, user) {
     currentUser: {
       leaderId: currentUserId,
       name: user.name,
+      email: user.email ?? '',
       group: user.group,
       role: user.role,
     },
@@ -2625,10 +2673,14 @@ async function handleDeleteSubmission(request, response, submissionId) {
     return;
   }
 
-  if (!isSubmissionVisibleInFeed(submission)) {
-    sendJson(response, 400, {
-      error: 'Innsendingen er ikke synlig i feeden.',
-    });
+  const alreadyRemovedFromFeed =
+    normalizeSubmissionMode(
+      submission.submissionMode,
+      deriveSubmissionMode(submission),
+    ) === 'review' && submission.isAnonymousFeed !== true;
+
+  if (alreadyRemovedFromFeed) {
+    sendJson(response, 200, buildBootstrap(db, user));
     return;
   }
 
@@ -2639,6 +2691,7 @@ async function handleDeleteSubmission(request, response, submissionId) {
         ? {
             ...item,
             submissionMode: 'review',
+            isAnonymousFeed: false,
           }
         : item,
     ),
@@ -3571,6 +3624,10 @@ const server = createServer(async (request, response) => {
 
     if (request.method === 'POST' && url.pathname === '/api/auth/password-login') {
       await handlePasswordLogin(request, response);
+      return;
+    }
+    if (request.method === 'PATCH' && url.pathname === '/api/auth/password') {
+      await handleChangeOwnPassword(request, response);
       return;
     }
     if (request.method === 'POST' && url.pathname === '/api/auth/invite/verify') {

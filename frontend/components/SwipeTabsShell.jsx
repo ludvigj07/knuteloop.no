@@ -1,9 +1,24 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 
 const MOBILE_BREAKPOINT = 900;
+const MOBILE_PAGE_GAP = 6;
+const MOBILE_PAGE_PEEK = 4;
 const SWIPE_THRESHOLD_RATIO = 0.18;
 const SWIPE_VELOCITY_THRESHOLD = 0.45;
 const EDGE_RESISTANCE = 0.32;
+
+function createIdlePointerState() {
+  return {
+    active: false,
+    mode: 'idle',
+    pointerId: null,
+    startX: 0,
+    startY: 0,
+    lastX: 0,
+    lastTime: 0,
+    velocityX: 0,
+  };
+}
 
 function supportsHaptics() {
   return typeof navigator !== 'undefined' && typeof navigator.vibrate === 'function';
@@ -27,29 +42,68 @@ function getViewportWidth(element) {
   return element.getBoundingClientRect().width;
 }
 
+function shouldIgnoreSwipeStart(target) {
+  return Boolean(
+    target?.closest?.(
+      [
+        'input',
+        'textarea',
+        'select',
+        'option',
+        'label',
+        '[contenteditable="true"]',
+        '[contenteditable="plaintext-only"]',
+        '[data-swipe-lock="true"]',
+      ].join(', '),
+    ),
+  );
+}
+
+function scrollAppToTop(viewportElement) {
+  if (typeof window === 'undefined' || typeof document === 'undefined') {
+    return;
+  }
+
+  const performScrollReset = () => {
+    const scrollingElement = document.scrollingElement ?? document.documentElement;
+
+    window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
+    scrollingElement.scrollTop = 0;
+    document.documentElement.scrollTop = 0;
+    document.body.scrollTop = 0;
+    viewportElement?.scrollTo?.({ top: 0, left: 0, behavior: 'auto' });
+  };
+
+  performScrollReset();
+  requestAnimationFrame(() => {
+    performScrollReset();
+    requestAnimationFrame(performScrollReset);
+  });
+}
+
+function clearPointerInteraction(pointerStateRef, setDragOffset, setIsDragging) {
+  pointerStateRef.current = createIdlePointerState();
+  setDragOffset(0);
+  setIsDragging(false);
+}
+
 export function SwipeTabsShell({
   pages,
   activePageId,
   onChangePage,
+  onPageSettled,
   renderPage,
   mobileOnlySwipe = true,
+  hideNavigation = false,
 }) {
   const shellRef = useRef(null);
+  const viewportRef = useRef(null);
   const pageRefs = useRef(new Map());
   const suppressNextClickRef = useRef(false);
-  const pointerStateRef = useRef({
-    active: false,
-    mode: 'idle',
-    pointerId: null,
-    startX: 0,
-    startY: 0,
-    lastX: 0,
-    lastTime: 0,
-    velocityX: 0,
-  });
+  const pointerStateRef = useRef(createIdlePointerState());
 
-  const [viewportWidth, setViewportWidth] = useState(0);
-  const [pageHeights, setPageHeights] = useState({});
+  const [viewportWidth, setViewportWidth] = useState(() => getViewportWidth(null));
+  const [activePageHeight, setActivePageHeight] = useState(0);
   const [isMobileViewport, setIsMobileViewport] = useState(() => {
     if (typeof window === 'undefined') {
       return true;
@@ -70,69 +124,17 @@ export function SwipeTabsShell({
   );
   const activeIndex = pageIndexById[activePageId] ?? 0;
   const useSwipeNav = !mobileOnlySwipe || isMobileViewport;
+  const pageWidth = Math.max(viewportWidth - MOBILE_PAGE_GAP - MOBILE_PAGE_PEEK, 0);
+  const pageAdvance = pageWidth + MOBILE_PAGE_GAP;
 
-  useEffect(() => {
-    if (!useSwipeNav) {
-      return;
-    }
-
-    function collectHeights() {
-      const nextHeights = {};
-
-      pages.forEach((page) => {
-        const element = pageRefs.current.get(page.id);
-        if (!element) {
-          return;
-        }
-
-        nextHeights[page.id] = Math.ceil(element.getBoundingClientRect().height);
-      });
-
-      setPageHeights((currentHeights) => {
-        const currentKeys = Object.keys(currentHeights);
-        const nextKeys = Object.keys(nextHeights);
-
-        if (currentKeys.length !== nextKeys.length) {
-          return nextHeights;
-        }
-
-        for (const key of nextKeys) {
-          if (currentHeights[key] !== nextHeights[key]) {
-            return nextHeights;
-          }
-        }
-
-        return currentHeights;
-      });
-    }
-
-    collectHeights();
-
-    if (typeof ResizeObserver === 'undefined') {
-      return;
-    }
-
-    const observer = new ResizeObserver(collectHeights);
-
-    pages.forEach((page) => {
-      const element = pageRefs.current.get(page.id);
-      if (element) {
-        observer.observe(element);
-      }
-    });
-
-    window.addEventListener('resize', collectHeights);
-
-    return () => {
-      observer.disconnect();
-      window.removeEventListener('resize', collectHeights);
-    };
-  }, [pages, useSwipeNav]);
+  function syncViewportWidth() {
+    setViewportWidth(getViewportWidth(viewportRef.current ?? shellRef.current));
+  }
 
   useEffect(() => {
     function handleResize() {
       setIsMobileViewport(window.innerWidth <= MOBILE_BREAKPOINT);
-      setViewportWidth(getViewportWidth(shellRef.current));
+      syncViewportWidth();
     }
 
     handleResize();
@@ -144,10 +146,89 @@ export function SwipeTabsShell({
   }, []);
 
   useEffect(() => {
-    setViewportWidth(getViewportWidth(shellRef.current));
+    syncViewportWidth();
   }, [pages.length, isMobileViewport]);
 
+  useLayoutEffect(() => {
+    if (!useSwipeNav) {
+      return undefined;
+    }
+
+    const measureActivePage = () => {
+      const element = pageRefs.current.get(activePageId);
+      const nextHeight = element
+        ? Math.ceil(
+            Math.max(
+              element.getBoundingClientRect().height,
+              element.scrollHeight,
+              element.offsetHeight,
+            ),
+          )
+        : 0;
+      setActivePageHeight((currentHeight) =>
+        currentHeight !== nextHeight ? nextHeight : currentHeight,
+      );
+    };
+
+    measureActivePage();
+    const initialFrame = requestAnimationFrame(measureActivePage);
+    const delayedFrame = requestAnimationFrame(() => {
+      requestAnimationFrame(measureActivePage);
+    });
+    window.addEventListener('resize', measureActivePage);
+
+    let observer;
+    if (typeof ResizeObserver !== 'undefined') {
+      observer = new ResizeObserver(measureActivePage);
+      const activeElement = pageRefs.current.get(activePageId);
+      if (activeElement) {
+        observer.observe(activeElement);
+      }
+    }
+
+    const intervalId = window.setInterval(measureActivePage, 350);
+
+    return () => {
+      cancelAnimationFrame(initialFrame);
+      cancelAnimationFrame(delayedFrame);
+      window.clearInterval(intervalId);
+      window.removeEventListener('resize', measureActivePage);
+      observer?.disconnect();
+    };
+  }, [activePageId, pages.length, useSwipeNav]);
+
+  useEffect(() => {
+    if (!useSwipeNav) {
+      return undefined;
+    }
+
+    const handleWindowBlur = () => {
+      clearPointerInteraction(pointerStateRef, setDragOffset, setIsDragging);
+    };
+
+    window.addEventListener('blur', handleWindowBlur);
+
+    return () => {
+      window.removeEventListener('blur', handleWindowBlur);
+    };
+  }, [useSwipeNav]);
+
+  useEffect(() => {
+    if (typeof onPageSettled !== 'function') {
+      return undefined;
+    }
+
+    const settleDelay = useSwipeNav ? 220 : 0;
+    const timer = window.setTimeout(() => {
+      onPageSettled(activePageId);
+    }, settleDelay);
+
+    return () => window.clearTimeout(timer);
+  }, [activePageId, onPageSettled, useSwipeNav]);
+
   function goToPage(pageId) {
+    resetPointerState();
+
     if (pageId === activePageId) {
       pulseHaptics(8);
       return;
@@ -155,21 +236,11 @@ export function SwipeTabsShell({
 
     pulseHaptics(10);
     onChangePage(pageId);
+    scrollAppToTop(viewportRef.current);
   }
 
   function resetPointerState() {
-    pointerStateRef.current = {
-      active: false,
-      mode: 'idle',
-      pointerId: null,
-      startX: 0,
-      startY: 0,
-      lastX: 0,
-      lastTime: 0,
-      velocityX: 0,
-    };
-    setDragOffset(0);
-    setIsDragging(false);
+    clearPointerInteraction(pointerStateRef, setDragOffset, setIsDragging);
   }
 
   function handlePointerDown(event) {
@@ -177,14 +248,11 @@ export function SwipeTabsShell({
       return;
     }
 
-    // Skip swipe tracking when the user taps an interactive control (buttons,
-    // inputs, labels wrapping inputs). This prevents iOS from firing a fake
-    // swipe when the camera/file picker returns control to the page.
-    if (
-      event.target?.closest?.(
-        'input, textarea, select, label, button, a, [role="button"]',
-      )
-    ) {
+    // Keep swipe disabled over true text/form controls so typing, selecting
+    // and file picking are never hijacked. Buttons and links are allowed:
+    // once horizontal intent is confirmed we suppress the click in capture,
+    // which restores the "swipe anywhere" feel on mobile-heavy screens.
+    if (shouldIgnoreSwipeStart(event.target)) {
       return;
     }
 
@@ -248,6 +316,8 @@ export function SwipeTabsShell({
       return;
     }
 
+    event.preventDefault();
+
     const now = performance.now();
     const elapsed = Math.max(now - pointerState.lastTime, 1);
     pointerState.velocityX = (event.clientX - pointerState.lastX) / elapsed;
@@ -265,6 +335,8 @@ export function SwipeTabsShell({
 
   function handlePointerEnd(event) {
     const pointerState = pointerStateRef.current;
+    const releaseX =
+      typeof event.clientX === 'number' ? event.clientX : pointerState.lastX;
 
     if (event.currentTarget?.hasPointerCapture?.(event.pointerId)) {
       try {
@@ -283,9 +355,9 @@ export function SwipeTabsShell({
       return;
     }
 
-    const deltaX = event.clientX - pointerState.startX;
+    const deltaX = releaseX - pointerState.startX;
     const absDeltaX = Math.abs(deltaX);
-    const threshold = Math.max(viewportWidth * SWIPE_THRESHOLD_RATIO, 48);
+    const threshold = Math.max(pageAdvance * SWIPE_THRESHOLD_RATIO, 48);
     const nextIndexByDistance =
       absDeltaX > threshold
         ? deltaX < 0
@@ -305,6 +377,7 @@ export function SwipeTabsShell({
     if (clampedIndex !== activeIndex) {
       pulseHaptics(12);
       onChangePage(pages[clampedIndex].id);
+      scrollAppToTop(viewportRef.current);
     }
 
     resetPointerState();
@@ -320,31 +393,23 @@ export function SwipeTabsShell({
     event.stopPropagation();
   }
 
+  const effectiveDragOffset = isDragging ? dragOffset : 0;
   const trackTranslate = useSwipeNav
-    ? -activeIndex * viewportWidth + dragOffset
+    ? -activeIndex * pageAdvance + effectiveDragOffset
     : 0;
-  const activePage = pages[activeIndex];
-  const activePageHeight = activePage ? pageHeights[activePage.id] ?? 0 : 0;
-  const swipeDirection = dragOffset === 0 ? 0 : dragOffset < 0 ? 1 : -1;
-  const adjacentPage = pages[clamp(activeIndex + swipeDirection, 0, pages.length - 1)];
-  const adjacentPageHeight = adjacentPage
-    ? pageHeights[adjacentPage.id] ?? activePageHeight
-    : activePageHeight;
-  const dragProgress =
-    viewportWidth > 0 ? clamp(Math.abs(dragOffset) / viewportWidth, 0, 1) : 0;
-  const viewportHeight =
-    isDragging && swipeDirection !== 0
-      ? Math.round(
-          activePageHeight + (adjacentPageHeight - activePageHeight) * dragProgress,
-        )
-      : activePageHeight;
-  const viewportStyle =
-    useSwipeNav && viewportHeight > 0
+  const mobileViewportStyle =
+    useSwipeNav && activePageHeight > 0
       ? {
-          height: `${viewportHeight}px`,
+          height: `${activePageHeight}px`,
           transition: isDragging ? 'none' : 'height 0.22s ease',
         }
       : undefined;
+  const mobilePageStyle = useSwipeNav
+    ? {
+        width: `${pageWidth}px`,
+        flexBasis: `${pageWidth}px`,
+      }
+    : undefined;
 
   return (
     <div
@@ -354,13 +419,14 @@ export function SwipeTabsShell({
       {useSwipeNav ? (
         <>
           <div
+            ref={viewportRef}
             className="swipe-tabs-shell__viewport"
-            style={viewportStyle}
+            style={mobileViewportStyle}
             onClickCapture={handleViewportClickCapture}
-            onPointerDown={handlePointerDown}
-            onPointerMove={handlePointerMove}
-            onPointerUp={handlePointerEnd}
-            onPointerCancel={handlePointerEnd}
+            onPointerDownCapture={handlePointerDown}
+            onPointerMoveCapture={handlePointerMove}
+            onPointerUpCapture={handlePointerEnd}
+            onPointerCancelCapture={handlePointerEnd}
           >
             <div
               className={`swipe-tabs-shell__track ${
@@ -368,6 +434,7 @@ export function SwipeTabsShell({
               }`}
               style={{
                 transform: `translate3d(${trackTranslate}px, 0, 0)`,
+                gap: `${MOBILE_PAGE_GAP}px`,
               }}
             >
               {pages.map((page) => (
@@ -383,7 +450,8 @@ export function SwipeTabsShell({
                   className={`swipe-tabs-shell__page ${
                     activePageId === page.id ? 'is-active' : ''
                   }`}
-                  aria-hidden={activePageId === page.id ? 'false' : 'true'}
+                  style={mobilePageStyle}
+                  aria-hidden={activePageId !== page.id}
                 >
                   {renderPage(page)}
                 </section>
@@ -391,50 +459,54 @@ export function SwipeTabsShell({
             </div>
           </div>
 
-          <nav className="bottom-swipe-nav" aria-label="Hovednavigasjon">
-            <div
-              className="bottom-swipe-nav__grid"
-              style={{
-                gridTemplateColumns: `repeat(${pages.length}, minmax(0, 1fr))`,
-              }}
-            >
-            {pages.map((page) => {
-              const isActive = page.id === activePageId;
+          {!hideNavigation ? (
+            <nav className="bottom-swipe-nav" aria-label="Hovednavigasjon">
+              <div
+                className="bottom-swipe-nav__grid"
+                style={{
+                  gridTemplateColumns: `repeat(${pages.length}, minmax(0, 1fr))`,
+                }}
+              >
+                {pages.map((page) => {
+                  const isActive = page.id === activePageId;
 
-              return (
-                <button
-                  key={page.id}
-                  type="button"
-                  className={`bottom-swipe-nav__button ${isActive ? 'is-active' : ''}`}
-                  onClick={() => goToPage(page.id)}
-                >
-                  <span className="bottom-swipe-nav__icon" aria-hidden="true">
-                    {page.icon}
-                  </span>
-                  <span className="bottom-swipe-nav__label">{page.shortLabel ?? page.label}</span>
-                </button>
-              );
-            })}
-            </div>
-          </nav>
+                  return (
+                    <button
+                      key={page.id}
+                      type="button"
+                      className={`bottom-swipe-nav__button ${isActive ? 'is-active' : ''}`}
+                      aria-label={page.shortLabel ?? page.label}
+                      onClick={() => goToPage(page.id)}
+                    >
+                      <span className="bottom-swipe-nav__icon" aria-hidden="true">
+                        {page.icon}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            </nav>
+          ) : null}
         </>
       ) : (
         <>
-          <nav className="desktop-segmented-nav" aria-label="Hovednavigasjon">
-            {pages.map((page) => (
-              <button
-                key={page.id}
-                type="button"
-                className={`desktop-segmented-nav__button ${
-                  page.id === activePageId ? 'is-active' : ''
-                }`}
-                onClick={() => goToPage(page.id)}
-              >
-                <span aria-hidden="true">{page.icon}</span>
-                <span>{page.label}</span>
-              </button>
-            ))}
-          </nav>
+          {!hideNavigation ? (
+            <nav className="desktop-segmented-nav" aria-label="Hovednavigasjon">
+              {pages.map((page) => (
+                <button
+                  key={page.id}
+                  type="button"
+                  className={`desktop-segmented-nav__button ${
+                    page.id === activePageId ? 'is-active' : ''
+                  }`}
+                  onClick={() => goToPage(page.id)}
+                >
+                  <span aria-hidden="true">{page.icon}</span>
+                  <span>{page.label}</span>
+                </button>
+              ))}
+            </nav>
+          ) : null}
 
           <div className="desktop-segmented-nav__content">
             {renderPage(pages[activeIndex])}

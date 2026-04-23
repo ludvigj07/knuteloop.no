@@ -38,35 +38,55 @@ function normalizeGenderIdentity(value) {
 }
 
 export function getLeaderboardTitle(rank) {
-  if (rank === 1) {
-    return 'Den Store Knutemester';
+  if (!Number.isFinite(rank) || rank < 1) {
+    return 'Knutekatastrofen';
   }
 
-  if (rank >= 2 && rank <= 3) {
+  if (rank === 1) {
+    return "O' Store Knutemester";
+  }
+
+  if (rank <= 3) {
     return 'Knutemester';
   }
 
-  if (rank >= 4 && rank <= 10) {
+  if (rank <= 10) {
     return 'Knutebaron';
   }
 
-  if (rank >= 11 && rank <= 20) {
-    return 'Knutekriger';
+  if (rank <= 20) {
+    return 'Knuteridder';
   }
 
-  if (rank >= 21 && rank <= 40) {
-    return 'Knutejeger';
+  if (rank <= 35) {
+    return 'Knutesersjant';
   }
 
-  if (rank >= 41 && rank <= 60) {
-    return 'Knutefører';
+  if (rank <= 55) {
+    return 'Knuteknekt';
   }
 
-  if (rank >= 61 && rank <= 80) {
+  if (rank <= 80) {
     return 'Knutelærling';
   }
 
-  return 'Rekrutt';
+  if (rank <= 110) {
+    return 'Knuteamatør';
+  }
+
+  if (rank <= 145) {
+    return 'Knuteprøvling';
+  }
+
+  if (rank <= 185) {
+    return 'Knutetabbe';
+  }
+
+  if (rank <= 220) {
+    return 'Knutenybegynner';
+  }
+
+  return 'Knutekatastrofen';
 }
 
 function getDuelAdjustmentMap(duels) {
@@ -260,21 +280,102 @@ function normalizeClassName(leader) {
     leader?.group ??
     leader?.profile?.className ??
     '';
-  const normalized = String(className).trim();
-  return normalized || 'Ukjent klasse';
+  const normalizedToken = String(className)
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]/g, '');
+
+  if (!normalizedToken) {
+    return '';
+  }
+
+  if (/^[a-h]$/.test(normalizedToken)) {
+    return `st${normalizedToken}`;
+  }
+
+  if (/^st[a-h]$/.test(normalizedToken)) {
+    return normalizedToken;
+  }
+
+  const stMatch = normalizedToken.match(/(?:^|[0-9])st([a-h])(?:[0-9]|$)/);
+  if (stMatch) {
+    return `st${stMatch[1]}`;
+  }
+
+  if (/^ib[1-4]$/.test(normalizedToken)) {
+    const ibIndex = Number(normalizedToken.slice(2));
+    const ibLetter = ['a', 'b', 'c', 'd'][ibIndex - 1];
+    return `ib${ibLetter}`;
+  }
+
+  const ibNumberMatch = normalizedToken.match(/(?:^|[0-9])ib([1-4])(?:[0-9]|$)/);
+  if (ibNumberMatch) {
+    const ibLetter = ['a', 'b', 'c', 'd'][Number(ibNumberMatch[1]) - 1];
+    return `ib${ibLetter}`;
+  }
+
+  if (/^ib[a-d]$/.test(normalizedToken)) {
+    return normalizedToken;
+  }
+
+  const ibLetterMatch = normalizedToken.match(/(?:^|[0-9])ib([a-d])(?:[0-9]|$)/);
+  if (ibLetterMatch) {
+    return `ib${ibLetterMatch[1]}`;
+  }
+
+  return '';
 }
 
 export function buildClassLeaderboard(leaders = []) {
-  const classMap = new Map();
+  const classTokenOrder = [
+    'sta',
+    'stb',
+    'stc',
+    'std',
+    'ste',
+    'stf',
+    'stg',
+    'sth',
+    'iba',
+    'ibb',
+    'ibc',
+    'ibd',
+  ];
+  const classLabelByToken = {
+    sta: 'STA',
+    stb: 'STB',
+    stc: 'STC',
+    std: 'STD',
+    ste: 'STE',
+    stf: 'STF',
+    stg: 'STG',
+    sth: 'STH',
+    iba: 'IBA',
+    ibb: 'IBB',
+    ibc: 'IBC',
+    ibd: 'IBD',
+  };
+  const classMap = new Map(
+    classTokenOrder.map((token) => [
+      classLabelByToken[token],
+      {
+        className: classLabelByToken[token],
+        members: 0,
+        totalPoints: 0,
+        totalCompletedKnots: 0,
+      },
+    ]),
+  );
 
   leaders.forEach((leader) => {
-    const className = normalizeClassName(leader);
-    const existing = classMap.get(className) ?? {
-      className,
-      members: 0,
-      totalPoints: 0,
-      totalCompletedKnots: 0,
-    };
+    const classToken = normalizeClassName(leader);
+    const className = classLabelByToken[classToken];
+
+    if (!className) {
+      return;
+    }
+
+    const existing = classMap.get(className);
 
     existing.members += 1;
     existing.totalPoints += Number(leader?.points ?? 0);
@@ -1367,12 +1468,18 @@ export function buildDashboardData(
   };
 }
 
-export function limitNoteWords(note, maxWords = 100) {
-  const words = (note ?? '')
-    .trim()
+export const NOTE_MAX_WORDS = 100;
+export const NOTE_MAX_CHARS = 700;
+
+export function limitNoteWords(
+  note,
+  maxWords = NOTE_MAX_WORDS,
+  maxChars = NOTE_MAX_CHARS,
+) {
+  const normalizedNote = typeof note === 'string' ? note.trim().slice(0, maxChars) : '';
+  const words = normalizedNote
     .split(/\s+/)
     .filter(Boolean);
 
   return words.slice(0, maxWords).join(' ');
 }
-

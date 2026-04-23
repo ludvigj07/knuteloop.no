@@ -17,7 +17,9 @@
       "Bash(xargs -r kill -9)",
       "Read(//c/Development/Kampsporthuset/repos/knuteloop.no/**)",
       "Read(//tmp/**)",
-      "Bash(xargs -r kill -9 rm -f /tmp/huge.json /tmp/huge.txt)"
+      "Bash(xargs -r kill -9 rm -f /tmp/huge.json /tmp/huge.txt)",
+      "Bash(git add *)",
+      "Bash(grep -n *)"
     ]
   }
 }

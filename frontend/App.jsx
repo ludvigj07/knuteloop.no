@@ -1,9 +1,11 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import './App.css';
 import './styles/blaruss-refresh.css';
+import { SettingsModal } from './components/SettingsModal.jsx';
 import { SwipeTabsShell } from './components/SwipeTabsShell.jsx';
 import {
   assertVideoWithinLimits,
+  changeOwnPassword,
   completeDuel,
   convertToMp4,
   createBan,
@@ -105,6 +107,12 @@ const ADMIN_PAGE_ORDER = ['dashboard', 'knuter', 'leaderboard', 'feed', 'profile
 
 const EMPTY_ARRAY = [];
 const EMPTY_OBJECT = {};
+const APP_VERSION = import.meta.env.VITE_APP_VERSION ?? '0.0.0';
+const DEFAULT_PASSWORD_FORM = Object.freeze({
+  currentPassword: '',
+  newPassword: '',
+  confirmPassword: '',
+});
 
 function App() {
   const [activePage, setActivePage] = useState('dashboard');
@@ -119,9 +127,16 @@ function App() {
   const [loginEmail, setLoginEmail] = useState('');
   const [loginPassword, setLoginPassword] = useState('');
   const [loginError, setLoginError] = useState('');
+  const [loginNotice, setLoginNotice] = useState('');
   const [appError, setAppError] = useState('');
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [passwordForm, setPasswordForm] = useState(DEFAULT_PASSWORD_FORM);
+  const [passwordError, setPasswordError] = useState('');
+  const [isChangingPassword, setIsChangingPassword] = useState(false);
   const [isLoadingApp, setIsLoadingApp] = useState(true);
   const [isLoggingIn, setIsLoggingIn] = useState(false);
+  const [knuterSettledToken, setKnuterSettledToken] = useState(0);
+  const skipNextPageTopResetRef = useRef(false);
 
   const currentUser = appData?.currentUser ?? null;
   const knots = appData?.knots ?? EMPTY_ARRAY;
@@ -151,7 +166,6 @@ function App() {
     profiles.find((profile) => profile.id === selectedProfileId) ?? profiles[0];
   const activityLog = appData?.activityLog ?? EMPTY_ARRAY;
   const classLeaderboard = appData?.classLeaderboard ?? EMPTY_ARRAY;
-  const knotTypeLeaderboard = appData?.knotTypeLeaderboard ?? EMPTY_ARRAY;
   const genderLeaderboards = appData?.genderLeaderboards ?? EMPTY_OBJECT;
   const dailyKnot = appData?.dailyKnot ?? null;
   const duelAvailability = appData?.duelAvailability ?? {
@@ -172,7 +186,7 @@ function App() {
     activeCount: 0,
   };
   const knotFeedbackMessages = appData?.knotFeedbackMessages ?? EMPTY_OBJECT;
-  const dashboardData = appData?.dashboardData ?? {
+  const baseDashboardData = appData?.dashboardData ?? {
     stats: [],
     messages: [],
     rivals: [],
@@ -185,6 +199,62 @@ function App() {
     weeklyPostMinRatings: 10,
     currentLeader: null,
   };
+
+  // Fra farger: overstyr weeklyTopPost med første aktivitet som har bilde/video,
+  // så "Ukas post"-kortet får noe å rendre når server ikke har kåret en vinner ennå.
+  const weeklyMediaTestPost = useMemo(() => {
+    const imageEntry = activityLog.find(
+      (entry) =>
+        entry?.submissionId &&
+        entry?.mediaType === 'image' &&
+        Boolean(entry?.imagePreviewUrl),
+    );
+    const videoEntry = activityLog.find(
+      (entry) =>
+        entry?.submissionId &&
+        entry?.mediaType === 'video' &&
+        Boolean(entry?.videoPreviewUrl),
+    );
+    const mediaEntry = videoEntry ?? imageEntry ?? null;
+
+    if (!mediaEntry) {
+      return null;
+    }
+
+    const resolvedMediaType =
+      mediaEntry.mediaType === 'image' && mediaEntry.imagePreviewUrl
+        ? 'image'
+        : mediaEntry.mediaType === 'video' && mediaEntry.videoPreviewUrl
+          ? 'video'
+          : 'none';
+
+    return {
+      id: mediaEntry.id ?? `submission-${mediaEntry.submissionId}`,
+      submissionId: mediaEntry.submissionId,
+      studentId: mediaEntry.isAnonymous ? null : (mediaEntry.studentId ?? null),
+      studentName: mediaEntry.studentName ?? 'Anonym',
+      studentPhotoUrl: mediaEntry.studentPhotoUrl ?? '',
+      studentIcon: mediaEntry.studentIcon ?? '',
+      isAnonymous: mediaEntry.isAnonymous === true,
+      knotTitle: mediaEntry.knotTitle ?? 'Post',
+      note: mediaEntry.note ?? '',
+      points: Number(mediaEntry.points ?? 0),
+      completedAt: mediaEntry.completedAt ?? 'Nylig',
+      ratingAverage: Number(mediaEntry.ratingAverage ?? 0),
+      ratingCount: Number(mediaEntry.ratingCount ?? 0),
+      weeklyScore: Number(mediaEntry.ratingAverage ?? 0),
+      mediaType: resolvedMediaType,
+      imagePreviewUrl: mediaEntry.imagePreviewUrl ?? '',
+      imageName: mediaEntry.imageName ?? '',
+      videoPreviewUrl: mediaEntry.videoPreviewUrl ?? '',
+      videoName: mediaEntry.videoName ?? '',
+    };
+  }, [activityLog]);
+
+  const dashboardData =
+    weeklyMediaTestPost && !baseDashboardData.weeklyTopPost
+      ? { ...baseDashboardData, weeklyTopPost: weeklyMediaTestPost }
+      : baseDashboardData;
 
   const approvedKnots = knots.filter((knot) => knot.status === 'Godkjent').length;
   const pendingSubmissions = submissions.filter(
@@ -274,6 +344,11 @@ function App() {
       return;
     }
 
+    if (skipNextPageTopResetRef.current) {
+      skipNextPageTopResetRef.current = false;
+      return;
+    }
+
     window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
   }, [activePage]);
 
@@ -349,9 +424,40 @@ function App() {
   }
 
   function handleOpenDailyKnot(knotId = null) {
+    skipNextPageTopResetRef.current = true;
     setFocusedKnotId(knotId);
     setFocusedKnotScrollRequest((current) => current + 1);
     setActivePage('knuter');
+  }
+
+  const handlePageSettled = useCallback((pageId) => {
+    if (pageId === 'knuter') {
+      setKnuterSettledToken((current) => current + 1);
+    }
+  }, []);
+
+  function resetSettingsForm() {
+    setPasswordForm({ ...DEFAULT_PASSWORD_FORM });
+    setPasswordError('');
+    setIsChangingPassword(false);
+  }
+
+  function handleOpenSettings() {
+    resetSettingsForm();
+    setIsSettingsOpen(true);
+  }
+
+  function handleCloseSettings() {
+    setIsSettingsOpen(false);
+    resetSettingsForm();
+  }
+
+  function handleChangePasswordField(field, value) {
+    setPasswordForm((current) => ({
+      ...current,
+      [field]: value,
+    }));
+    setPasswordError('');
   }
 
   async function handleLogin() {
@@ -362,6 +468,7 @@ function App() {
 
     setIsLoggingIn(true);
     setLoginError('');
+    setLoginNotice('');
 
     try {
       const result = await loginWithEmailPassword(loginEmail.trim(), loginPassword);
@@ -376,7 +483,9 @@ function App() {
     }
   }
 
-  async function handleLogout() {
+  async function handleLogout(options = {}) {
+    const noticeMessage = options?.noticeMessage ?? '';
+
     try {
       if (sessionToken) {
         await logout(sessionToken);
@@ -388,9 +497,74 @@ function App() {
     storeSessionToken('');
     setSessionToken('');
     setAppData(null);
+    setAppError('');
+    setLoginError('');
+    setLoginNotice(noticeMessage);
+    setIsSettingsOpen(false);
+    resetSettingsForm();
     setSelectedProfileId(null);
     setFocusedKnotId(null);
     setActivePage('dashboard');
+  }
+
+  async function handleChangeOwnPassword(event) {
+    event.preventDefault();
+
+    if (isChangingPassword) {
+      return;
+    }
+
+    if (
+      !passwordForm.currentPassword ||
+      !passwordForm.newPassword ||
+      !passwordForm.confirmPassword
+    ) {
+      setPasswordError('Fyll inn nåværende passord, nytt passord og bekreftelse.');
+      return;
+    }
+
+    if (passwordForm.newPassword !== passwordForm.confirmPassword) {
+      setPasswordError('Nytt passord og bekreftelse må være like.');
+      return;
+    }
+
+    setIsChangingPassword(true);
+    setPasswordError('');
+
+    try {
+      await changeOwnPassword(sessionToken, {
+        currentPassword: passwordForm.currentPassword,
+        newPassword: passwordForm.newPassword,
+      });
+      await handleLogout({
+        noticeMessage: 'Passordet er oppdatert. Logg inn med det nye passordet.',
+      });
+    } catch (error) {
+      setPasswordError(
+        error instanceof Error ? error.message : 'Kunne ikke oppdatere passordet.',
+      );
+    } finally {
+      setIsChangingPassword(false);
+    }
+  }
+
+  function handleSettingsOpenKnots() {
+    setIsSettingsOpen(false);
+    handleChangePage('knuter');
+  }
+
+  function handleSettingsOpenFeed() {
+    setIsSettingsOpen(false);
+    handleChangePage('feed');
+  }
+
+  function handleSettingsOpenProfile() {
+    setIsSettingsOpen(false);
+    if (currentUser?.leaderId) {
+      handleOpenProfile(currentUser.leaderId);
+    } else {
+      handleChangePage('profiler');
+    }
   }
 
   async function handleImportKnots(rawText, defaultPoints, defaultFolder, description) {
@@ -647,66 +821,51 @@ function App() {
   }
 
   function renderHeroPanel() {
+    const leaderAbove = displayLeaders.find(
+      (leader) => leader.rank === (currentLeader?.rank ?? 0) - 1,
+    );
+    const pointsBehind = leaderAbove
+      ? Math.max((leaderAbove.points ?? 0) - (currentLeader?.points ?? 0), 0)
+      : 0;
+    const leaderAboveName = leaderAbove?.russName ?? leaderAbove?.name ?? 'ukjent';
+
     return (
       <header className="hero-panel hero-panel--page">
-        <div>
-          <p className="eyebrow">Live nå</p>
-          <div className="hero-chip-row">
-            <span className="hero-chip">
-              {currentProfile?.leaderboardTitle ?? 'Klar for oversikten'}
-            </span>
-            <span className="hero-chip hero-chip--accent">
-              Plass #{currentLeader?.rank ?? '-'}
-            </span>
+        <div className="hero-panel__content">
+          <div className="hero-panel__topbar">
+            <div className="hero-panel__utility">
+              <button
+                type="button"
+                className="hero-icon-button"
+                onClick={handleOpenSettings}
+                aria-label="Apne innstillinger"
+                title="Innstillinger"
+              >
+                ⚙
+              </button>
+            </div>
           </div>
-          <h1>Russeknuteportalen</h1>
-          <p className="hero-copy">
-            {currentProfile?.russName ?? currentUser?.name}, dagens knute er klar,
-            og fellesskapet deler nye øyeblikk gjennom hele dagen.
+          <h1>
+            Heisann{' '}
+            <span className="hero-name-accent">
+              {currentProfile?.russName ?? currentUser?.name ?? 'russ'}
+            </span>
+          </h1>
+          <p className="hero-copy hero-copy--status font-display">
+            {leaderAbove ? (
+              <>
+                Du er{' '}
+                <span className="hero-copy__points">
+                  <span className="hero-copy__points-value">{pointsBehind}</span> poeng
+                </span>{' '}
+                bak {leaderAboveName}.
+              </>
+            ) : (
+              'Du leder topplisten.'
+            )}
           </p>
-          <div className="hero-actions">
-            <button
-              type="button"
-              className="action-button hero-action-button"
-              onClick={() => handleOpenDailyKnot(dailyKnot?.id ?? null)}
-            >
-              Ta dagens knute
-            </button>
-            <button
-              type="button"
-              className="action-button action-button--ghost hero-action-button"
-              onClick={() => handleChangePage('leaderboard')}
-            >
-              Se oversikten
-            </button>
-            <button
-              type="button"
-              className="action-button action-button--ghost hero-action-button"
-              onClick={handleLogout}
-            >
-              Logg ut
-            </button>
-          </div>
         </div>
 
-        <div className="hero-meta">
-          <div className="hero-stat">
-            <span>Plassering</span>
-            <strong>#{currentLeader?.rank ?? '-'}</strong>
-          </div>
-          <div className="hero-stat">
-            <span>Poeng</span>
-            <strong>{currentLeader?.points ?? 0}</strong>
-          </div>
-          <div className="hero-stat">
-            <span>Godkjent</span>
-            <strong>{approvedKnots}</strong>
-          </div>
-          <div className="hero-stat">
-            <span>Venter</span>
-            <strong>{pendingSubmissions}</strong>
-          </div>
-        </div>
       </header>
     );
   }
@@ -729,11 +888,11 @@ function App() {
       duels,
       focusedKnotId,
       focusedKnotScrollRequest,
+      knuterSettledToken,
       bans,
       knots,
       leaders: displayLeaders,
       classLeaderboard,
-      knotTypeLeaderboard,
       genderLeaderboards,
       currentUserClassName: currentProfile?.className ?? currentUser?.group ?? 'Ukjent klasse',
       onDeleteKnot: handleDeleteKnot,
@@ -794,6 +953,7 @@ function App() {
           canDeletePosts={currentUser.role === 'admin'}
           currentUserActiveBans={currentUserActiveBans}
           onDeleteSubmission={handleDeleteSubmission}
+          onExit={() => handleChangePage('dashboard')}
           onOpenProfile={handleOpenProfile}
           onReportSubmission={handleReportSubmission}
           onRateSubmission={handleRateSubmission}
@@ -827,20 +987,15 @@ function App() {
 
     return (
       <div className="main-page-panel">
-        {page.id === 'dashboard' ? renderHeroPanel() : null}
-
         <main className="page-layout">
-          {page.id !== 'dashboard' ? (
+          {page.id === 'dashboard' ? renderHeroPanel() : null}
+          {page.id !== 'dashboard' && page.id !== 'knuter' ? (
             <section className="page-intro page-intro--shell">
-              {page.id === 'knuter' ? (
+              <>
+                <p className="eyebrow">Visning</p>
                 <h2>{page.title}</h2>
-              ) : (
-                <>
-                  <p className="eyebrow">Visning</p>
-                  <h2>{page.title}</h2>
-                  <p>{page.description}</p>
-                </>
-              )}
+                <p>{page.description}</p>
+              </>
             </section>
           ) : null}
           {content}
@@ -871,6 +1026,7 @@ function App() {
             email={loginEmail}
             password={loginPassword}
             error={loginError || appError}
+            notice={loginNotice}
             isSubmitting={isLoggingIn}
             onChangeEmail={setLoginEmail}
             onChangePassword={setLoginPassword}
@@ -888,8 +1044,25 @@ function App() {
           pages={visiblePages}
           activePageId={currentPage.id}
           onChangePage={handleChangePage}
+          onPageSettled={handlePageSettled}
           renderPage={renderPageContent}
+          hideNavigation={false}
           mobileOnlySwipe
+        />
+        <SettingsModal
+          appVersion={APP_VERSION}
+          currentUser={currentUser}
+          isChangingPassword={isChangingPassword}
+          isOpen={isSettingsOpen}
+          onChangePasswordField={handleChangePasswordField}
+          onClose={handleCloseSettings}
+          onLogout={() => handleLogout()}
+          onNavigateToFeed={handleSettingsOpenFeed}
+          onNavigateToKnots={handleSettingsOpenKnots}
+          onNavigateToProfile={handleSettingsOpenProfile}
+          onSubmitPasswordChange={handleChangeOwnPassword}
+          passwordError={passwordError}
+          passwordForm={passwordForm}
         />
       </div>
     </div>
