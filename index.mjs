@@ -3835,6 +3835,12 @@ const server = createServer(async (request, response) => {
     sendJson(response, 404, { error: 'Fant ikke endpoint.' });
   } catch (error) {
     const statusCode = error?.statusCode ?? 500;
+    if (statusCode >= 500) {
+      console.error(
+        `[${request.method} ${request.url}]`,
+        error instanceof Error ? error.stack ?? error.message : error,
+      );
+    }
     sendJson(response, statusCode, {
       error: statusCode === 413 ? (error?.message ?? 'For stor forespørsel.') : 'Serverfeil.',
       detail: error instanceof Error ? error.message : 'Ukjent feil',
