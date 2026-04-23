@@ -30,6 +30,7 @@ import {
 } from './backend/src/auth/db.mjs';
 import { generateInviteCode, hashSecret } from './backend/src/auth/passwords.mjs';
 import {
+  handleChangeOwnPassword,
   handlePasswordLogin,
   handleInviteVerify,
   handleInviteActivate,
@@ -1855,6 +1856,7 @@ function buildBootstrap(db, user) {
     currentUser: {
       leaderId: user.id,
       name: user.name,
+      email: user.email ?? '',
       group: user.group,
       role: user.role,
     },
@@ -3438,6 +3440,10 @@ const server = createServer(async (request, response) => {
 
     if (request.method === 'POST' && url.pathname === '/api/auth/password-login') {
       await handlePasswordLogin(request, response);
+      return;
+    }
+    if (request.method === 'PATCH' && url.pathname === '/api/auth/password') {
+      await handleChangeOwnPassword(request, response);
       return;
     }
     if (request.method === 'POST' && url.pathname === '/api/auth/invite/verify') {

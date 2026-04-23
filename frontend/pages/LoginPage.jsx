@@ -2,6 +2,7 @@ export function LoginPage({
   email,
   password,
   error,
+  notice,
   isSubmitting,
   onChangeEmail,
   onChangePassword,
@@ -50,6 +51,7 @@ export function LoginPage({
           </label>
 
           {error ? <p className="form-feedback form-feedback--error">{error}</p> : null}
+          {!error && notice ? <p className="login-notice">{notice}</p> : null}
 
           <button type="submit" className="action-button" disabled={isSubmitting}>
             {isSubmitting ? 'Logger inn...' : 'Logg inn'}

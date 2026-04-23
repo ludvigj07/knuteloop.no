@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import './App.css';
 import './styles/blaruss-refresh.css';
+import { SettingsModal } from './components/SettingsModal.jsx';
 import { SwipeTabsShell } from './components/SwipeTabsShell.jsx';
 import {
   buildActivityLog,
@@ -20,6 +21,7 @@ import {
 } from './data/appHelpers.js';
 import { buildAchievements } from './data/badgeSystem.js';
 import {
+  changeOwnPassword,
   completeDuel,
   convertToMp4,
   createBan,
@@ -121,6 +123,12 @@ const ADMIN_PAGE_ORDER = ['dashboard', 'knuter', 'leaderboard', 'feed', 'profile
 
 const EMPTY_ARRAY = [];
 const EMPTY_OBJECT = {};
+const APP_VERSION = import.meta.env.VITE_APP_VERSION ?? '0.0.0';
+const DEFAULT_PASSWORD_FORM = Object.freeze({
+  currentPassword: '',
+  newPassword: '',
+  confirmPassword: '',
+});
 
 function App() {
   const [activePage, setActivePage] = useState('dashboard');
@@ -135,7 +143,12 @@ function App() {
   const [loginEmail, setLoginEmail] = useState('');
   const [loginPassword, setLoginPassword] = useState('');
   const [loginError, setLoginError] = useState('');
+  const [loginNotice, setLoginNotice] = useState('');
   const [appError, setAppError] = useState('');
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [passwordForm, setPasswordForm] = useState(DEFAULT_PASSWORD_FORM);
+  const [passwordError, setPasswordError] = useState('');
+  const [isChangingPassword, setIsChangingPassword] = useState(false);
   const [isLoadingApp, setIsLoadingApp] = useState(true);
   const [isLoggingIn, setIsLoggingIn] = useState(false);
   const [knuterSettledToken, setKnuterSettledToken] = useState(0);
@@ -504,6 +517,30 @@ function App() {
     }
   }, []);
 
+  function resetSettingsForm() {
+    setPasswordForm({ ...DEFAULT_PASSWORD_FORM });
+    setPasswordError('');
+    setIsChangingPassword(false);
+  }
+
+  function handleOpenSettings() {
+    resetSettingsForm();
+    setIsSettingsOpen(true);
+  }
+
+  function handleCloseSettings() {
+    setIsSettingsOpen(false);
+    resetSettingsForm();
+  }
+
+  function handleChangePasswordField(field, value) {
+    setPasswordForm((current) => ({
+      ...current,
+      [field]: value,
+    }));
+    setPasswordError('');
+  }
+
   async function handleLogin() {
     if (!loginEmail.trim() || !loginPassword) {
       setLoginError('Fyll inn e-post og passord.');
@@ -512,6 +549,7 @@ function App() {
 
     setIsLoggingIn(true);
     setLoginError('');
+    setLoginNotice('');
 
     try {
       const result = await loginWithEmailPassword(loginEmail.trim(), loginPassword);
@@ -526,7 +564,9 @@ function App() {
     }
   }
 
-  async function handleLogout() {
+  async function handleLogout(options = {}) {
+    const noticeMessage = options?.noticeMessage ?? '';
+
     try {
       if (sessionToken) {
         await logout(sessionToken);
@@ -538,9 +578,74 @@ function App() {
     storeSessionToken('');
     setSessionToken('');
     setAppData(null);
+    setAppError('');
+    setLoginError('');
+    setLoginNotice(noticeMessage);
+    setIsSettingsOpen(false);
+    resetSettingsForm();
     setSelectedProfileId(null);
     setFocusedKnotId(null);
     setActivePage('dashboard');
+  }
+
+  async function handleChangeOwnPassword(event) {
+    event.preventDefault();
+
+    if (isChangingPassword) {
+      return;
+    }
+
+    if (
+      !passwordForm.currentPassword ||
+      !passwordForm.newPassword ||
+      !passwordForm.confirmPassword
+    ) {
+      setPasswordError('Fyll inn nåværende passord, nytt passord og bekreftelse.');
+      return;
+    }
+
+    if (passwordForm.newPassword !== passwordForm.confirmPassword) {
+      setPasswordError('Nytt passord og bekreftelse må være like.');
+      return;
+    }
+
+    setIsChangingPassword(true);
+    setPasswordError('');
+
+    try {
+      await changeOwnPassword(sessionToken, {
+        currentPassword: passwordForm.currentPassword,
+        newPassword: passwordForm.newPassword,
+      });
+      await handleLogout({
+        noticeMessage: 'Passordet er oppdatert. Logg inn med det nye passordet.',
+      });
+    } catch (error) {
+      setPasswordError(
+        error instanceof Error ? error.message : 'Kunne ikke oppdatere passordet.',
+      );
+    } finally {
+      setIsChangingPassword(false);
+    }
+  }
+
+  function handleSettingsOpenKnots() {
+    setIsSettingsOpen(false);
+    handleChangePage('knuter');
+  }
+
+  function handleSettingsOpenFeed() {
+    setIsSettingsOpen(false);
+    handleChangePage('feed');
+  }
+
+  function handleSettingsOpenProfile() {
+    setIsSettingsOpen(false);
+    if (currentUser?.leaderId) {
+      handleOpenProfile(currentUser.leaderId);
+    } else {
+      handleChangePage('profiler');
+    }
   }
 
   async function handleImportKnots(rawText, defaultPoints, defaultFolder, description) {
@@ -811,8 +916,8 @@ function App() {
               <button
                 type="button"
                 className="hero-icon-button"
-                onClick={handleLogout}
-                aria-label="Innstillinger og logg ut"
+                onClick={handleOpenSettings}
+                aria-label="Apne innstillinger"
                 title="Innstillinger"
               >
                 ⚙
@@ -1000,6 +1105,7 @@ function App() {
             email={loginEmail}
             password={loginPassword}
             error={loginError || appError}
+            notice={loginNotice}
             isSubmitting={isLoggingIn}
             onChangeEmail={setLoginEmail}
             onChangePassword={setLoginPassword}
@@ -1021,6 +1127,21 @@ function App() {
           renderPage={renderPageContent}
           hideNavigation={false}
           mobileOnlySwipe
+        />
+        <SettingsModal
+          appVersion={APP_VERSION}
+          currentUser={currentUser}
+          isChangingPassword={isChangingPassword}
+          isOpen={isSettingsOpen}
+          onChangePasswordField={handleChangePasswordField}
+          onClose={handleCloseSettings}
+          onLogout={() => handleLogout()}
+          onNavigateToFeed={handleSettingsOpenFeed}
+          onNavigateToKnots={handleSettingsOpenKnots}
+          onNavigateToProfile={handleSettingsOpenProfile}
+          onSubmitPasswordChange={handleChangeOwnPassword}
+          passwordError={passwordError}
+          passwordForm={passwordForm}
         />
       </div>
     </div>

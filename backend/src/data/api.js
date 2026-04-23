@@ -68,6 +68,14 @@ export function logout(token) {
   });
 }
 
+export function changeOwnPassword(token, payload) {
+  return apiRequest('/auth/password', {
+    method: 'PATCH',
+    token,
+    body: payload,
+  });
+}
+
 export function fetchBootstrap(token) {
   return apiRequest('/bootstrap', { token });
 }
