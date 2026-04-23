@@ -739,18 +739,6 @@
       "isActive": true
     },
     {
-      "id": "imported-1775861431788-0",
-      "title": "brage spessial",
-      "description": "Ny knute lagt inn av knutesjef.",
-      "category": "Egendefinert",
-      "folder": "Generelle",
-      "points": 20000,
-      "difficulty": "Valgfri",
-      "status": "Tilgjengelig",
-      "schoolId": "st-olav",
-      "isActive": true
-    },
-    {
       "id": "imported-1775862884141-0",
       "title": "spansk pølse",
       "description": "Ny knute lagt inn av knutesjef.",
@@ -868,35 +856,6 @@
         "6": 5
       },
       "reviewedAtRaw": "2026-04-20T20:23:04.322Z",
-      "reviewedBy": 6,
-      "profileHidden": false
-    },
-    {
-      "id": "submission-1776368549953",
-      "knotId": "imported-1775861431788-0",
-      "knotTitle": "brage spessial",
-      "knotCategory": "Egendefinert",
-      "student": "Linus",
-      "leaderId": 8,
-      "submittedAtRaw": "2026-04-16T19:42:29.953Z",
-      "status": "Godkjent",
-      "points": 20000,
-      "basePoints": 20000,
-      "streakBonusPoints": 0,
-      "streakQualified": false,
-      "streakDay": null,
-      "streakDayKey": null,
-      "note": "Drit og dra",
-      "imageName": "",
-      "imagePreviewUrl": "",
-      "videoName": "",
-      "videoPreviewUrl": "",
-      "isAnonymousFeed": false,
-      "submissionMode": "review",
-      "ratings": {
-        "6": 5
-      },
-      "reviewedAtRaw": "2026-04-16T19:42:53.285Z",
       "reviewedBy": 6,
       "profileHidden": false
     },
@@ -2320,35 +2279,6 @@
     }
   ],
   "duels": [
-    {
-      "id": "duel-1775943935514",
-      "challengerId": 1,
-      "opponentId": 4,
-      "knotId": "imported-1775861431788-0",
-      "knotTitle": "brage spessial",
-      "stake": 10,
-      "createdAt": "2026-04-11T21:45:35.513Z",
-      "deadlineAt": "2026-04-12T21:45:35.513Z",
-      "challengerCompletedAt": null,
-      "opponentCompletedAt": null,
-      "challengerCompletionApproved": null,
-      "opponentCompletionApproved": null,
-      "challengerSubmissionId": null,
-      "opponentSubmissionId": null,
-      "status": "active",
-      "result": null,
-      "resolvedAt": null,
-      "challengerNote": "",
-      "challengerImageName": "",
-      "challengerImagePreviewUrl": "",
-      "challengerVideoName": "",
-      "challengerVideoPreviewUrl": "",
-      "opponentNote": "",
-      "opponentImageName": "",
-      "opponentImagePreviewUrl": "",
-      "opponentVideoName": "",
-      "opponentVideoPreviewUrl": ""
-    },
     {
       "id": "duel-1775777145392",
       "challengerId": 2,

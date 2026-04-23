@@ -38,35 +38,55 @@ function normalizeGenderIdentity(value) {
 }
 
 export function getLeaderboardTitle(rank) {
-  if (rank === 1) {
-    return 'Den Store Knutemester';
+  if (!Number.isFinite(rank) || rank < 1) {
+    return 'Knutekatastrofen';
   }
 
-  if (rank >= 2 && rank <= 3) {
+  if (rank === 1) {
+    return "O' Store Knutemester";
+  }
+
+  if (rank <= 3) {
     return 'Knutemester';
   }
 
-  if (rank >= 4 && rank <= 10) {
+  if (rank <= 10) {
     return 'Knutebaron';
   }
 
-  if (rank >= 11 && rank <= 20) {
-    return 'Knutekriger';
+  if (rank <= 20) {
+    return 'Knuteridder';
   }
 
-  if (rank >= 21 && rank <= 40) {
-    return 'Knutejeger';
+  if (rank <= 35) {
+    return 'Knutesersjant';
   }
 
-  if (rank >= 41 && rank <= 60) {
-    return 'Knutefører';
+  if (rank <= 55) {
+    return 'Knuteknekt';
   }
 
-  if (rank >= 61 && rank <= 80) {
+  if (rank <= 80) {
     return 'Knutelærling';
   }
 
-  return 'Rekrutt';
+  if (rank <= 110) {
+    return 'Knuteamatør';
+  }
+
+  if (rank <= 145) {
+    return 'Knuteprøvling';
+  }
+
+  if (rank <= 185) {
+    return 'Knutetabbe';
+  }
+
+  if (rank <= 220) {
+    return 'Knutenybegynner';
+  }
+
+  return 'Knutekatastrofen';
 }
 
 function getDuelAdjustmentMap(duels) {
@@ -1379,4 +1399,3 @@ export function limitNoteWords(
 
   return words.slice(0, maxWords).join(' ');
 }
-

@@ -22,6 +22,22 @@ function getRankToneClass(rank) {
   return '';
 }
 
+function getPodiumRowClass(rank) {
+  if (rank === 1) {
+    return 'leaderboard-row--podium-gold';
+  }
+
+  if (rank === 2) {
+    return 'leaderboard-row--podium-silver';
+  }
+
+  if (rank === 3) {
+    return 'leaderboard-row--podium-bronze';
+  }
+
+  return '';
+}
+
 function formatAveragePoints(value) {
   if (!Number.isFinite(value)) {
     return '0.0';
@@ -354,7 +370,9 @@ export function LeaderboardPage({
                   <article
                     key={leader.id}
                     ref={leader.id === currentUserId ? currentLeaderRef : null}
-                    className={`leaderboard-row leaderboard-row--player ${
+                    className={`leaderboard-row leaderboard-row--player ${getPodiumRowClass(
+                      leader.rank,
+                    )} ${
                       leader.id === currentUserId ? 'leaderboard-row--self' : ''
                     }`}
                   >
@@ -499,7 +517,9 @@ export function LeaderboardPage({
                   selectedGenderLeaderboard.map((leader) => (
                     <article
                       key={leader.id}
-                      className={`leaderboard-row leaderboard-row--player ${
+                      className={`leaderboard-row leaderboard-row--player ${getPodiumRowClass(
+                        leader.rank,
+                      )} ${
                         leader.id === currentUserId ? 'leaderboard-row--self' : ''
                       }`}
                     >
