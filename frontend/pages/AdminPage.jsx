@@ -543,6 +543,12 @@ export function AdminPage({
       note: 'Egne tekster',
     },
     {
+      id: 'users',
+      label: 'Brukere',
+      count: leaders?.length ?? 0,
+      note: 'Admin og invites',
+    },
+    {
       id: 'overview',
       label: 'Oversikt',
       count: stats.length,
