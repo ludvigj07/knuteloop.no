@@ -38,14 +38,6 @@ function getPodiumRowClass(rank) {
   return '';
 }
 
-function formatAveragePoints(value) {
-  if (!Number.isFinite(value)) {
-    return '0.0';
-  }
-
-  return value.toFixed(1);
-}
-
 const MAX_DUEL_NOTE_WORDS = 100;
 const SUBMISSION_MODE = {
   REVIEW: 'review',
@@ -56,6 +48,12 @@ const GENDER_FILTER_LABELS = {
   girl: 'Jenter',
   boy: 'Gutter',
 };
+const LEADERBOARD_SCOPE_OPTIONS = [
+  { value: 'school', label: 'Skole' },
+  { value: 'class', label: 'Klasse' },
+  { value: 'knot-types', label: 'Knutetyper' },
+  { value: 'gender', label: 'Kjønn' },
+];
 
 function getWordCount(text) {
   const trimmedText = text.trim();
@@ -315,43 +313,25 @@ export function LeaderboardPage({
 
       {activeView === 'leaderboard' ? (
         <>
-          <div className="leaderboard-scope-switch" role="tablist" aria-label="Velg toppliste">
-            <button
-              type="button"
-              className={`leaderboard-scope-switch__button ${
-                leaderboardScope === 'school' ? 'is-active' : ''
-              }`}
-              onClick={() => setLeaderboardScope('school')}
-            >
-              Skole
-            </button>
-            <button
-              type="button"
-              className={`leaderboard-scope-switch__button ${
-                leaderboardScope === 'class' ? 'is-active' : ''
-              }`}
-              onClick={() => setLeaderboardScope('class')}
-            >
-              Klasse
-            </button>
-            <button
-              type="button"
-              className={`leaderboard-scope-switch__button ${
-                leaderboardScope === 'knot-types' ? 'is-active' : ''
-              }`}
-              onClick={() => setLeaderboardScope('knot-types')}
-            >
-              Knutetyper
-            </button>
-            <button
-              type="button"
-              className={`leaderboard-scope-switch__button ${
-                leaderboardScope === 'gender' ? 'is-active' : ''
-              }`}
-              onClick={() => setLeaderboardScope('gender')}
-            >
-              Kjønn
-            </button>
+          <div className="leaderboard-scope-switch">
+            <label className="leaderboard-scope-switch__label" htmlFor="leaderboard-scope-select">
+              Statistikktype
+            </label>
+            <div className="leaderboard-scope-switch__field">
+              <select
+                id="leaderboard-scope-select"
+                className="leaderboard-scope-switch__select"
+                value={leaderboardScope}
+                onChange={(event) => setLeaderboardScope(event.target.value)}
+                aria-label="Velg toppliste"
+              >
+                {LEADERBOARD_SCOPE_OPTIONS.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+            </div>
           </div>
 
           {leaderboardScope === 'school' ? (
@@ -410,7 +390,7 @@ export function LeaderboardPage({
                       <span className="leaderboard-row__points-box" aria-label={`${leader.points} poeng`}>
                         <span className="leaderboard-row__points-value">{leader.points}</span>
                         <span className="leaderboard-row__points-icon" aria-hidden="true">
-                          P
+                          p
                         </span>
                       </span>
                     </div>
@@ -444,14 +424,16 @@ export function LeaderboardPage({
                         </div>
                         <div className="leaderboard-row__person-text">
                           <h3>{entry.className}</h3>
-                          <p>
-                            {entry.members} elever · {entry.totalCompletedKnots} godkjente knuter
-                          </p>
+                          <p>{entry.totalCompletedKnots} knuter</p>
                         </div>
                       </div>
-                      <div className="leaderboard-row__details leaderboard-row__details--stacked">
-                        <strong>{formatAveragePoints(entry.avgPoints)} snitt</strong>
-                        <span>{entry.totalPoints} totalpoeng</span>
+                      <div className="leaderboard-row__details leaderboard-row__details--player">
+                        <span className="leaderboard-row__points-box" aria-label={`${entry.totalPoints} poeng`}>
+                          <span className="leaderboard-row__points-value">{entry.totalPoints}</span>
+                          <span className="leaderboard-row__points-icon" aria-hidden="true">
+                            p
+                          </span>
+                        </span>
                       </div>
                     </article>
                   );
@@ -479,9 +461,13 @@ export function LeaderboardPage({
                         </p>
                       </div>
                     </div>
-                    <div className="leaderboard-row__details leaderboard-row__details--stacked">
-                      <strong>{entry.totalPoints} poeng</strong>
-                      <span>Totalt i kategorien</span>
+                    <div className="leaderboard-row__details leaderboard-row__details--player">
+                      <span className="leaderboard-row__points-box" aria-label={`${entry.totalPoints} poeng`}>
+                        <span className="leaderboard-row__points-value">{entry.totalPoints}</span>
+                        <span className="leaderboard-row__points-icon" aria-hidden="true">
+                          p
+                        </span>
+                      </span>
                     </div>
                   </article>
                 ))
@@ -559,7 +545,7 @@ export function LeaderboardPage({
                         <span className="leaderboard-row__points-box" aria-label={`${leader.points} poeng`}>
                           <span className="leaderboard-row__points-value">{leader.points}</span>
                           <span className="leaderboard-row__points-icon" aria-hidden="true">
-                            P
+                            p
                           </span>
                         </span>
                       </div>

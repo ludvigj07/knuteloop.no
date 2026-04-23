@@ -339,7 +339,6 @@
 
 .app-theme .pill--rank,
 .app-theme .leaderboard-switch__button.is-active,
-.app-theme .leaderboard-scope-switch__button.is-active,
 .app-theme .leaderboard-gender-filter__button.is-active,
 .app-theme .folder-button.is-active,
 .app-theme .admin-task-button.is-active {
@@ -349,7 +348,7 @@
 }
 
 .app-theme .leaderboard-switch__button,
-.app-theme .leaderboard-scope-switch__button,
+.app-theme .leaderboard-scope-switch__select,
 .app-theme .leaderboard-gender-filter__button,
 .app-theme .folder-button,
 .app-theme .admin-task-button {
@@ -357,6 +356,14 @@
   background: var(--card) !important;
   color: var(--foreground) !important;
   box-shadow: 3px 3px 0 0 var(--foreground) !important;
+}
+
+.app-theme .leaderboard-scope-switch__label {
+  color: color-mix(in srgb, var(--foreground) 72%, white 28%) !important;
+}
+
+.app-theme .leaderboard-scope-switch__field::after {
+  color: var(--foreground) !important;
 }
 
 .app-theme .progress-bar,
@@ -1764,14 +1771,32 @@
 }
 
 .app-theme .leaderboard-row__points-box {
-  border: 2px solid #1c58c6 !important;
-  background: linear-gradient(180deg, #37bfff, #2b7cff) !important;
-  color: #f8fcff !important;
-  box-shadow: 2px 2px 0 0 #1f5fcf !important;
+  border-radius: 999px !important;
+  border: 1px solid #2a42b6 !important;
+  background: linear-gradient(180deg, #4461de 0%, #3553cb 100%) !important;
+  color: #f7f9ff !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.22),
+    inset 0 -1px 0 rgba(20, 34, 106, 0.2),
+    0 1px 0 rgba(22, 35, 110, 0.14) !important;
+}
+
+.app-theme .leaderboard-row__points-value {
+  font-family: 'Bricolage Grotesque', 'Inter', 'Segoe UI', sans-serif !important;
+  font-style: normal;
+  font-size: 0.95rem;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  font-variant-numeric: lining-nums tabular-nums;
 }
 
 .app-theme .leaderboard-row__points-icon {
-  color: #eaf6ff !important;
+  font-family: 'Bricolage Grotesque', 'Inter', 'Segoe UI', sans-serif !important;
+  font-style: normal;
+  font-size: 0.83rem;
+  font-weight: 500;
+  color: rgba(239, 243, 255, 0.9) !important;
+  text-shadow: 0 1px 0 rgba(17, 28, 92, 0.28);
 }
 
 @media (max-width: 900px) {
