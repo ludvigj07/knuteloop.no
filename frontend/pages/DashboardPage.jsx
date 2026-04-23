@@ -132,10 +132,6 @@ export function DashboardPage({
     weeklyTopPost?.mediaType === 'image' && Boolean(weeklyTopPost?.imagePreviewUrl);
   const weeklyHasVideo =
     weeklyTopPost?.mediaType === 'video' && Boolean(weeklyTopPost?.videoPreviewUrl);
-  const recommendedKnotCategory = (dashboard.recommendedKnot?.category ?? '').trim();
-  const showRecommendedKnotCategory =
-    Boolean(recommendedKnotCategory) &&
-    recommendedKnotCategory.toLowerCase() !== 'egendefinert';
 
   return (
     <div className="db-layout">
@@ -347,14 +343,19 @@ export function DashboardPage({
             </span>
           </div>
           <div className="db-recommend__card">
-            {showRecommendedKnotCategory ? (
-              <div className="db-recommend__top">
-                <span className="pill pill--soft">{dashboard.recommendedKnot.category}</span>
-              </div>
-            ) : null}
-            <strong className="db-recommend__title">{dashboard.recommendedKnot.title}</strong>
+            <div className="db-recommend__main">
+              <strong className="db-recommend__title">{dashboard.recommendedKnot.title}</strong>
+              <button
+                type="button"
+                className="action-button action-button--compact db-recommend__btn"
+                onClick={() => onOpenDailyKnot(dashboard.recommendedKnot.id)}
+                aria-label={`Ta anbefalt knute: ${dashboard.recommendedKnot.title}`}
+              >
+                Ta knute
+              </button>
+            </div>
             {dashboard.recommendedKnot.description ? (
-              <p>{dashboard.recommendedKnot.description}</p>
+              <p className="db-recommend__description">{dashboard.recommendedKnot.description}</p>
             ) : null}
           </div>
         </section>

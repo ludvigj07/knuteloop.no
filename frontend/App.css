@@ -7628,11 +7628,11 @@ textarea.text-input:focus {
   gap: var(--space-1);
 }
 
-.db-recommend__top {
-  display: flex;
-  align-items: center;
-  justify-content: flex-start;
-  margin-bottom: 0;
+.db-recommend__main {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: start;
+  gap: var(--space-2);
 }
 
 .db-recommend__pts {
@@ -7651,9 +7651,21 @@ textarea.text-input:focus {
 }
 
 .db-recommend__title {
+  display: block;
   font-size: var(--text-sm);
   font-weight: 700;
   color: var(--text-strong);
+  min-width: 0;
+}
+
+.db-recommend__btn {
+  align-self: start;
+  margin-left: auto;
+  white-space: nowrap;
+}
+
+.db-recommend__description {
+  margin: 0;
 }
 
 /* --- Ukas post ------------------------------------------------------------- */

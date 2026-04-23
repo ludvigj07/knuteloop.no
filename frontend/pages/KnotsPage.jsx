@@ -652,6 +652,17 @@ function KnotRow({
   const isOverCharacterLimit = characterCount > NOTE_MAX_CHARS;
   const statusKey = getStatusKey(knot.status);
   const statusLabel = getStatusLabel(knot.status);
+  const isAvailableKnot = statusKey === 'available';
+  const difficultyInline = knot.difficulty ? (
+    <span className="knot-row__difficulty-inline">
+      {knot.difficulty}
+      {isHighlighted ? (
+        <span className="knot-row__highlight-badge knot-row__highlight-badge--inline is-highlighted">
+          Dagens knute
+        </span>
+      ) : null}
+    </span>
+  ) : null;
   const isCompletedKnot = knot.status === 'Godkjent' || knot.status === 'Fullført';
 
   return (
@@ -673,17 +684,8 @@ function KnotRow({
             <span className="knot-row__title">{knot.title}</span>
           </div>
           <div className="knot-row__sub">
-            <span>{statusLabel}</span>
-            {knot.difficulty ? (
-              <span className="knot-row__difficulty-inline">
-                {knot.difficulty}
-                {isHighlighted ? (
-                  <span className="knot-row__highlight-badge knot-row__highlight-badge--inline is-highlighted">
-                    Dagens knute
-                  </span>
-                ) : null}
-              </span>
-            ) : null}
+            {isAvailableKnot ? difficultyInline : <span>{statusLabel}</span>}
+            {!isAvailableKnot ? difficultyInline : null}
             {!knot.difficulty && isHighlighted ? (
               <span className="knot-row__highlight-badge knot-row__highlight-badge--inline is-highlighted">
                 Dagens knute
