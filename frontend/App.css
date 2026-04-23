@@ -3347,7 +3347,7 @@
 
 .bottom-swipe-nav {
   position: fixed;
-  inset: auto 12px calc(8px + env(safe-area-inset-bottom, 0px)) 12px;
+  inset: auto 12px 8px 12px;
   padding: 8px 10px;
   border-radius: 999px;
   background: rgba(255, 255, 255, 0.88);
@@ -4591,7 +4591,7 @@ textarea.text-input:focus {
   background: #fff !important;
 }
 
-.leaderboard-list--friendly .leaderboard-row--player.leaderboard-row--podium-gold {
+.leaderboard-list--friendly .leaderboard-row.leaderboard-row--podium-gold {
   border-color: rgba(164, 114, 0, 0.44) !important;
   background:
     radial-gradient(circle at 18% 12%, rgba(255, 255, 255, 0.78) 0%, transparent 44%),
@@ -4608,7 +4608,7 @@ textarea.text-input:focus {
     0 8px 16px rgba(128, 83, 2, 0.14) !important;
 }
 
-.leaderboard-list--friendly .leaderboard-row--player.leaderboard-row--podium-silver {
+.leaderboard-list--friendly .leaderboard-row.leaderboard-row--podium-silver {
   border-color: rgba(99, 117, 139, 0.42) !important;
   background:
     radial-gradient(circle at 18% 12%, rgba(255, 255, 255, 0.84) 0%, transparent 44%),
@@ -4625,7 +4625,7 @@ textarea.text-input:focus {
     0 8px 16px rgba(82, 98, 117, 0.14) !important;
 }
 
-.leaderboard-list--friendly .leaderboard-row--player.leaderboard-row--podium-bronze {
+.leaderboard-list--friendly .leaderboard-row.leaderboard-row--podium-bronze {
   border-color: rgba(141, 85, 48, 0.44) !important;
   background:
     radial-gradient(circle at 18% 12%, rgba(255, 255, 255, 0.76) 0%, transparent 44%),
@@ -4642,7 +4642,7 @@ textarea.text-input:focus {
     0 8px 16px rgba(109, 62, 32, 0.14) !important;
 }
 
-.leaderboard-list--friendly .leaderboard-row--player.leaderboard-row--podium-gold:hover {
+.leaderboard-list--friendly .leaderboard-row.leaderboard-row--podium-gold:hover {
   background:
     radial-gradient(circle at 18% 12%, rgba(255, 255, 255, 0.82) 0%, transparent 44%),
     linear-gradient(
@@ -4654,7 +4654,7 @@ textarea.text-input:focus {
     ) !important;
 }
 
-.leaderboard-list--friendly .leaderboard-row--player.leaderboard-row--podium-silver:hover {
+.leaderboard-list--friendly .leaderboard-row.leaderboard-row--podium-silver:hover {
   background:
     radial-gradient(circle at 18% 12%, rgba(255, 255, 255, 0.88) 0%, transparent 44%),
     linear-gradient(
@@ -4666,7 +4666,7 @@ textarea.text-input:focus {
     ) !important;
 }
 
-.leaderboard-list--friendly .leaderboard-row--player.leaderboard-row--podium-bronze:hover {
+.leaderboard-list--friendly .leaderboard-row.leaderboard-row--podium-bronze:hover {
   background:
     radial-gradient(circle at 18% 12%, rgba(255, 255, 255, 0.8) 0%, transparent 44%),
     linear-gradient(
@@ -4685,7 +4685,7 @@ textarea.text-input:focus {
 }
 
 .leaderboard-list--friendly
-  .leaderboard-row--player[class*='leaderboard-row--podium-'].leaderboard-row--self {
+  .leaderboard-row[class*='leaderboard-row--podium-'].leaderboard-row--self {
   border-width: 2px !important;
 }
 
@@ -5313,7 +5313,7 @@ textarea.text-input:focus {
   }
 
   .bottom-swipe-nav {
-    inset: auto 8px env(safe-area-inset-bottom, 0px) 8px;
+    inset: auto 8px 8px 8px;
     padding: 7px 8px;
     border-radius: 999px;
   }
@@ -6073,6 +6073,44 @@ textarea.text-input:focus {
   text-shadow: 0 1px 0 rgba(17, 28, 92, 0.28);
 }
 
+.leaderboard-class-filter {
+  display: flex;
+  gap: 0.45rem;
+  margin: 0 0 0.55rem;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+  padding-bottom: 2px;
+}
+
+.leaderboard-class-filter::-webkit-scrollbar {
+  display: none;
+}
+
+.leaderboard-class-filter__button {
+  border: 1px solid var(--line-color);
+  background: var(--surface);
+  color: var(--text);
+  border-radius: 999px;
+  padding: 0.4rem 0.75rem;
+  font: inherit;
+  font-size: 0.9rem;
+  white-space: nowrap;
+  flex-shrink: 0;
+  cursor: pointer;
+}
+
+.leaderboard-class-filter__button.is-active {
+  border-color: color-mix(in srgb, var(--brand-primary) 35%, var(--line-color) 65%);
+  background: color-mix(in srgb, var(--brand-primary) 10%, var(--surface) 90%);
+}
+
+.leaderboard-class-filter__hint {
+  margin: 0 0 0.7rem;
+  color: var(--text-secondary);
+  font-size: 0.9rem;
+}
+
 .leaderboard-gender-filter {
   display: flex;
   flex-wrap: wrap;
@@ -6119,6 +6157,10 @@ textarea.text-input:focus {
   }
 
   .leaderboard-gender-filter__button {
+    min-height: 44px;
+  }
+
+  .leaderboard-class-filter__button {
     min-height: 44px;
   }
 

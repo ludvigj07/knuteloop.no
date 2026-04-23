@@ -10,7 +10,6 @@ import {
   buildDuelAvailability,
   buildDuelHistory,
   buildGenderLeaderboards,
-  buildKnotTypeLeaderboard,
   buildLeaderboard,
   buildProfiles,
   DUEL_DAILY_LIMIT,
@@ -227,10 +226,6 @@ function App() {
   const classLeaderboard = useMemo(
     () => buildClassLeaderboard(displayLeaders),
     [displayLeaders],
-  );
-  const knotTypeLeaderboard = useMemo(
-    () => buildKnotTypeLeaderboard(submissions, knots),
-    [knots, submissions],
   );
   const genderLeaderboards = useMemo(
     () => buildGenderLeaderboards(displayLeaders),
@@ -872,7 +867,6 @@ function App() {
       knots,
       leaders: displayLeaders,
       classLeaderboard,
-      knotTypeLeaderboard,
       genderLeaderboards,
       currentUserClassName: currentProfile?.className ?? currentUser?.group ?? 'Ukjent klasse',
       onDeleteKnot: handleDeleteKnot,

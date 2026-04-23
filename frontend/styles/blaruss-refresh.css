@@ -339,6 +339,7 @@
 
 .app-theme .pill--rank,
 .app-theme .leaderboard-switch__button.is-active,
+.app-theme .leaderboard-class-filter__button.is-active,
 .app-theme .leaderboard-gender-filter__button.is-active,
 .app-theme .folder-button.is-active,
 .app-theme .admin-task-button.is-active {
@@ -349,6 +350,7 @@
 
 .app-theme .leaderboard-switch__button,
 .app-theme .leaderboard-scope-switch__select,
+.app-theme .leaderboard-class-filter__button,
 .app-theme .leaderboard-gender-filter__button,
 .app-theme .folder-button,
 .app-theme .admin-task-button {
@@ -364,6 +366,10 @@
 
 .app-theme .leaderboard-scope-switch__field::after {
   color: var(--foreground) !important;
+}
+
+.app-theme .leaderboard-class-filter__hint {
+  color: color-mix(in srgb, var(--foreground) 72%, white 28%) !important;
 }
 
 .app-theme .progress-bar,
@@ -410,6 +416,7 @@
 }
 
 .app-theme .bottom-swipe-nav {
+  position: fixed !important;
   border-radius: 999px !important;
   padding: 8px 10px;
 }
@@ -1634,28 +1641,31 @@
   box-shadow: 2px 2px 0 0 #1f5fcf !important;
 }
 
-.app-theme .leaderboard-row--player .leaderboard-row__rank--gold {
+.app-theme .leaderboard-row--player .leaderboard-row__rank--gold,
+.app-theme .leaderboard-row--class .leaderboard-row__rank--gold {
   border-color: #a47200 !important;
   background: linear-gradient(180deg, #fff0b8, #ffd35d) !important;
   color: #6f4b00 !important;
   box-shadow: 2px 2px 0 0 #9a6a00 !important;
 }
 
-.app-theme .leaderboard-row--player .leaderboard-row__rank--silver {
+.app-theme .leaderboard-row--player .leaderboard-row__rank--silver,
+.app-theme .leaderboard-row--class .leaderboard-row__rank--silver {
   border-color: #63758b !important;
   background: linear-gradient(180deg, #f4f8ff, #cfd9e6) !important;
   color: #3f5369 !important;
   box-shadow: 2px 2px 0 0 #5e6f84 !important;
 }
 
-.app-theme .leaderboard-row--player .leaderboard-row__rank--bronze {
+.app-theme .leaderboard-row--player .leaderboard-row__rank--bronze,
+.app-theme .leaderboard-row--class .leaderboard-row__rank--bronze {
   border-color: #8d5530 !important;
   background: linear-gradient(180deg, #ffe8d5, #dca574) !important;
   color: #673a1c !important;
   box-shadow: 2px 2px 0 0 #85512e !important;
 }
 
-.app-theme .leaderboard-list--friendly .leaderboard-row--player[class*='leaderboard-row--podium-'] {
+.app-theme .leaderboard-list--friendly .leaderboard-row[class*='leaderboard-row--podium-'] {
   border: 1px solid var(--foreground) !important;
   border-radius: var(--radius-sm) !important;
   box-shadow:
@@ -1663,7 +1673,7 @@
     inset 0 -1px 0 color-mix(in srgb, var(--foreground) 20%, transparent) !important;
 }
 
-.app-theme .leaderboard-list--friendly .leaderboard-row--player.leaderboard-row--podium-gold {
+.app-theme .leaderboard-list--friendly .leaderboard-row.leaderboard-row--podium-gold {
   background:
     radial-gradient(
       circle at 20% 14%,
@@ -1679,7 +1689,7 @@
     ) !important;
 }
 
-.app-theme .leaderboard-list--friendly .leaderboard-row--player.leaderboard-row--podium-silver {
+.app-theme .leaderboard-list--friendly .leaderboard-row.leaderboard-row--podium-silver {
   background:
     radial-gradient(
       circle at 20% 14%,
@@ -1695,7 +1705,7 @@
     ) !important;
 }
 
-.app-theme .leaderboard-list--friendly .leaderboard-row--player.leaderboard-row--podium-bronze {
+.app-theme .leaderboard-list--friendly .leaderboard-row.leaderboard-row--podium-bronze {
   background:
     radial-gradient(
       circle at 20% 14%,
@@ -1711,7 +1721,7 @@
     ) !important;
 }
 
-.app-theme .leaderboard-list--friendly .leaderboard-row--player.leaderboard-row--podium-gold:hover {
+.app-theme .leaderboard-list--friendly .leaderboard-row.leaderboard-row--podium-gold:hover {
   background:
     radial-gradient(
       circle at 20% 14%,
@@ -1727,7 +1737,7 @@
     ) !important;
 }
 
-.app-theme .leaderboard-list--friendly .leaderboard-row--player.leaderboard-row--podium-silver:hover {
+.app-theme .leaderboard-list--friendly .leaderboard-row.leaderboard-row--podium-silver:hover {
   background:
     radial-gradient(
       circle at 20% 14%,
@@ -1743,7 +1753,7 @@
     ) !important;
 }
 
-.app-theme .leaderboard-list--friendly .leaderboard-row--player.leaderboard-row--podium-bronze:hover {
+.app-theme .leaderboard-list--friendly .leaderboard-row.leaderboard-row--podium-bronze:hover {
   background:
     radial-gradient(
       circle at 20% 14%,
