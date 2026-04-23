@@ -823,7 +823,7 @@
       "student": "Admin",
       "leaderId": 6,
       "submittedAtRaw": "2026-04-20T20:22:03.503Z",
-      "status": "Venter",
+      "status": "Godkjent",
       "points": 15,
       "basePoints": 15,
       "streakBonusPoints": 0,
@@ -838,8 +838,8 @@
       "isAnonymousFeed": false,
       "submissionMode": "review",
       "ratings": {},
-      "reviewedAtRaw": null,
-      "reviewedBy": null,
+      "reviewedAtRaw": "2026-04-23T07:34:24.663Z",
+      "reviewedBy": 6,
       "profileHidden": false
     },
     {
