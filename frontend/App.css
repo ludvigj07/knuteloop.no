@@ -1798,6 +1798,11 @@
   display: flex;
   align-items: center;
   gap: 12px;
+  min-width: 0;
+}
+
+.leaderboard-row__person-text {
+  min-width: 0;
 }
 
 .activity-log-row__person {
@@ -4214,20 +4219,40 @@
   gap: 12px;
 }
 
+.leaderboard-list--compact .leaderboard-row--player {
+  grid-template-columns: 44px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+}
+
 .leaderboard-list--compact .leaderboard-row__person {
   gap: 10px;
+}
+
+.leaderboard-list--compact .leaderboard-row--player .profile-photo--small,
+.leaderboard-list--compact .leaderboard-row--player .profile-avatar--small {
+  width: 44px;
+  height: 44px;
+}
+
+.leaderboard-list--compact .leaderboard-row--player .profile-avatar--small {
+  font-size: 1rem;
 }
 
 .leaderboard-list--compact .leaderboard-row__person-text h3 {
   margin: 0;
   font-size: 1rem;
   line-height: 1.15;
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
 .leaderboard-list--compact .leaderboard-row__details {
   display: flex;
   align-items: center;
   justify-content: flex-end;
+  min-width: fit-content;
 }
 
 .leaderboard-list--compact .leaderboard-row__details strong {
@@ -4273,14 +4298,40 @@
     font-size: 0.95rem;
   }
 
-  .leaderboard-list--compact .pill--rank {
-    margin-top: 2px;
-    padding: 3px 8px;
-    font-size: 0.7rem;
-  }
-
   .leaderboard-list--compact .leaderboard-row__details strong {
     font-size: 1rem;
+  }
+
+  .leaderboard-list--compact .leaderboard-row--player {
+    grid-template-columns: 40px minmax(0, 1fr) auto;
+    gap: 8px;
+    padding: 9px 10px;
+  }
+
+  .leaderboard-list--compact .leaderboard-row--player .leaderboard-row__rank {
+    width: 40px;
+    height: 40px;
+    min-width: 40px;
+    border-radius: 11px;
+    padding: 0;
+    font-size: 0.8rem;
+  }
+
+  .leaderboard-list--compact .leaderboard-row--player .profile-photo--small,
+  .leaderboard-list--compact .leaderboard-row--player .profile-avatar--small {
+    width: 40px;
+    height: 40px;
+  }
+
+  .leaderboard-list--compact .leaderboard-row__title-pill {
+    font-size: 0.68rem;
+    padding: 0.22rem 0.52rem;
+  }
+
+  .leaderboard-list--compact .leaderboard-row__points-box {
+    min-width: 68px;
+    padding: 0.26rem 0.45rem;
+    border-radius: 9px;
   }
 
   .leaderboard-tools {
@@ -5734,9 +5785,19 @@ textarea.text-input:focus {
 }
 
 .leaderboard-row__name-line {
-  display: inline-flex;
-  align-items: center;
+  display: flex;
+  align-items: flex-start;
+  flex-wrap: wrap;
   gap: 6px;
+  max-width: 100%;
+  min-width: 0;
+}
+
+.leaderboard-row__name-line h3 {
+  margin: 0;
+  line-height: 1.18;
+  overflow-wrap: anywhere;
+  word-break: break-word;
   max-width: 100%;
 }
 
@@ -5752,6 +5813,93 @@ textarea.text-input:focus {
   border: 1px solid #ffd08a;
   font-size: 0.9rem;
   line-height: 1;
+}
+
+.leaderboard-row--player .leaderboard-row__rank {
+  width: 44px;
+  height: 44px;
+  min-width: 44px;
+  padding: 0;
+  border-radius: 12px;
+  font-size: 0.9rem;
+  line-height: 1;
+  border: 1px solid #1c58c6;
+  background: linear-gradient(180deg, #8ddfff, #4fa0ff);
+  color: #f6fbff;
+  box-shadow: 0 1px 0 rgba(18, 64, 154, 0.24);
+}
+
+.leaderboard-row__person-text--player {
+  display: grid;
+  gap: 4px;
+}
+
+.leaderboard-row__subtitle {
+  margin: 0;
+  min-height: 1.3rem;
+}
+
+.leaderboard-row__title-pill {
+  display: inline-flex;
+  align-items: center;
+  max-width: 100%;
+  padding: 0.24rem 0.58rem;
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--muted-foreground) 26%, white 74%);
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--muted-foreground) 12%, white 88%),
+    color-mix(in srgb, var(--muted-foreground) 22%, white 78%)
+  );
+  color: color-mix(in srgb, var(--foreground) 64%, var(--muted-foreground) 36%);
+  font-size: 0.72rem;
+  font-weight: 800;
+  line-height: 1.15;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.leaderboard-list--compact .leaderboard-row__details--player {
+  justify-content: flex-start;
+  text-align: left;
+  min-width: 0;
+}
+
+.leaderboard-row__points-box {
+  display: inline-flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.42rem;
+  min-width: 76px;
+  padding: 0.32rem 0.54rem;
+  border-radius: 10px;
+  border: 1px solid #1c58c6;
+  background: linear-gradient(
+    180deg,
+    #37bfff,
+    #2b7cff
+  );
+  color: #f8fcff;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.42),
+    0 1px 0 rgba(18, 64, 154, 0.25);
+}
+
+.leaderboard-row__points-value {
+  font-size: 0.94rem;
+  font-weight: 900;
+  letter-spacing: 0.01em;
+  line-height: 1;
+  text-shadow: 0 1px 0 rgba(20, 59, 139, 0.4);
+}
+
+.leaderboard-row__points-icon {
+  font-size: 1.12rem;
+  font-weight: 900;
+  letter-spacing: 0.01em;
+  line-height: 1;
+  color: #eaf6ff;
+  text-shadow: 0 1px 0 rgba(20, 59, 139, 0.35);
 }
 
 .leaderboard-gender-filter {
@@ -7236,6 +7384,27 @@ textarea.text-input:focus {
   padding: var(--space-3);
 }
 
+.db-recommend__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  margin-bottom: var(--space-1);
+}
+
+.db-recommend__heading {
+  display: inline-flex;
+  align-items: center;
+  font-size: var(--text-base);
+  margin: 0;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: var(--accent);
+  color: var(--accent-foreground);
+  border: 1px solid color-mix(in srgb, var(--accent) 45%, var(--surface-border) 55%);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, #ffffff 28%, transparent 72%);
+}
+
 .db-recommend__card {
   display: flex;
   flex-direction: column;
@@ -7245,15 +7414,23 @@ textarea.text-input:focus {
 .db-recommend__top {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: var(--space-2);
-  margin-bottom: var(--space-1);
+  justify-content: flex-start;
+  margin-bottom: 0;
 }
 
 .db-recommend__pts {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 28px;
+  padding: 0 10px;
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--gold) 40%, var(--surface-border));
+  background: color-mix(in srgb, var(--gold) 14%, transparent);
   font-size: var(--text-base);
   font-weight: 800;
   color: var(--gold);
+  line-height: 1;
 }
 
 .db-recommend__title {

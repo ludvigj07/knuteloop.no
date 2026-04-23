@@ -855,6 +855,15 @@
   color: var(--primary) !important;
 }
 
+.app-theme .db-recommend__pts {
+  min-height: 28px;
+  padding: 0 10px;
+  border-radius: 999px;
+  border: 2px solid var(--foreground) !important;
+  background: color-mix(in srgb, var(--accent) 32%, white 68%) !important;
+  box-shadow: 2px 2px 0 0 var(--foreground) !important;
+}
+
 /* Highlight #1 in the podium list with ~10% larger box and typography */
 .app-theme .db-top3__list .db-top3-row:first-child {
   min-height: 53px;
@@ -1604,6 +1613,61 @@
   margin-top: 0 !important;
   font-size: 1rem !important;
   line-height: 1;
+}
+
+.app-theme .leaderboard-row--player .leaderboard-row__rank {
+  width: 44px !important;
+  height: 44px !important;
+  min-width: 44px !important;
+  padding: 0 !important;
+  border-radius: 12px !important;
+  border: 2px solid #1c58c6 !important;
+  background: linear-gradient(180deg, #8ddfff, #4fa0ff) !important;
+  color: #f6fbff !important;
+  box-shadow: 2px 2px 0 0 #1f5fcf !important;
+}
+
+.app-theme .leaderboard-row--player .leaderboard-row__rank--gold {
+  border-color: #a47200 !important;
+  background: linear-gradient(180deg, #fff0b8, #ffd35d) !important;
+  color: #6f4b00 !important;
+  box-shadow: 2px 2px 0 0 #9a6a00 !important;
+}
+
+.app-theme .leaderboard-row--player .leaderboard-row__rank--silver {
+  border-color: #63758b !important;
+  background: linear-gradient(180deg, #f4f8ff, #cfd9e6) !important;
+  color: #3f5369 !important;
+  box-shadow: 2px 2px 0 0 #5e6f84 !important;
+}
+
+.app-theme .leaderboard-row--player .leaderboard-row__rank--bronze {
+  border-color: #8d5530 !important;
+  background: linear-gradient(180deg, #ffe8d5, #dca574) !important;
+  color: #673a1c !important;
+  box-shadow: 2px 2px 0 0 #85512e !important;
+}
+
+.app-theme .leaderboard-row__title-pill {
+  border: 2px solid color-mix(in srgb, var(--foreground) 34%, white 66%) !important;
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--foreground) 10%, white 90%),
+    color-mix(in srgb, var(--foreground) 18%, white 82%)
+  ) !important;
+  color: color-mix(in srgb, var(--foreground) 74%, black 26%) !important;
+  box-shadow: 2px 2px 0 0 color-mix(in srgb, var(--foreground) 56%, black 44%) !important;
+}
+
+.app-theme .leaderboard-row__points-box {
+  border: 2px solid #1c58c6 !important;
+  background: linear-gradient(180deg, #37bfff, #2b7cff) !important;
+  color: #f8fcff !important;
+  box-shadow: 2px 2px 0 0 #1f5fcf !important;
+}
+
+.app-theme .leaderboard-row__points-icon {
+  color: #eaf6ff !important;
 }
 
 @media (max-width: 900px) {

@@ -354,7 +354,7 @@ export function LeaderboardPage({
                   <article
                     key={leader.id}
                     ref={leader.id === currentUserId ? currentLeaderRef : null}
-                    className={`leaderboard-row ${
+                    className={`leaderboard-row leaderboard-row--player ${
                       leader.id === currentUserId ? 'leaderboard-row--self' : ''
                     }`}
                   >
@@ -374,7 +374,7 @@ export function LeaderboardPage({
                       ) : (
                         <div className="profile-avatar profile-avatar--small">{leader.icon}</div>
                       )}
-                      <div className="leaderboard-row__person-text">
+                      <div className="leaderboard-row__person-text leaderboard-row__person-text--player">
                         <div className="leaderboard-row__name-line">
                           <h3>{leader.russName ?? leader.name}</h3>
                           {hotMoverIds.has(leader.id) ? (
@@ -383,11 +383,18 @@ export function LeaderboardPage({
                             </span>
                           ) : null}
                         </div>
-                        <span className="pill pill--rank">{leader.leaderboardTitle}</span>
+                        <p className="leaderboard-row__subtitle">
+                          <span className="leaderboard-row__title-pill">{leader.leaderboardTitle}</span>
+                        </p>
                       </div>
                     </div>
-                    <div className="leaderboard-row__details">
-                      <strong>{leader.points} poeng</strong>
+                    <div className="leaderboard-row__details leaderboard-row__details--player">
+                      <span className="leaderboard-row__points-box" aria-label={`${leader.points} poeng`}>
+                        <span className="leaderboard-row__points-value">{leader.points}</span>
+                        <span className="leaderboard-row__points-icon" aria-hidden="true">
+                          P
+                        </span>
+                      </span>
                     </div>
                   </article>
                 ))}
@@ -492,7 +499,7 @@ export function LeaderboardPage({
                   selectedGenderLeaderboard.map((leader) => (
                     <article
                       key={leader.id}
-                      className={`leaderboard-row ${
+                      className={`leaderboard-row leaderboard-row--player ${
                         leader.id === currentUserId ? 'leaderboard-row--self' : ''
                       }`}
                     >
@@ -512,7 +519,7 @@ export function LeaderboardPage({
                         ) : (
                           <div className="profile-avatar profile-avatar--small">{leader.icon}</div>
                         )}
-                        <div className="leaderboard-row__person-text">
+                        <div className="leaderboard-row__person-text leaderboard-row__person-text--player">
                           <div className="leaderboard-row__name-line">
                             <h3>{leader.russName ?? leader.name}</h3>
                             {hotMoverIds.has(leader.id) ? (
@@ -521,11 +528,20 @@ export function LeaderboardPage({
                               </span>
                             ) : null}
                           </div>
-                          <span className="pill pill--rank">{leader.leaderboardTitle}</span>
+                          <p className="leaderboard-row__subtitle">
+                            <span className="leaderboard-row__title-pill">
+                              {leader.leaderboardTitle}
+                            </span>
+                          </p>
                         </div>
                       </div>
-                      <div className="leaderboard-row__details">
-                        <strong>{leader.points} poeng</strong>
+                      <div className="leaderboard-row__details leaderboard-row__details--player">
+                        <span className="leaderboard-row__points-box" aria-label={`${leader.points} poeng`}>
+                          <span className="leaderboard-row__points-value">{leader.points}</span>
+                          <span className="leaderboard-row__points-icon" aria-hidden="true">
+                            P
+                          </span>
+                        </span>
                       </div>
                     </article>
                   ))

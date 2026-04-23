@@ -132,6 +132,10 @@ export function DashboardPage({
     weeklyTopPost?.mediaType === 'image' && Boolean(weeklyTopPost?.imagePreviewUrl);
   const weeklyHasVideo =
     weeklyTopPost?.mediaType === 'video' && Boolean(weeklyTopPost?.videoPreviewUrl);
+  const recommendedKnotCategory = (dashboard.recommendedKnot?.category ?? '').trim();
+  const showRecommendedKnotCategory =
+    Boolean(recommendedKnotCategory) &&
+    recommendedKnotCategory.toLowerCase() !== 'egendefinert';
 
   return (
     <div className="db-layout">
@@ -336,12 +340,18 @@ export function DashboardPage({
       {/* ══ 5. ANBEFALT KNUTE ════════════════════════════════════════════════ */}
       {dashboard.recommendedKnot ? (
         <section className="db-recommend">
-          <h3 className="db-section-heading">Anbefalt knute</h3>
+          <div className="db-recommend__header">
+            <h3 className="db-section-heading db-recommend__heading">Anbefalt knute</h3>
+            <span className="db-recommend__pts">
+              {dashboard.recommendedKnot.points}p
+            </span>
+          </div>
           <div className="db-recommend__card">
-            <div className="db-recommend__top">
-              <span className="pill pill--soft">{dashboard.recommendedKnot.category}</span>
-              <span className="db-recommend__pts">{dashboard.recommendedKnot.points}p</span>
-            </div>
+            {showRecommendedKnotCategory ? (
+              <div className="db-recommend__top">
+                <span className="pill pill--soft">{dashboard.recommendedKnot.category}</span>
+              </div>
+            ) : null}
             <strong className="db-recommend__title">{dashboard.recommendedKnot.title}</strong>
             {dashboard.recommendedKnot.description ? (
               <p>{dashboard.recommendedKnot.description}</p>
