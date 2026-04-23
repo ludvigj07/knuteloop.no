@@ -14,10 +14,15 @@ async function apiRequest(path, { method = 'GET', token, body } = {}) {
     return null;
   }
 
-  const payload = await response.json();
+  let payload = null;
+  try {
+    payload = await response.json();
+  } catch {
+    payload = null;
+  }
 
   if (!response.ok) {
-    throw new Error(payload.error ?? 'Noe gikk galt mot API-et.');
+    throw new Error(payload?.error ?? `Klarte ikke å kontakte backend (HTTP ${response.status}).`);
   }
 
   return payload;
@@ -127,127 +132,6 @@ export async function readFileAsDataUrl(file) {
     reader.onload = () => resolve(reader.result?.toString() ?? '');
     reader.onerror = () => reject(new Error('Kunne ikke lese filen.'));
     reader.readAsDataURL(file);
-  });
-}
-
-export async function convertToMp4(file) {
-  if (!file) {
-    return null;
-  }
-
-  if (file.type === 'video/mp4') {
-    return file;
-  }
-
-  if (
-    typeof window === 'undefined' ||
-    typeof document === 'undefined' ||
-    typeof MediaRecorder === 'undefined'
-  ) {
-    return file;
-  }
-
-  if (!MediaRecorder.isTypeSupported?.('video/mp4')) {
-    return file;
-  }
-
-  return new Promise((resolve) => {
-    const video = document.createElement('video');
-    let sourceUrl = '';
-    let animationFrameId = null;
-    let finalized = false;
-    let recorder = null;
-    let stream = null;
-
-    function finalize(nextFile) {
-      if (finalized) {
-        return;
-      }
-
-      finalized = true;
-
-      if (animationFrameId) {
-        window.cancelAnimationFrame(animationFrameId);
-      }
-
-      if (stream) {
-        stream.getTracks().forEach((track) => track.stop());
-      }
-
-      if (sourceUrl) {
-        URL.revokeObjectURL(sourceUrl);
-      }
-
-      resolve(nextFile);
-    }
-
-    try {
-      sourceUrl = URL.createObjectURL(file);
-      video.src = sourceUrl;
-      video.muted = true;
-      video.playsInline = true;
-      video.preload = 'auto';
-      video.setAttribute('playsinline', '');
-      video.setAttribute('webkit-playsinline', 'true');
-
-      video.onerror = () => finalize(file);
-      video.onended = () => recorder?.stop();
-
-      video.onloadedmetadata = async () => {
-        try {
-          const width = Math.max(1, video.videoWidth || 720);
-          const height = Math.max(1, video.videoHeight || 1280);
-          const canvas = document.createElement('canvas');
-          canvas.width = width;
-          canvas.height = height;
-          const context = canvas.getContext('2d');
-
-          if (!context) {
-            finalize(file);
-            return;
-          }
-
-          stream = canvas.captureStream(30);
-          recorder = new MediaRecorder(stream, { mimeType: 'video/mp4' });
-          const chunks = [];
-
-          recorder.ondataavailable = (event) => {
-            if (event.data?.size) {
-              chunks.push(event.data);
-            }
-          };
-          recorder.onerror = () => finalize(file);
-          recorder.onstop = () => {
-            if (chunks.length === 0) {
-              finalize(file);
-              return;
-            }
-
-            const blob = new Blob(chunks, { type: 'video/mp4' });
-            const nextName = file.name.replace(/\.[^.]+$/, '.mp4');
-            const convertedFile = new File([blob], nextName, { type: 'video/mp4' });
-            finalize(convertedFile);
-          };
-
-          const drawFrame = () => {
-            if (video.paused || video.ended || finalized) {
-              return;
-            }
-
-            context.drawImage(video, 0, 0, width, height);
-            animationFrameId = window.requestAnimationFrame(drawFrame);
-          };
-
-          await video.play();
-          drawFrame();
-          recorder.start();
-        } catch {
-          finalize(file);
-        }
-      };
-    } catch {
-      finalize(file);
-    }
   });
 }
 

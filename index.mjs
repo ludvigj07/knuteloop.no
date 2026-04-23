@@ -535,6 +535,8 @@ async function transcodeVideoToMp4(inputPath, outputPath) {
       inputPath,
       '-vcodec',
       'h264',
+      '-preset',
+      'veryfast',
       '-acodec',
       'aac',
       '-movflags',
@@ -1912,6 +1914,13 @@ async function saveUploadedAsset(dataUrl, originalName, category) {
     }
     const extension = path.extname(originalName || '') || getExtensionFromMime(parsed.mimeType);
     const safeName = `${category}-${Date.now()}-${randomUUID()}${extension}`;
+    const outputPath = path.join(UPLOADS_DIR, safeName);
+    await fs.writeFile(outputPath, parsed.buffer);
+    return `/uploads/${safeName}`;
+  }
+
+  if (parsed.mimeType === 'video/mp4') {
+    const safeName = `${category}-${Date.now()}-${randomUUID()}.mp4`;
     const outputPath = path.join(UPLOADS_DIR, safeName);
     await fs.writeFile(outputPath, parsed.buffer);
     return `/uploads/${safeName}`;

@@ -23,7 +23,6 @@ import { buildAchievements } from './data/badgeSystem.js';
 import {
   changeOwnPassword,
   completeDuel,
-  convertToMp4,
   createBan,
   deleteKnot,
   deleteSubmission,
@@ -704,9 +703,6 @@ function App() {
       return;
     }
 
-    const convertedVideoFile = evidence.videoFile
-      ? await convertToMp4(evidence.videoFile)
-      : null;
     const normalizedSubmissionMode =
       submissionMode === 'feed' || submissionMode === 'anonymous-feed'
         ? submissionMode
@@ -727,9 +723,9 @@ function App() {
       imageDataUrl: evidence.imageFile
         ? await readFileAsDataUrl(evidence.imageFile)
         : '',
-      videoName: convertedVideoFile?.name ?? evidence.videoName ?? '',
-      videoDataUrl: convertedVideoFile
-        ? await readFileAsDataUrl(convertedVideoFile)
+      videoName: evidence.videoFile?.name ?? evidence.videoName ?? '',
+      videoDataUrl: evidence.videoFile
+        ? await readFileAsDataUrl(evidence.videoFile)
         : '',
     });
 
@@ -782,9 +778,6 @@ function App() {
         evidence.submissionMode === 'review'
           ? evidence.submissionMode
           : 'feed';
-      const convertedVideoFile = evidence.videoFile
-        ? await convertToMp4(evidence.videoFile)
-        : null;
       const nextAppData = await completeDuel(sessionToken, duelId, {
         submissionMode: normalizedSubmissionMode,
         note: evidence.note ?? '',
@@ -792,9 +785,9 @@ function App() {
         imageDataUrl: evidence.imageFile
           ? await readFileAsDataUrl(evidence.imageFile)
           : '',
-        videoName: convertedVideoFile?.name ?? evidence.videoName ?? '',
-        videoDataUrl: convertedVideoFile
-          ? await readFileAsDataUrl(convertedVideoFile)
+        videoName: evidence.videoFile?.name ?? evidence.videoName ?? '',
+        videoDataUrl: evidence.videoFile
+          ? await readFileAsDataUrl(evidence.videoFile)
           : '',
       });
 
