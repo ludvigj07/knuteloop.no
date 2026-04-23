@@ -251,36 +251,52 @@ function App() {
     thisDayTotal: duelAvailability.thisDayTotal ?? 0,
     activeCount: duels.filter((duel) => duel.status === 'active').length,
   };
-  const weeklyVideoTestPost = useMemo(() => {
+  const weeklyMediaTestPost = useMemo(() => {
+    const imageEntry = activityLog.find(
+      (entry) =>
+        entry?.submissionId &&
+        entry?.mediaType === 'image' &&
+        Boolean(entry?.imagePreviewUrl),
+    );
     const videoEntry = activityLog.find(
       (entry) =>
         entry?.submissionId &&
         entry?.mediaType === 'video' &&
         Boolean(entry?.videoPreviewUrl),
     );
+    const mediaEntry = videoEntry ?? imageEntry ?? null;
 
-    if (!videoEntry) {
+    if (!mediaEntry) {
       return null;
     }
 
+    const resolvedMediaType =
+      mediaEntry.mediaType === 'image' && mediaEntry.imagePreviewUrl
+        ? 'image'
+        : mediaEntry.mediaType === 'video' && mediaEntry.videoPreviewUrl
+          ? 'video'
+          : 'none';
+
     return {
-      id: videoEntry.id ?? `submission-${videoEntry.submissionId}`,
-      submissionId: videoEntry.submissionId,
-      studentId: videoEntry.isAnonymous ? null : (videoEntry.studentId ?? null),
-      studentName: videoEntry.studentName ?? 'Anonym',
-      studentPhotoUrl: videoEntry.studentPhotoUrl ?? '',
-      studentIcon: videoEntry.studentIcon ?? '',
-      isAnonymous: videoEntry.isAnonymous === true,
-      knotTitle: videoEntry.knotTitle ?? 'Video-post',
-      note: videoEntry.note ?? '',
-      points: Number(videoEntry.points ?? 0),
-      completedAt: videoEntry.completedAt ?? 'Nylig',
-      ratingAverage: Number(videoEntry.ratingAverage ?? 0),
-      ratingCount: Number(videoEntry.ratingCount ?? 0),
-      weeklyScore: Number(videoEntry.ratingAverage ?? 0),
-      mediaType: 'video',
-      videoPreviewUrl: videoEntry.videoPreviewUrl ?? '',
-      videoName: videoEntry.videoName ?? '',
+      id: mediaEntry.id ?? `submission-${mediaEntry.submissionId}`,
+      submissionId: mediaEntry.submissionId,
+      studentId: mediaEntry.isAnonymous ? null : (mediaEntry.studentId ?? null),
+      studentName: mediaEntry.studentName ?? 'Anonym',
+      studentPhotoUrl: mediaEntry.studentPhotoUrl ?? '',
+      studentIcon: mediaEntry.studentIcon ?? '',
+      isAnonymous: mediaEntry.isAnonymous === true,
+      knotTitle: mediaEntry.knotTitle ?? 'Post',
+      note: mediaEntry.note ?? '',
+      points: Number(mediaEntry.points ?? 0),
+      completedAt: mediaEntry.completedAt ?? 'Nylig',
+      ratingAverage: Number(mediaEntry.ratingAverage ?? 0),
+      ratingCount: Number(mediaEntry.ratingCount ?? 0),
+      weeklyScore: Number(mediaEntry.ratingAverage ?? 0),
+      mediaType: resolvedMediaType,
+      imagePreviewUrl: mediaEntry.imagePreviewUrl ?? '',
+      imageName: mediaEntry.imageName ?? '',
+      videoPreviewUrl: mediaEntry.videoPreviewUrl ?? '',
+      videoName: mediaEntry.videoName ?? '',
     };
   }, [activityLog]);
 
@@ -306,10 +322,10 @@ function App() {
           weeklyPostMinRatings: 10,
           currentLeader: null,
         };
-  const dashboardData = weeklyVideoTestPost
+  const dashboardData = weeklyMediaTestPost
     ? {
         ...baseDashboardData,
-        weeklyTopPost: weeklyVideoTestPost,
+        weeklyTopPost: weeklyMediaTestPost,
       }
     : baseDashboardData;
 

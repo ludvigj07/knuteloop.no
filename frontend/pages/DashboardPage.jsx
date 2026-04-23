@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import streakFlameIcon from '../assets/streak-flame.svg';
+import { MobileVideo } from '../components/MobileVideo.jsx';
 
 // ─── Animated counter ─────────────────────────────────────────────────────────
 
@@ -127,6 +128,10 @@ export function DashboardPage({
       ? Number(dashboard.weeklyPostMinRatings)
       : 10;
   const weeklyPostNotePreview = shortenNote(weeklyTopPost?.note ?? '');
+  const weeklyHasImage =
+    weeklyTopPost?.mediaType === 'image' && Boolean(weeklyTopPost?.imagePreviewUrl);
+  const weeklyHasVideo =
+    weeklyTopPost?.mediaType === 'video' && Boolean(weeklyTopPost?.videoPreviewUrl);
 
   return (
     <div className="db-layout">
@@ -282,6 +287,31 @@ export function DashboardPage({
                 </div>
               </button>
             )}
+
+            {weeklyHasImage ? (
+              <div className="db-weekly-post__media-wrap">
+                <img
+                  className="db-weekly-post__media db-weekly-post__media--image"
+                  src={weeklyTopPost.imagePreviewUrl}
+                  alt={weeklyTopPost.knotTitle}
+                  loading="lazy"
+                />
+              </div>
+            ) : null}
+            {weeklyHasVideo ? (
+              <div className="db-weekly-post__media-wrap">
+                <MobileVideo
+                  className="db-weekly-post__media db-weekly-post__media--video"
+                  src={weeklyTopPost.videoPreviewUrl}
+                  controls
+                  autoPlay={false}
+                  muted
+                  playsInline
+                  loop={false}
+                  preload="metadata"
+                />
+              </div>
+            ) : null}
 
             <strong className="db-weekly-post__title">{weeklyTopPost.knotTitle}</strong>
             {weeklyPostNotePreview ? (

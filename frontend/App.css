@@ -7319,6 +7319,29 @@ textarea.text-input:focus {
   color: var(--text-muted);
 }
 
+.db-weekly-post__media-wrap {
+  width: 100%;
+  border: 1px solid var(--surface-border);
+  border-radius: var(--radius);
+  overflow: hidden;
+  background: var(--surface-soft);
+}
+
+.db-weekly-post__media {
+  width: 100%;
+  display: block;
+}
+
+.db-weekly-post__media--image {
+  aspect-ratio: 16 / 9;
+  object-fit: cover;
+}
+
+.db-weekly-post__media--video {
+  background: var(--surface-soft);
+  max-height: 260px;
+}
+
 .db-weekly-post__title {
   font-size: var(--text-base);
   color: var(--text-strong);
