@@ -503,6 +503,35 @@
   gap: 16px;
 }
 
+.admin-task-select-row {
+  display: grid;
+  gap: 12px;
+}
+
+.admin-task-shell {
+  display: grid;
+  gap: 10px;
+}
+
+.admin-task-select {
+  width: 100%;
+}
+
+.admin-task-current {
+  display: grid;
+  gap: 4px;
+  padding: 12px 0 0;
+}
+
+.admin-task-current strong {
+  color: var(--text-strong);
+}
+
+.admin-task-current p {
+  margin: 0;
+  color: var(--text-muted);
+}
+
 .admin-task-nav,
 .admin-quick-grid {
   display: grid;
@@ -603,6 +632,49 @@
   margin: 0 0 14px;
 }
 
+.admin-review-filters {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 8px;
+}
+
+.admin-review-filter {
+  min-height: 52px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  width: 100%;
+  padding: 12px 14px;
+  border: 0;
+  border-radius: 14px;
+  background: var(--card);
+  color: var(--text-muted);
+  font: inherit;
+  font-weight: 800;
+  cursor: pointer;
+  box-shadow: var(--shadow-soft);
+}
+
+.admin-review-filter strong {
+  min-width: 34px;
+  padding: 5px 9px;
+  border-radius: 999px;
+  background: var(--badge-soft);
+  color: var(--accent);
+  text-align: center;
+}
+
+.admin-review-filter.is-active {
+  background: var(--primary);
+  color: #ffffff;
+}
+
+.admin-review-filter.is-active strong {
+  background: rgba(255, 255, 255, 0.2);
+  color: #ffffff;
+}
+
 .admin-review-toolbar__group {
   display: flex;
   align-items: center;
@@ -614,19 +686,6 @@
   margin: 0;
   color: var(--text-muted);
   font-size: 0.82rem;
-}
-
-.submission-row__select {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 0.82rem;
-  color: var(--text-muted);
-}
-
-.submission-row__select input {
-  width: 16px;
-  height: 16px;
 }
 
 .submission-row__quickkey {
@@ -676,6 +735,11 @@
 
 .admin-quick-card strong {
   color: var(--text-strong);
+}
+
+.feedback-settings-grid {
+  display: grid;
+  gap: 14px;
 }
 
 .admin-setup__actions {
@@ -2168,6 +2232,25 @@
   .profile-editor-trigger,
   .profile-class-badge {
     width: fit-content;
+  }
+}
+
+@media (min-width: 720px) {
+  .admin-task-select-row {
+    grid-template-columns: minmax(260px, 360px) 1fr;
+    align-items: end;
+  }
+
+  .admin-task-current {
+    padding: 0 0 4px;
+  }
+
+  .admin-review-filters {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .feedback-settings-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
 
@@ -9455,4 +9538,220 @@ textarea.text-input:focus {
   }
 }
 
+.section-card,
+.info-card,
+.stat-card,
+.config-row,
+.duel-history-row,
+.dashboard-message-card,
+.dashboard-rival-row,
+.dashboard-activity-row,
+.dashboard-progress-card,
+.dashboard-recommendation-card,
+.dashboard-hero,
+.hero-panel,
+.profile-detail-card,
+.badge-summary-card,
+.badge-token,
+.badge-card,
+.upload-field,
+.evidence-card,
+.profile-selector,
+.admin-quick-card,
+.admin-subsection,
+.folder-button,
+.folder-empty,
+.filter-empty-state,
+.inline-feedback,
+.admin-live-strip,
+.daily-knot-card,
+.duel-summary-bar,
+.knot-status-card {
+  border-color: transparent !important;
+}
+
+.submission-row,
+.submission-row.is-active,
+.feed-card,
+.feed-card-v3,
+.feed-card-desktop,
+.feed-reel-card,
+.profile-knot-row,
+.activity-log-row {
+  border: 1px solid var(--border) !important;
+}
+
+.submission-row.is-active {
+  border-color: var(--accent-border) !important;
+}
+
+.admin-page {
+  gap: 18px;
+}
+
+.admin-page .section-card,
+.admin-page .admin-subsection,
+.admin-page .admin-live-strip,
+.admin-page .admin-bulk-details,
+.admin-page .stat-card {
+  border: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+.admin-page .section-card {
+  padding: 0;
+}
+
+.admin-page .section-card > .section-card__header,
+.admin-page .admin-subsection > .section-card__header,
+.admin-page .admin-section-toolbar > div:first-child,
+.admin-page .stats-grid {
+  display: none;
+}
+
+.admin-page .admin-subsection {
+  padding: 0;
+}
+
+.admin-page .admin-task-panel {
+  margin-top: 12px;
+}
+
+.admin-page .admin-section-toolbar {
+  justify-content: flex-end;
+}
+
+.admin-page .admin-section-toolbar__actions {
+  width: 100%;
+}
+
+.admin-page .admin-section-toolbar__actions .action-button {
+  flex: 1 1 160px;
+}
+
+.admin-page .config-row,
+.admin-page .duel-history-row,
+.admin-page .admin-quick-card {
+  border: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+.admin-page .submission-row {
+  background: var(--surface) !important;
+  border: 1px solid var(--border) !important;
+  box-shadow: var(--shadow-soft) !important;
+}
+
+.admin-page .submission-row.is-active {
+  border-color: var(--accent-border) !important;
+}
+
+.admin-page .admin-task-shell,
+.admin-page .admin-submissions-workspace,
+.admin-page .admin-task-panel,
+.admin-page .admin-task-select-row,
+.admin-page .admin-setup,
+.admin-page .admin-setup__bulk,
+.admin-page .feedback-settings-grid,
+.admin-page .field-group,
+.admin-page .form-feedback,
+.admin-page .folder-empty,
+.admin-page .filter-empty-state,
+.admin-page .inline-feedback,
+.admin-page .evidence-card,
+.admin-page .duel-evidence-admin,
+.admin-page .upload-field {
+  border: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+.admin-page .text-input,
+.admin-page select.text-input,
+.admin-page textarea.text-input,
+.admin-page input.text-input {
+  border: 0 !important;
+  outline: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+.admin-page .field-group {
+  gap: 6px;
+}
+
+.admin-page .field-group > span,
+.admin-page .field-group > small {
+  padding-inline: 2px;
+}
+
+.admin-page .text-input:focus {
+  border: 0 !important;
+  outline: 0 !important;
+  box-shadow: none !important;
+}
+
+.admin-page .admin-review-filter {
+  border: 0 !important;
+  outline: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+.admin-page .admin-review-filter.is-active {
+  background: var(--primary) !important;
+}
+
+.admin-page .action-button,
+.admin-page .action-button--ghost,
+.admin-page .action-button--danger {
+  border: 0 !important;
+  outline: 0 !important;
+  box-shadow: none !important;
+}
+
+.admin-page .action-button--ghost {
+  background: transparent !important;
+}
+
+.admin-page .submission-row .submission-evidence {
+  grid-template-columns: 1fr;
+  gap: 10px;
+  width: min(100%, 520px);
+}
+
+.admin-page .submission-row .evidence-card {
+  gap: 0;
+  padding: 0 !important;
+  border: 0 !important;
+  border-radius: var(--radius);
+  background: transparent !important;
+  box-shadow: none !important;
+  overflow: hidden;
+}
+
+.admin-page .submission-row .evidence-card span {
+  display: none;
+}
+
+.admin-page .submission-row .evidence-card img,
+.admin-page .submission-row .evidence-card video {
+  display: block;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  max-height: none;
+  border: 0 !important;
+  border-radius: var(--radius);
+  background: var(--surface-soft);
+  object-fit: cover;
+  box-shadow: none !important;
+}
+
+@media (max-width: 640px) {
+  .admin-page .submission-row .submission-evidence {
+    width: 100%;
+  }
+}
 

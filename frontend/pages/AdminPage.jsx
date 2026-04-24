@@ -113,9 +113,10 @@ const BAN_DURATION_OPTIONS = [
   { hours: 168, label: '1 uke' },
 ];
 
-const REVIEW_QUEUE_MODE = {
-  ALL: 'all',
-  FAST: 'fast',
+const REVIEW_FILTER = {
+  APPROVAL_ONLY: 'approval-only',
+  FEED: 'feed',
+  REVIEWED: 'reviewed',
 };
 const FEEDBACK_FIELD_CONFIG = Object.freeze([
   {
@@ -266,9 +267,7 @@ function SubmissionList({
   disableReviewActions = false,
   isReviewingById = {},
   onSetActiveSubmission = null,
-  onToggleSelected = null,
   reportedSubmissionIdSet = new Set(),
-  selectedSubmissionIds = {},
 }) {
   if (items.length === 0) {
     return (
@@ -287,7 +286,6 @@ function SubmissionList({
         const modeMeta = getSubmissionModeMeta(submissionMode);
         const submissionKey = toSubmissionKey(submission.id);
         const isActive = canReview && activeSubmissionId === submissionKey;
-        const isSelected = Boolean(selectedSubmissionIds[submissionKey]);
         const isReviewing = Boolean(isReviewingById[submissionKey]);
         const hasOpenReport = reportedSubmissionIdSet.has(submissionKey);
         const disableRowActions = disableReviewActions || isReviewing;
@@ -296,17 +294,13 @@ function SubmissionList({
         <article
           key={submission.id}
           className={`submission-row ${isActive ? 'is-active' : ''}`}
-          onClick={() => onSetActiveSubmission?.(submissionKey)}
+          onClick={canReview ? () => onSetActiveSubmission?.(submissionKey) : undefined}
         >
           <div className="submission-row__content">
             <h3>{submission.knotTitle}</h3>
             <p>
               {submission.student} | {submission.submittedAt}
             </p>
-            <p className="submission-note">
-              Innsendingstype: <strong>{modeMeta.label}</strong>
-            </p>
-
             {submission.note ? (
               <p className="submission-note">{submission.note}</p>
             ) : null}
@@ -341,32 +335,27 @@ function SubmissionList({
           </div>
 
           <div className="submission-row__actions">
-            <span className={`pill ${modeMeta.pillClass}`}>{modeMeta.label}</span>
-            <span
-              className={`pill ${
-                submission.status === 'Godkjent'
-                  ? 'pill--success'
-                  : submission.status === 'Avslått'
-                    ? 'pill--danger'
-                    : 'pill--warning'
-              }`}
-            >
-              {submission.status}
-            </span>
+            {submissionMode === 'anonymous-feed' || !canReview ? (
+              <span className={`pill ${modeMeta.pillClass}`}>{modeMeta.label}</span>
+            ) : null}
+            {!canReview ? (
+              <span
+                className={`pill ${
+                  submission.status === 'Godkjent'
+                    ? 'pill--success'
+                    : submission.status === 'Avslått'
+                      ? 'pill--danger'
+                      : 'pill--warning'
+                }`}
+              >
+                {submission.status}
+              </span>
+            ) : null}
             {hasOpenReport ? (
               <span className="pill pill--warning submission-row__flag">Rapportert</span>
             ) : null}
             {canReview ? (
               <>
-                <label className="submission-row__select">
-                  <input
-                    type="checkbox"
-                    checked={isSelected}
-                    onChange={() => onToggleSelected?.(submissionKey)}
-                    onClick={(event) => event.stopPropagation()}
-                  />
-                  <span>Velg</span>
-                </label>
                 <button
                   type="button"
                   className="action-button"
@@ -403,8 +392,6 @@ function SubmissionList({
 
 export function AdminPage({
   bans = [],
-  currentUserName,
-  currentUserPoints = 0,
   duelHistory,
   duelSummary,
   knotFeedbackMessages = {},
@@ -431,8 +418,11 @@ export function AdminPage({
   const [defaultPoints, setDefaultPoints] = useState(20);
   const [defaultFolder, setDefaultFolder] = useState(KNOT_FOLDERS[0].id);
   const [importMessage, setImportMessage] = useState('');
-  const [activeAdminTask, setActiveAdminTask] = useState('knots');
-  const [reviewFeedback, setReviewFeedback] = useState('');
+  const [activeAdminTask, setActiveAdminTask] = useState('submissions');
+  const [activeReviewFilter, setActiveReviewFilter] = useState(
+    REVIEW_FILTER.APPROVAL_ONLY,
+  );
+  const [, setReviewFeedback] = useState('');
   const [selectedBanUserId, setSelectedBanUserId] = useState('');
   const [selectedBanType, setSelectedBanType] = useState(BAN_TYPE_OPTIONS[0].value);
   const [selectedBanDurationHours, setSelectedBanDurationHours] = useState(
@@ -440,10 +430,7 @@ export function AdminPage({
   );
   const [processingReportId, setProcessingReportId] = useState('');
   const [processingBanId, setProcessingBanId] = useState('');
-  const [reviewQueueMode, setReviewQueueMode] = useState(REVIEW_QUEUE_MODE.ALL);
-  const [selectedSubmissionIds, setSelectedSubmissionIds] = useState({});
   const [activeSubmissionId, setActiveSubmissionId] = useState('');
-  const [isBatchReviewing, setIsBatchReviewing] = useState(false);
   const [reviewingSubmissionIds, setReviewingSubmissionIds] = useState({});
   const [feedbackDraft, setFeedbackDraft] = useState(() =>
     buildFeedbackDraftFromMessages(knotFeedbackMessages),
@@ -455,15 +442,15 @@ export function AdminPage({
   const pendingSubmissions = submissions.filter(
     (submission) => submission.status === 'Venter',
   );
-  const pendingApprovalOnlyCount = pendingSubmissions.filter(
+  const pendingApprovalOnlySubmissions = pendingSubmissions.filter(
     (submission) => getSubmissionMode(submission) === 'review',
-  ).length;
-  const pendingFeedCount = pendingSubmissions.filter(
-    (submission) => getSubmissionMode(submission) === 'feed',
-  ).length;
-  const pendingAnonymousFeedCount = pendingSubmissions.filter(
-    (submission) => getSubmissionMode(submission) === 'anonymous-feed',
-  ).length;
+  );
+  const pendingFeedSubmissions = pendingSubmissions.filter((submission) => {
+    const submissionMode = getSubmissionMode(submission);
+    return submissionMode === 'feed' || submissionMode === 'anonymous-feed';
+  });
+  const pendingApprovalOnlyCount = pendingApprovalOnlySubmissions.length;
+  const pendingFeedCount = pendingFeedSubmissions.length;
   const resolvedSubmissions = submissions.filter(
     (submission) => submission.status !== 'Venter',
   );
@@ -480,21 +467,6 @@ export function AdminPage({
     () => new Set(reportQueue.map((report) => toSubmissionKey(report.submissionId))),
     [reportQueue],
   );
-  const fastLanePendingSubmissions = useMemo(
-    () =>
-      pendingSubmissions.filter(
-        (submission) => !reportedSubmissionIdSet.has(toSubmissionKey(submission.id)),
-      ),
-    [pendingSubmissions, reportedSubmissionIdSet],
-  );
-  const reviewQueueSubmissions =
-    reviewQueueMode === REVIEW_QUEUE_MODE.FAST
-      ? fastLanePendingSubmissions
-      : pendingSubmissions;
-  const fastLanePendingCount = fastLanePendingSubmissions.length;
-  const selectedVisibleSubmissionCount = reviewQueueSubmissions.filter((submission) =>
-    Boolean(selectedSubmissionIds[toSubmissionKey(submission.id)]),
-  ).length;
   const openReportCount = reportQueue.length;
   const activeBans = (bans ?? []).filter((ban) => ban.active);
   const activeBanCount = activeBans.length;
@@ -548,7 +520,42 @@ export function AdminPage({
       count: stats.length,
       note: 'Kort',
     },
+    {
+      id: 'users',
+      label: 'Brukere',
+      count: Math.max(leaders.length - 1, 0),
+      note: 'Kontoer',
+    },
   ];
+
+  const reviewFilters = [
+    {
+      id: REVIEW_FILTER.APPROVAL_ONLY,
+      label: 'Kun godkjenning',
+      count: pendingApprovalOnlyCount,
+      description: 'Venter uten feed-post',
+    },
+    {
+      id: REVIEW_FILTER.FEED,
+      label: 'Feed-post',
+      count: pendingFeedCount,
+      description: 'Vanlig og anonym feed',
+    },
+    {
+      id: REVIEW_FILTER.REVIEWED,
+      label: 'Vurdert',
+      count: resolvedSubmissionCount,
+      description: 'Godkjent og avslått',
+    },
+  ];
+
+  const reviewQueueSubmissions =
+    activeReviewFilter === REVIEW_FILTER.REVIEWED
+      ? resolvedSubmissions
+      : activeReviewFilter === REVIEW_FILTER.FEED
+        ? pendingFeedSubmissions
+        : pendingApprovalOnlySubmissions;
+  const canReviewCurrentFilter = activeReviewFilter !== REVIEW_FILTER.REVIEWED;
 
   const submissionById = useMemo(
     () =>
@@ -588,62 +595,12 @@ export function AdminPage({
     );
   }
 
-  function toggleSubmissionSelection(submissionId) {
-    setSelectedSubmissionIds((currentSelections) => {
-      const submissionKey = toSubmissionKey(submissionId);
-      const nextSelections = { ...currentSelections };
-
-      if (nextSelections[submissionKey]) {
-        delete nextSelections[submissionKey];
-      } else {
-        nextSelections[submissionKey] = true;
-      }
-
-      return nextSelections;
-    });
-  }
-
-  function toggleSelectAllVisibleSubmissions() {
-    setSelectedSubmissionIds((currentSelections) => {
-      if (selectedVisibleSubmissionCount === reviewQueueSubmissions.length) {
-        const nextSelections = { ...currentSelections };
-        reviewQueueSubmissions.forEach((submission) => {
-          delete nextSelections[toSubmissionKey(submission.id)];
-        });
-        return nextSelections;
-      }
-
-      const nextSelections = { ...currentSelections };
-      reviewQueueSubmissions.forEach((submission) => {
-        nextSelections[toSubmissionKey(submission.id)] = true;
-      });
-      return nextSelections;
-    });
-  }
-
   useEffect(() => {
     const visibleSubmissionIdSet = new Set(
       reviewQueueSubmissions.map((submission) => toSubmissionKey(submission.id)),
     );
 
-    setSelectedSubmissionIds((currentSelections) => {
-      const nextSelections = Object.entries(currentSelections).reduce(
-        (accumulator, [submissionId, isSelected]) => {
-          if (isSelected && visibleSubmissionIdSet.has(submissionId)) {
-            accumulator[submissionId] = true;
-          }
-          return accumulator;
-        },
-        {},
-      );
-
-      const hasChanged =
-        Object.keys(nextSelections).length !== Object.keys(currentSelections).length;
-
-      return hasChanged ? nextSelections : currentSelections;
-    });
-
-    if (!reviewQueueSubmissions.length) {
+    if (!canReviewCurrentFilter || !reviewQueueSubmissions.length) {
       setActiveSubmissionId('');
       return;
     }
@@ -654,14 +611,18 @@ export function AdminPage({
     ) {
       setActiveSubmissionId(toSubmissionKey(reviewQueueSubmissions[0].id));
     }
-  }, [activeSubmissionId, reviewQueueSubmissions]);
+  }, [activeSubmissionId, canReviewCurrentFilter, reviewQueueSubmissions]);
 
   useEffect(() => {
     setFeedbackDraft(buildFeedbackDraftFromMessages(knotFeedbackMessages));
   }, [knotFeedbackMessages]);
 
   useEffect(() => {
-    if (activeAdminTask !== 'submissions' || !reviewQueueSubmissions.length) {
+    if (
+      activeAdminTask !== 'submissions' ||
+      !canReviewCurrentFilter ||
+      !reviewQueueSubmissions.length
+    ) {
       return undefined;
     }
 
@@ -686,7 +647,7 @@ export function AdminPage({
 
       const activeSubmission = submissionById.get(toSubmissionKey(activeSubmissionId));
 
-      if (!activeSubmission || isBatchReviewing) {
+      if (!activeSubmission) {
         return;
       }
 
@@ -710,8 +671,8 @@ export function AdminPage({
   }, [
     activeAdminTask,
     activeSubmissionId,
+    canReviewCurrentFilter,
     handleReviewAction,
-    isBatchReviewing,
     moveActiveSubmission,
     reviewQueueSubmissions,
     submissionById,
@@ -843,12 +804,6 @@ export function AdminPage({
       [submissionKey]: true,
     }));
 
-    setSelectedSubmissionIds((current) => {
-      const next = { ...current };
-      delete next[submissionKey];
-      return next;
-    });
-
     try {
       await onReviewSubmission(submission.id, nextStatus);
 
@@ -857,18 +812,7 @@ export function AdminPage({
       }
 
       if (nextStatus === 'Godkjent') {
-        const nextPoints =
-          submission.leaderId === 1
-            ? currentUserPoints + submission.points
-            : currentUserPoints;
-
-        setReviewFeedback(
-          `"${submission.knotTitle}" ble godkjent (${modeMeta.label}). ${
-            submission.leaderId === 1
-              ? `${currentUserName} har nå ${nextPoints} poeng.`
-              : 'Leaderboard oppdateres automatisk.'
-          }`,
-        );
+        setReviewFeedback(`"${submission.knotTitle}" ble godkjent (${modeMeta.label}).`);
       } else {
         setReviewFeedback(`"${submission.knotTitle}" ble avslått og status er oppdatert.`);
       }
@@ -890,42 +834,6 @@ export function AdminPage({
         return next;
       });
     }
-  }
-
-  async function handleBatchReview(nextStatus) {
-    const targets = reviewQueueSubmissions.filter((submission) =>
-      Boolean(selectedSubmissionIds[toSubmissionKey(submission.id)]),
-    );
-
-    if (!targets.length) {
-      setReviewFeedback('Velg minst én innsending først.');
-      return;
-    }
-
-    setIsBatchReviewing(true);
-
-    let successCount = 0;
-    let failedCount = 0;
-
-    for (const submission of targets) {
-      const wasSuccessful = await handleReviewAction(submission, nextStatus, {
-        silent: true,
-      });
-
-      if (wasSuccessful) {
-        successCount += 1;
-      } else {
-        failedCount += 1;
-      }
-    }
-
-    setSelectedSubmissionIds({});
-    setIsBatchReviewing(false);
-
-    const actionLabel = nextStatus === 'Godkjent' ? 'godkjent' : 'avslått';
-    setReviewFeedback(
-      `Batch ferdig: ${successCount} ${actionLabel}.${failedCount ? ` ${failedCount} feilet.` : ''}`,
-    );
   }
 
   async function handleDuelCompletionReview(duel, participantId, approved) {
@@ -1023,45 +931,29 @@ export function AdminPage({
   }
 
   return (
-    <div className="stack-layout">
-      <SectionCard
-        title="Adminoppgaver"
-        description="Velg hvilken adminjobb du vil jobbe med. Innsendinger er prioritert som standard."
-      >
-        <div className="admin-task-nav">
-          {adminTasks.map((task) => (
-            <button
-              key={task.id}
-              type="button"
-              className={`admin-task-button ${
-                activeAdminTask === task.id ? 'is-active' : ''
-              }`}
-              onClick={() => setActiveAdminTask(task.id)}
+    <div className="stack-layout admin-page">
+      <div className="admin-task-shell">
+        <div className="admin-task-select-row">
+          <label className="field-group admin-task-select">
+            <span>Adminområde</span>
+            <select
+              className="text-input"
+              value={activeAdminTask}
+              onChange={(event) => setActiveAdminTask(event.target.value)}
             >
-              <div className="admin-task-button__content">
-                <strong>{task.label}</strong>
-                <span>{task.note}</span>
-              </div>
-              <span className="admin-task-button__badge">{task.count}</span>
-            </button>
-          ))}
+              {adminTasks.map((task) => (
+                <option key={task.id} value={task.id}>
+                  {task.label} ({task.count})
+                </option>
+              ))}
+            </select>
+          </label>
         </div>
-      </SectionCard>
+      </div>
 
       {activeAdminTask === 'submissions' ? (
-        <SectionCard
-          title="Godkjenn innsendinger"
-          description="Ventende innsendinger ligger først, slik at admin kan jobbe raskt gjennom elevflyten."
-        >
+        <div className="admin-submissions-workspace">
           <div className="admin-section-toolbar">
-            <div>
-              <strong>{pendingSubmissionCount} venter på vurdering</strong>
-              <p>Godkjenn eller avslå først. Historikk ligger under.</p>
-              <p>
-                Kun godkjenning: {pendingApprovalOnlyCount} | Feed: {pendingFeedCount} | Anonym
-                feed: {pendingAnonymousFeedCount}
-              </p>
-            </div>
             <div className="admin-section-toolbar__actions">
               <button
                 type="button"
@@ -1080,105 +972,35 @@ export function AdminPage({
             </div>
           </div>
 
-          <div className="admin-live-strip">
-            <span className="leaderboard-row__duel-note">
-              {currentUserName} har nå {currentUserPoints} poeng
-            </span>
-            {reviewFeedback ? (
-              <p>{reviewFeedback}</p>
-            ) : (
-              <p>Alle endringer vises live i UI-et.</p>
-            )}
-          </div>
-
           <div className="admin-task-panel">
-            <div className="admin-subsection">
-              <div className="section-card__header">
-                <h3>Ventende nå</h3>
-                <p>Dette er hovedkøen for admin.</p>
-              </div>
-              <div className="admin-review-toolbar">
-                <div className="admin-review-toolbar__group">
+            <div className="admin-review-toolbar">
+              <div className="admin-review-filters" aria-label="Filtrer innsendinger">
+                {reviewFilters.map((filter) => (
                   <button
+                    key={filter.id}
                     type="button"
-                    className={`leaderboard-switch__button ${
-                      reviewQueueMode === REVIEW_QUEUE_MODE.ALL ? 'is-active' : ''
+                    className={`admin-review-filter ${
+                      activeReviewFilter === filter.id ? 'is-active' : ''
                     }`}
-                    onClick={() => setReviewQueueMode(REVIEW_QUEUE_MODE.ALL)}
+                    onClick={() => setActiveReviewFilter(filter.id)}
                   >
-                    Hele køen ({pendingSubmissionCount})
+                    <span>{filter.label}</span>
+                    <strong>{filter.count}</strong>
                   </button>
-                  <button
-                    type="button"
-                    className={`leaderboard-switch__button ${
-                      reviewQueueMode === REVIEW_QUEUE_MODE.FAST ? 'is-active' : ''
-                    }`}
-                    onClick={() => setReviewQueueMode(REVIEW_QUEUE_MODE.FAST)}
-                  >
-                    Fast lane ({fastLanePendingCount})
-                  </button>
-                </div>
-
-                <div className="admin-review-toolbar__group">
-                  <button
-                    type="button"
-                    className="action-button action-button--ghost action-button--compact"
-                    onClick={toggleSelectAllVisibleSubmissions}
-                    disabled={!reviewQueueSubmissions.length}
-                  >
-                    {selectedVisibleSubmissionCount === reviewQueueSubmissions.length &&
-                    reviewQueueSubmissions.length > 0
-                      ? 'Fjern alle'
-                      : 'Velg alle'}
-                  </button>
-                  <button
-                    type="button"
-                    className="action-button action-button--compact"
-                    onClick={() => handleBatchReview('Godkjent')}
-                    disabled={!selectedVisibleSubmissionCount || isBatchReviewing}
-                  >
-                    Godkjenn valgte ({selectedVisibleSubmissionCount})
-                  </button>
-                  <button
-                    type="button"
-                    className="action-button action-button--ghost action-button--compact"
-                    onClick={() => handleBatchReview('Avslått')}
-                    disabled={!selectedVisibleSubmissionCount || isBatchReviewing}
-                  >
-                    Avslå valgte
-                  </button>
-                </div>
-                <p className="admin-review-toolbar__hint">
-                  Hurtigtaster: J/K for neste/forrige, A for godkjenn, D for avslå.
-                </p>
+                ))}
               </div>
-              <SubmissionList
-                items={reviewQueueSubmissions}
-                canReview
-                onReviewAction={handleReviewAction}
-                activeSubmissionId={activeSubmissionId}
-                disableReviewActions={isBatchReviewing}
-                isReviewingById={reviewingSubmissionIds}
-                onSetActiveSubmission={setActiveSubmissionId}
-                onToggleSelected={toggleSubmissionSelection}
-                reportedSubmissionIdSet={reportedSubmissionIdSet}
-                selectedSubmissionIds={selectedSubmissionIds}
-              />
             </div>
-
-            <div className="admin-subsection">
-              <div className="section-card__header">
-                <h3>Ferdig behandlet</h3>
-                <p>{resolvedSubmissionCount} innsendinger er allerede vurdert.</p>
-              </div>
-              <SubmissionList
-                items={resolvedSubmissions}
-                canReview={false}
-                onReviewAction={handleReviewAction}
-              />
-            </div>
+            <SubmissionList
+              items={reviewQueueSubmissions}
+              canReview={canReviewCurrentFilter}
+              onReviewAction={handleReviewAction}
+              activeSubmissionId={activeSubmissionId}
+              isReviewingById={reviewingSubmissionIds}
+              onSetActiveSubmission={setActiveSubmissionId}
+              reportedSubmissionIdSet={reportedSubmissionIdSet}
+            />
           </div>
-        </SectionCard>
+        </div>
       ) : null}
 
       {activeAdminTask === 'knots' ? (
@@ -1691,6 +1513,74 @@ export function AdminPage({
                   <p className="folder-empty">Ingen aktive bans akkurat nå.</p>
                 )}
               </div>
+            </div>
+          </div>
+        </SectionCard>
+      ) : null}
+
+      {activeAdminTask === 'feedback' ? (
+        <SectionCard
+          title="Knute-feedback"
+          description="Tilpass korte meldinger som vises etter innsendinger."
+        >
+          <div className="admin-section-toolbar">
+            <div>
+              <strong>{customFeedbackLineCount} aktive feedback-tekster</strong>
+              <p>Én melding per linje. Rare kan være en lengre tekst.</p>
+            </div>
+            <div className="admin-section-toolbar__actions">
+              <button
+                type="button"
+                className="action-button action-button--ghost"
+                onClick={handleResetFeedbackDraft}
+              >
+                Nullstill
+              </button>
+              <button
+                type="button"
+                className="action-button"
+                disabled={isSavingFeedbackSettings}
+                onClick={handleSaveFeedbackMessages}
+              >
+                {isSavingFeedbackSettings ? 'Lagrer...' : 'Lagre tekster'}
+              </button>
+            </div>
+          </div>
+
+          <div className="admin-task-panel">
+            <div className="admin-subsection">
+              <div className="feedback-settings-grid">
+                {FEEDBACK_FIELD_CONFIG.map((field) => (
+                  <label key={field.key} className="field-group">
+                    <span>{field.label}</span>
+                    <textarea
+                      className="text-input text-input--area"
+                      value={feedbackDraft[field.key] ?? ''}
+                      onChange={(event) =>
+                        handleFeedbackDraftChange(field.key, event.target.value)
+                      }
+                    />
+                    <small>{field.description}</small>
+                  </label>
+                ))}
+              </div>
+              <div className="admin-section-toolbar__actions">
+                <button
+                  type="button"
+                  className="action-button action-button--ghost"
+                  onClick={handleTestRareFeedback}
+                >
+                  Test rare
+                </button>
+              </div>
+              {rareFeedbackPreview ? (
+                <p className="inline-feedback inline-feedback--rare-preview">
+                  {rareFeedbackPreview}
+                </p>
+              ) : null}
+              {feedbackSettingsMessage ? (
+                <p className="form-feedback">{feedbackSettingsMessage}</p>
+              ) : null}
             </div>
           </div>
         </SectionCard>
