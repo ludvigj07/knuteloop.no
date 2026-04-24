@@ -448,11 +448,13 @@
 .app-theme .swipe-tabs-shell__viewport {
   overflow-x: clip;
   overflow-y: visible;
+  contain: layout paint;
 }
 
 .app-theme .swipe-tabs-shell__page {
   overflow-x: clip;
   overflow-y: visible;
+  contain: layout paint;
 }
 
 .app-theme .swipe-tabs-shell.is-mobile-swipe .swipe-tabs-shell__page {
@@ -460,6 +462,10 @@
   isolation: isolate;
   z-index: 1;
   background: var(--app-canvas-background);
+}
+
+.app-theme .swipe-tabs-shell.is-mobile-swipe .swipe-tabs-shell__page:not(.is-active) {
+  pointer-events: none;
 }
 
 .app-theme .swipe-tabs-shell.is-mobile-swipe .swipe-tabs-shell__page.is-active {

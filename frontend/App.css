@@ -3484,6 +3484,10 @@
 .main-page-panel {
   display: grid;
   gap: 20px;
+  min-width: 0;
+  max-width: 100%;
+  overflow-x: clip;
+  isolation: isolate;
 }
 
 .hero-panel--page {
@@ -3499,6 +3503,7 @@
   overflow-y: visible;
   position: relative;
   isolation: isolate;
+  contain: layout paint;
   /* pan-y: native vertical scroll passes through; horizontal is handled by JS */
   touch-action: pan-y;
   /* Prevent text selection during horizontal drag */
@@ -3512,6 +3517,7 @@
   width: 100%;
   align-items: flex-start;
   will-change: transform;
+  min-width: 0;
 }
 
 .swipe-tabs-shell__track.is-animating {
@@ -3528,6 +3534,13 @@
   max-width: 100%;
   min-width: 0;
   position: relative;
+  overflow-x: clip;
+  isolation: isolate;
+  contain: layout paint;
+}
+
+.swipe-tabs-shell.is-mobile-swipe .swipe-tabs-shell__page:not(.is-active) {
+  pointer-events: none;
 }
 
 .bottom-swipe-nav {
@@ -8326,6 +8339,12 @@ textarea.text-input:focus {
   box-sizing: border-box;
 }
 
+.main-page-panel,
+.page-layout {
+  overflow-x: clip;
+  isolation: isolate;
+}
+
 .page-layout > *,
 .hero-panel > *,
 .hero-panel__content {
@@ -9781,6 +9800,13 @@ textarea.text-input:focus {
 .profile-knot-row,
 .activity-log-row {
   border: 1px solid var(--border) !important;
+}
+
+.feed-page .feed-card,
+.feed-page .feed-card-v3,
+.feed-page .feed-card-desktop,
+.feed-reel-mobile .feed-reel-card {
+  border-color: transparent !important;
 }
 
 .submission-row.is-active {

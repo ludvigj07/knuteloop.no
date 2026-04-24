@@ -936,8 +936,10 @@ export function KnotsPage({
 
   const draftsRef = useRef(drafts);
   const focusedCardRef = useRef(null);
+  const knotResultsRef = useRef(null);
   const handledFocusOpenRequestRef = useRef(0);
   const handledScrollRequestRef = useRef(0);
+  const folderScrollFrameRef = useRef(0);
   const highlightTimeoutRef = useRef(null);
 
   // ── Derived ──────────────────────────────────────────────────────────────
@@ -1095,6 +1097,9 @@ export function KnotsPage({
 
   useEffect(
     () => () => {
+      if (folderScrollFrameRef.current) {
+        window.cancelAnimationFrame(folderScrollFrameRef.current);
+      }
       if (highlightTimeoutRef.current) {
         window.clearTimeout(highlightTimeoutRef.current);
       }
@@ -1489,6 +1494,89 @@ export function KnotsPage({
     setActiveFolder(folderId);
     setOpenDetailId(null);
     setOpenFormId(null);
+    setSheetKnotId(null);
+    scheduleScrollToKnotResults();
+  }
+
+  function scrollToKnotResults() {
+    if (typeof window === 'undefined' || typeof document === 'undefined') {
+      return;
+    }
+
+    const element = knotResultsRef.current;
+    if (!element) {
+      return;
+    }
+
+    const rect = element.getBoundingClientRect();
+    const viewportHeight = window.innerHeight || 0;
+    const topOffset = isMobileViewport
+      ? Math.max(Math.round(viewportHeight * 0.18), 84)
+      : 88;
+    const isiOSWebKit =
+      typeof navigator !== 'undefined' &&
+      /iP(hone|od|ad)/i.test(navigator.userAgent ?? '');
+    const scrollBehavior = isiOSWebKit ? 'auto' : 'smooth';
+
+    let scrollContainer = element.parentElement;
+    while (scrollContainer && scrollContainer !== document.body) {
+      const style = window.getComputedStyle(scrollContainer);
+      const canScrollY = /(auto|scroll|overlay)/.test(style.overflowY);
+      if (canScrollY && scrollContainer.scrollHeight > scrollContainer.clientHeight) {
+        break;
+      }
+      scrollContainer = scrollContainer.parentElement;
+    }
+
+    if (scrollContainer && scrollContainer !== document.body) {
+      const containerRect = scrollContainer.getBoundingClientRect();
+      const targetWithinContainer = Math.max(
+        Math.round(scrollContainer.scrollTop + rect.top - containerRect.top - 16),
+        0,
+      );
+
+      scrollContainer.scrollTo({
+        top: targetWithinContainer,
+        left: 0,
+        behavior: scrollBehavior,
+      });
+
+      if (isiOSWebKit) {
+        scrollContainer.scrollTop = targetWithinContainer;
+      }
+      return;
+    }
+
+    const targetTop = Math.max(Math.round(window.scrollY + rect.top - topOffset), 0);
+    window.scrollTo({
+      top: targetTop,
+      left: 0,
+      behavior: scrollBehavior,
+    });
+
+    if (isiOSWebKit) {
+      const scrollingElement = document.scrollingElement ?? document.documentElement;
+      scrollingElement.scrollTop = targetTop;
+      document.documentElement.scrollTop = targetTop;
+      document.body.scrollTop = targetTop;
+    }
+  }
+
+  function scheduleScrollToKnotResults() {
+    if (typeof window === 'undefined') {
+      return;
+    }
+
+    if (folderScrollFrameRef.current) {
+      window.cancelAnimationFrame(folderScrollFrameRef.current);
+    }
+
+    folderScrollFrameRef.current = window.requestAnimationFrame(() => {
+      folderScrollFrameRef.current = window.requestAnimationFrame(() => {
+        folderScrollFrameRef.current = 0;
+        scrollToKnotResults();
+      });
+    });
   }
 
   function handleResetFilters() {
@@ -1660,10 +1748,12 @@ export function KnotsPage({
 
       {/* Empty states */}
       {visibleFolderKnots.length === 0 ? (
-        <p className="folder-empty">Det ligger ingen knuter i denne mappen ennå.</p>
+        <p ref={knotResultsRef} className="folder-empty">
+          Det ligger ingen knuter i denne mappen ennå.
+        </p>
       ) : null}
       {visibleFolderKnots.length > 0 && visibleKnots.length === 0 ? (
-        <div className="filter-empty-state">
+        <div ref={knotResultsRef} className="filter-empty-state">
           <h3>Ingen knuter matcher søket ditt</h3>
           <p>
             Prøv et annet søk, bytt statusfilter eller nullstill filtrene for å se hele
@@ -1681,7 +1771,7 @@ export function KnotsPage({
 
       {/* Knot list */}
       {visibleKnots.length > 0 ? (
-        <div className="knot-list">
+        <div ref={knotResultsRef} className="knot-list">
           {visibleKnots.map((knot) => {
             const canSubmit =
               knot.status === 'Tilgjengelig' ||
