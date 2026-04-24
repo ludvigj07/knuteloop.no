@@ -852,12 +852,21 @@ function App() {
     setAppData(nextAppData);
   }
 
-  async function handleDeleteSubmission(submissionId) {
+  async function handleDeleteSubmission(submissionId, options = {}) {
     if (!submissionId) {
       return;
     }
 
     const nextAppData = await deleteSubmission(sessionToken, submissionId);
+    options.beforeApply?.();
+
+    const delayAppDataMs = Number(options.delayAppDataMs) || 0;
+    if (delayAppDataMs > 0) {
+      await new Promise((resolve) => {
+        window.setTimeout(resolve, delayAppDataMs);
+      });
+    }
+
     setAppData(nextAppData);
   }
 
@@ -1038,7 +1047,7 @@ function App() {
       content = (
         <FeedPage
           activityLog={activityLog}
-          canDeletePosts={currentUser.role === 'admin'}
+          currentUserId={currentUser.leaderId}
           currentUserActiveBans={currentUserActiveBans}
           onDeleteSubmission={handleDeleteSubmission}
           onExit={() => handleChangePage('dashboard')}
