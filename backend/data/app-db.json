@@ -796,8 +796,8 @@
       "imagePreviewUrl": "",
       "videoName": "79870769886__5FF98FE3-9A8E-4E3C-95CF-8B6315F97BAA.MOV",
       "videoPreviewUrl": "/uploads/submission-video-1777014923819-9911605e-284e-40c4-b250-d092349f160b.mp4",
-      "isAnonymousFeed": true,
-      "submissionMode": "anonymous-feed",
+      "isAnonymousFeed": false,
+      "submissionMode": "review",
       "ratings": {
         "6": 5
       },

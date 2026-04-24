@@ -72,7 +72,7 @@ const PAGE_CONFIG = {
     id: 'knuter',
     label: 'Knuter',
     shortLabel: 'Knuter',
-    icon: '\u2630',
+    icon: '\u{1FAA2}',
     title: 'Knuter',
     description: 'Velg knuter i eget tempo, og del det du har gjort.',
   },
