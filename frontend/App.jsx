@@ -427,7 +427,8 @@ function App() {
     }
 
     if (nextPage === 'profiler') {
-      setProfileViewMode('overview');
+      setSelectedProfileId(currentUser?.leaderId ?? null);
+      setProfileViewMode('detail');
     }
   }
 
@@ -440,6 +441,10 @@ function App() {
   function handleBackToProfileOverview() {
     setProfileViewMode('overview');
     setActivePage('profiler');
+    requestAnimationFrame(() => {
+      window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
+      document.scrollingElement?.scrollTo?.({ top: 0, left: 0, behavior: 'auto' });
+    });
   }
 
   function handleOpenDailyKnot(knotId = null) {
