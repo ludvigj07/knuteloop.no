@@ -6747,8 +6747,8 @@ textarea.text-input:focus {
 
 .knot-row__doc-btn-icon svg {
   display: block;
-  width: 100%;
-  height: 100%;
+  width: 110%;
+  height: 110%;
 }
 
 .knot-row__doc-btn.is-active,
@@ -6771,8 +6771,8 @@ textarea.text-input:focus {
   border: 1px solid var(--line-color, var(--border, #d4d8df));
   background: var(--surface, #fff);
   color: var(--text-secondary, var(--text-muted, #5a6478));
-  font-size: 0;
-  line-height: 0;
+  font-size: 1rem;
+  line-height: 1;
   cursor: pointer;
   display: grid;
   place-items: center;
@@ -6781,31 +6781,16 @@ textarea.text-input:focus {
 }
 
 .knot-row__expand-icon {
-  position: relative;
-  display: block;
-  width: 14px;
-  height: 14px;
-}
-
-.knot-row__expand-icon::before,
-.knot-row__expand-icon::after {
-  content: '';
-  position: absolute;
-  left: 50%;
-  top: 50%;
-  background: currentColor;
-  border-radius: 1px;
-  transform: translate(-50%, -50%);
-}
-
-.knot-row__expand-icon::before {
-  width: 14px;
-  height: 2px;
-}
-
-.knot-row__expand-icon::after {
-  width: 2px;
-  height: 14px;
+  display: grid;
+  place-items: center;
+  width: 1em;
+  height: 1em;
+  font-family: Georgia, Cambria, "Times New Roman", Times, serif;
+  font-size: 1.32rem;
+  font-style: italic;
+  font-weight: 500;
+  line-height: 1;
+  transform: translateY(-0.02em);
 }
 
 .knot-row__expand-btn.is-active,

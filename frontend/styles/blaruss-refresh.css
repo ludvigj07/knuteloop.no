@@ -1097,6 +1097,19 @@
   box-shadow: 3px 3px 0 0 var(--foreground) !important;
 }
 
+.app-theme .knot-row__expand-icon {
+  display: grid;
+  place-items: center;
+  width: 1em;
+  height: 1em;
+  font-family: Georgia, Cambria, "Times New Roman", Times, serif;
+  font-size: 1.36rem;
+  font-style: italic;
+  font-weight: 500;
+  line-height: 1;
+  transform: translateY(-0.02em);
+}
+
 .app-theme .knot-row__expand-btn.is-active,
 .app-theme .knot-row__expand-btn:hover {
   background: color-mix(in srgb, var(--secondary) 76%, white 24%) !important;
@@ -1104,7 +1117,7 @@
 
 .app-theme .knot-row__expand-icon::before,
 .app-theme .knot-row__expand-icon::after {
-  background: currentColor !important;
+  content: none !important;
 }
 
 .app-theme .knot-row__detail {

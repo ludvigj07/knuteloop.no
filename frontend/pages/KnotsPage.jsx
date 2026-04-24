@@ -659,20 +659,21 @@ function KnotRow({
                 <span className="knot-row__doc-btn-icon" aria-hidden="true">
                   <svg viewBox="0 0 24 24" fill="none" role="img">
                     <path
-                      d="M7.5 4.5h6l3 3v12h-9z"
-                      stroke="currentColor"
-                      strokeWidth="1.8"
-                      strokeLinejoin="round"
-                    />
-                    <path
-                      d="M13.5 4.5v3h3"
+                      d="M4.75 8.25h3.3l1.25-2h5.4l1.25 2h3.3v10.5H4.75z"
                       stroke="currentColor"
                       strokeWidth="1.8"
                       strokeLinecap="round"
                       strokeLinejoin="round"
                     />
+                    <circle
+                      cx="12"
+                      cy="13.25"
+                      r="3.15"
+                      stroke="currentColor"
+                      strokeWidth="1.8"
+                    />
                     <path
-                      d="M9.5 11h5M9.5 14h5M9.5 17h3.5"
+                      d="M17.25 10.25h.01"
                       stroke="currentColor"
                       strokeWidth="1.8"
                       strokeLinecap="round"
@@ -691,7 +692,7 @@ function KnotRow({
             aria-label="Vis detaljer"
             onClick={onToggleDetail}
           >
-            <span className="knot-row__expand-icon" aria-hidden="true" />
+            <span className="knot-row__expand-icon" aria-hidden="true">i</span>
           </button>
         </div>
       </div>
