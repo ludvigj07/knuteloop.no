@@ -6946,6 +6946,15 @@ textarea.text-input:focus {
   gap: var(--space-3);
 }
 
+.knot-submission-form .field-group {
+  gap: 6px;
+}
+
+.knot-submission-form textarea.text-input.text-input--compact {
+  min-height: 76px;
+  resize: vertical;
+}
+
 .knot-submission-form .submission-form__actions .action-button {
   width: 100%;
 }
@@ -6974,6 +6983,7 @@ textarea.text-input:focus {
 }
 
 .submission-mode-options__optional {
+  margin: 0;
   font-weight: 600;
   color: var(--text-secondary, var(--text-muted, #6f7a90));
 }
@@ -7097,6 +7107,133 @@ textarea.text-input:focus {
   width: fit-content;
 }
 
+.knot-submission-form .evidence-picker {
+  display: grid;
+  gap: 8px;
+}
+
+.knot-submission-form .evidence-picker__top {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  min-width: 0;
+}
+
+.knot-submission-form .evidence-picker__top > span {
+  color: var(--text, var(--text-strong, #20242f));
+  font-size: 0.95rem;
+  font-weight: 700;
+}
+
+.knot-submission-form .evidence-picker__top small {
+  color: var(--text-secondary, var(--text-muted, #5a6478));
+  min-width: 0;
+  overflow: hidden;
+  text-align: right;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.knot-submission-form .evidence-picker__actions {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.knot-submission-form .evidence-picker__action {
+  min-height: 40px;
+  padding: 0 8px;
+  border-radius: 10px;
+  cursor: pointer;
+  font-size: 0.78rem;
+  justify-content: center;
+  text-align: center;
+  white-space: nowrap;
+}
+
+.knot-submission-form .evidence-picker__action--image {
+  border-color: #1d4ed8;
+  background: #2563eb;
+  color: #fff;
+}
+
+.knot-submission-form .evidence-picker__action--video {
+  border-color: #b91c1c;
+  background: #dc2626;
+  color: #fff;
+}
+
+.knot-submission-form .evidence-picker__input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.knot-submission-form .evidence-picker__selected {
+  display: grid;
+  gap: 6px;
+}
+
+.knot-submission-form .evidence-picker__empty {
+  color: var(--text-secondary, var(--text-muted, #5a6478));
+}
+
+.knot-submission-form .evidence-chip {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  min-width: 0;
+  min-height: 34px;
+  padding: 4px 4px 4px 10px;
+  border: 1px solid color-mix(in srgb, var(--line-color, #d4d8df) 70%, #7a879e 30%);
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--surface, #fff) 88%, #eef2f8 12%);
+}
+
+.knot-submission-form .evidence-chip span {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--text-secondary, var(--text-muted, #5a6478));
+  font-size: 0.82rem;
+  font-weight: 700;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.knot-submission-form .evidence-chip__remove {
+  min-height: 28px;
+  padding: 0 8px;
+  font-size: 0.74rem;
+}
+
+.knot-submission-form .evidence-picker__previews {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.knot-submission-form .evidence-card--compact {
+  min-width: 0;
+  gap: 5px;
+  padding: 6px;
+}
+
+.knot-submission-form .evidence-card--compact span {
+  font-size: 0.72rem;
+}
+
+.knot-submission-form .evidence-card--compact img,
+.knot-submission-form .evidence-card--compact video {
+  width: 100%;
+  height: 72px;
+  border-radius: 8px;
+  object-fit: cover;
+}
+
 .knot-submission-form .upload-paste-target {
   width: 100%;
   min-height: 38px;
@@ -7125,6 +7262,57 @@ textarea.text-input:focus {
 
   .knot-submission-form .upload-field.upload-field--compact > span {
     font-size: 0.9rem;
+  }
+
+  .knot-submission-form .evidence-picker__action {
+    min-height: 36px;
+  }
+}
+
+@media (max-width: 900px) {
+  .knot-submission-form {
+    gap: 10px;
+  }
+
+  .knot-submission-form textarea.text-input.text-input--compact {
+    min-height: 58px;
+    max-height: 74px;
+  }
+
+  .knot-submission-form .submission-mode-options {
+    gap: 6px;
+  }
+
+  .knot-submission-form .submission-mode-options__optional {
+    display: none;
+  }
+
+  .knot-submission-form .submission-mode-pill {
+    min-height: 36px;
+    font-size: 0.78rem;
+  }
+
+  .knot-submission-form .evidence-picker__actions {
+    gap: 6px;
+  }
+
+  .knot-submission-form .evidence-picker__action {
+    min-height: 36px;
+    padding: 0 5px;
+    font-size: 0.72rem;
+  }
+
+  .knot-submission-form .evidence-card--compact img,
+  .knot-submission-form .evidence-card--compact video {
+    height: 54px;
+  }
+
+  .knot-submission-form .submission-form__actions {
+    position: sticky;
+    bottom: 0;
+    padding-top: 2px;
+    padding-bottom: max(0px, env(safe-area-inset-bottom, 0px));
+    background: inherit;
   }
 }
 
@@ -7250,6 +7438,20 @@ textarea.text-input:focus {
   padding-bottom: max(var(--space-4), env(safe-area-inset-bottom, 0px));
 }
 
+.knot-sheet .evidence-picker__action--image {
+  border-color: #1d4ed8 !important;
+  background: #2563eb !important;
+  color: #fff !important;
+  box-shadow: 2px 2px 0 0 #1d4ed8 !important;
+}
+
+.knot-sheet .evidence-picker__action--video {
+  border-color: #b91c1c !important;
+  background: #dc2626 !important;
+  color: #fff !important;
+  box-shadow: 2px 2px 0 0 #b91c1c !important;
+}
+
 /* Action bar */
 
 .knot-action-bar {
@@ -7347,7 +7549,7 @@ textarea.text-input:focus {
     font-size: 0.72rem;
   }
   .knot-submission-form .submission-mode-segment {
-    grid-template-columns: 1fr;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
 

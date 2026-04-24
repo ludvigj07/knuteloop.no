@@ -2199,6 +2199,11 @@ async function handleCreateSubmission(request, response) {
     return;
   }
 
+  if (body.imageDataUrl && body.videoDataUrl) {
+    sendJson(response, 400, { error: 'Velg enten bilde eller video, ikke begge.' });
+    return;
+  }
+
   const existingPendingSubmission = db.submissions
     .filter(
       (submission) =>
@@ -2226,8 +2231,8 @@ async function handleCreateSubmission(request, response) {
   if (existingPendingSubmission) {
     const hasNewImage = Boolean(imagePreviewUrl);
     const hasNewVideo = Boolean(videoPreviewUrl);
-    const shouldRemoveImage = body.removeImage === true && !hasNewImage;
-    const shouldRemoveVideo = body.removeVideo === true && !hasNewVideo;
+    const shouldRemoveImage = (body.removeImage === true || hasNewVideo) && !hasNewImage;
+    const shouldRemoveVideo = (body.removeVideo === true || hasNewImage) && !hasNewVideo;
     const incomingNote = limitNoteWords(body.note);
     const currentSubmissionMode = normalizeSubmissionMode(
       existingPendingSubmission.submissionMode,

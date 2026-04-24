@@ -1165,6 +1165,14 @@
   gap: 14px;
 }
 
+.app-theme .knot-submission-form .field-group {
+  gap: 6px;
+}
+
+.app-theme .knot-submission-form textarea.text-input.text-input--compact {
+  min-height: 72px;
+}
+
 .app-theme .knot-submission-form .submission-mode-segment {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -1189,20 +1197,57 @@
 
 .app-theme .knot-submission-form .upload-field.upload-field--compact,
 .app-theme .knot-submission-form .upload-paste-target,
-.app-theme .knot-submission-form .upload-remove-btn {
+.app-theme .knot-submission-form .upload-remove-btn,
+.app-theme .knot-submission-form .evidence-chip {
   border: 2px solid color-mix(in srgb, var(--foreground) 16%, transparent) !important;
   box-shadow: none !important;
 }
 
 .app-theme .knot-submission-form .upload-field.upload-field--compact,
-.app-theme .knot-submission-form .upload-paste-target {
+.app-theme .knot-submission-form .upload-paste-target,
+.app-theme .knot-submission-form .evidence-chip {
   background: var(--card) !important;
   color: var(--foreground) !important;
 }
 
 .app-theme .knot-submission-form .upload-field.upload-field--compact > span,
+.app-theme .knot-submission-form .evidence-picker__top > span,
 .app-theme .submission-mode-options__label {
   color: var(--foreground) !important;
+}
+
+.app-theme .knot-submission-form .evidence-picker__top small,
+.app-theme .knot-submission-form .evidence-picker__empty,
+.app-theme .knot-submission-form .evidence-chip span {
+  color: var(--muted-foreground) !important;
+}
+
+.app-theme .knot-submission-form .evidence-picker__action {
+  border: 2px solid var(--foreground) !important;
+  background: var(--card) !important;
+  color: var(--foreground) !important;
+  box-shadow: 2px 2px 0 0 var(--foreground) !important;
+  font-weight: 800;
+}
+
+.app-theme .knot-submission-form .evidence-picker__action--image {
+  border-color: #1d4ed8 !important;
+  background: #2563eb !important;
+  color: #fff !important;
+  box-shadow: 2px 2px 0 0 #1d4ed8 !important;
+}
+
+.app-theme .knot-submission-form .evidence-picker__action--video {
+  border-color: #b91c1c !important;
+  background: #dc2626 !important;
+  color: #fff !important;
+  box-shadow: 2px 2px 0 0 #b91c1c !important;
+}
+
+.app-theme .knot-submission-form .evidence-card--compact {
+  border: 2px solid color-mix(in srgb, var(--foreground) 16%, transparent) !important;
+  background: var(--card) !important;
+  box-shadow: none !important;
 }
 
 .app-theme .knot-submission-form .upload-paste-target {
@@ -1213,6 +1258,39 @@
 .app-theme .knot-submission-form .upload-remove-btn {
   background: color-mix(in srgb, var(--danger) 10%, white 90%) !important;
   color: var(--danger-strong) !important;
+}
+
+@media (max-width: 900px) {
+  .app-theme .knot-submission-form {
+    gap: 10px;
+  }
+
+  .app-theme .knot-submission-form textarea.text-input.text-input--compact {
+    min-height: 58px;
+    max-height: 74px;
+  }
+
+  .app-theme .knot-submission-form .submission-mode-segment {
+    gap: 8px;
+  }
+
+  .app-theme .knot-submission-form .submission-mode-pill {
+    min-height: 38px;
+    box-shadow: 2px 2px 0 0 var(--foreground) !important;
+  }
+
+  .app-theme .knot-submission-form .evidence-picker__action {
+    min-height: 36px;
+    box-shadow: 2px 2px 0 0 var(--foreground) !important;
+  }
+
+  .app-theme .knot-submission-form .evidence-picker__action--image {
+    box-shadow: 2px 2px 0 0 #1d4ed8 !important;
+  }
+
+  .app-theme .knot-submission-form .evidence-picker__action--video {
+    box-shadow: 2px 2px 0 0 #b91c1c !important;
+  }
 }
 
 .app-theme .knot-sheet-backdrop.is-open {
@@ -1454,7 +1532,7 @@
   }
 
   .app-theme .knot-submission-form .submission-mode-segment {
-    grid-template-columns: 1fr;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .app-theme .knot-row__detail-label {

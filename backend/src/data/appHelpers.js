@@ -1465,18 +1465,11 @@ export function buildDashboardData(
   };
 }
 
-export const NOTE_MAX_WORDS = 100;
-export const NOTE_MAX_CHARS = 700;
+export const NOTE_MAX_CHARS = 300;
 
 export function limitNoteWords(
   note,
-  maxWords = NOTE_MAX_WORDS,
   maxChars = NOTE_MAX_CHARS,
 ) {
-  const normalizedNote = typeof note === 'string' ? note.trim().slice(0, maxChars) : '';
-  const words = normalizedNote
-    .split(/\s+/)
-    .filter(Boolean);
-
-  return words.slice(0, maxWords).join(' ');
+  return typeof note === 'string' ? note.trim().slice(0, maxChars) : '';
 }
