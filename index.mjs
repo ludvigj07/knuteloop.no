@@ -517,8 +517,31 @@ async function readDb() {
   return migrateNorwegianText(migratedKnotFeedbackDb);
 }
 
+// Serialiserer alle writeDb-kall i én kø og skriver atomisk (.tmp +
+// rename). Beskytter mot to hoved-feilmoduser:
+// 1. Partial write: prosess crasher / systemd restart mid-skriving.
+//    rename() er atomisk på POSIX — fila eksisterer aldri halvveis.
+// 2. Interleaved writes: to samtidige handlers skriver til samme fd
+//    og lekker bytes mellom seg (det var dette som ga oss "}}"-feilen).
+//    Køen sørger for at én skriving er fullført før den neste starter.
+// Merk: dette fikser ikke lost-update-race (to requests som leser gammel
+// state, muterer og skriver — den siste vinner). For lav trafikk
+// akseptabelt; for høyere trafikk bør handler-lag også låses.
+let dbWriteChain = Promise.resolve();
 async function writeDb(nextDb) {
-  await fs.writeFile(DB_FILE, JSON.stringify(nextDb, null, 2), 'utf8');
+  const previous = dbWriteChain;
+  let release;
+  dbWriteChain = new Promise((resolve) => {
+    release = resolve;
+  });
+  try {
+    await previous;
+    const tmpFile = DB_FILE + '.tmp';
+    await fs.writeFile(tmpFile, JSON.stringify(nextDb, null, 2), 'utf8');
+    await fs.rename(tmpFile, DB_FILE);
+  } finally {
+    release();
+  }
 }
 
 function normalizeVideoNameToMp4(name, fallback = 'video.mp4') {

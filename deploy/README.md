@@ -246,7 +246,33 @@ sudo diff /etc/caddy/Caddyfile                  /opt/knuteloop/current/deploy/Ca
 # Kopier over manuelt om du er enig, og kjør daemon-reload / caddy reload
 ```
 
+## Daglig backup (engangs-oppsett)
+
+```bash
+# 1. Gjør backup-scriptet kjørbart for knuteloop-brukeren
+sudo chmod +x /opt/knuteloop/current/deploy/knuteloop-backup.sh
+
+# 2. Installer cron-job
+sudo cp /opt/knuteloop/current/deploy/knuteloop-backup.cron /etc/cron.d/knuteloop-backup
+sudo chown root:root /etc/cron.d/knuteloop-backup
+sudo chmod 644 /etc/cron.d/knuteloop-backup
+
+# 3. Test at det kjører uten feil
+sudo -u knuteloop /opt/knuteloop/current/deploy/knuteloop-backup.sh
+ls -la /opt/knuteloop/backups/ | head
+
+# (valgfritt) installer sqlite3-cli for tryggere auth.sqlite-backup
+sudo apt install -y sqlite3
+```
+
+Backups kjører 03:00 hver natt. Beholder 14 dager. app-db.json +
+auth.sqlite kopieres til `/opt/knuteloop/backups/`. Logg: `/opt/knuteloop/data/backup.log`.
+
 ## Hva som mangler (dekkes i neste steg)
 
 - E-post-sending av invite-koder (pre-launch punkt 2)
-- Automatiske backup av `data/` til separat sted
+- Offsite-backup (Cloudflare R2 / Backblaze B2) — lokal backup dekker
+  de fleste feilscenarioer, men hvis hele VM-en går tapt er de også
+  borte. Hetzner Backup (€0.90/mnd) er enkleste mellomsteg.
+- SQLite-migrering av app-db.json — større refaktor, bedre i senere
+  fase når traffikkpåkjenningen øker.
