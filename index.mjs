@@ -536,9 +536,14 @@ async function writeDb(nextDb) {
   });
   try {
     await previous;
-    const tmpFile = DB_FILE + '.tmp';
+    // DB_FILE er en symlink i produksjon (release-dir → /opt/knuteloop/data/).
+    // .tmp-filen må skrives i SAMME mappe som den faktiske fila, ellers
+    // havner den i release-mappa (read-only i systemd-sandboks) og rename
+    // krysser filsystemgrenser. Resolver symlinken først.
+    const realTarget = await fs.realpath(DB_FILE).catch(() => DB_FILE);
+    const tmpFile = realTarget + '.tmp';
     await fs.writeFile(tmpFile, JSON.stringify(nextDb, null, 2), 'utf8');
-    await fs.rename(tmpFile, DB_FILE);
+    await fs.rename(tmpFile, realTarget);
   } finally {
     release();
   }
