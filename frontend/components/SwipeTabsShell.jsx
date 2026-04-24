@@ -448,8 +448,8 @@ export function SwipeTabsShell({
                     }
                   }}
                   className={`swipe-tabs-shell__page ${
-                    activePageId === page.id ? 'is-active' : ''
-                  }`}
+                    page.id === 'feed' ? 'swipe-tabs-shell__page--feed' : ''
+                  } ${activePageId === page.id ? 'is-active' : ''}`}
                   style={mobilePageStyle}
                   aria-hidden={activePageId !== page.id}
                 >

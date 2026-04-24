@@ -453,6 +453,7 @@ function createSeedDatabase() {
     users,
     knots,
     submissions,
+    comments: [],
     reports: [],
     bans: [],
     duels: initialDuels.map((duel) => ({
@@ -491,6 +492,13 @@ function createSeedDatabase() {
   };
 }
 
+function migrateComments(db) {
+  if (Array.isArray(db.comments)) {
+    return db;
+  }
+  return { ...db, comments: [] };
+}
+
 async function readDb() {
   await ensureStorage();
   const raw = await fs.readFile(DB_FILE, 'utf8');
@@ -503,7 +511,8 @@ async function readDb() {
   const migratedProfileGenderDb = await migrateProfileGenderData(migratedFeedFlagsDb);
   const migratedStreakDb = await migrateSubmissionStreakData(migratedProfileGenderDb);
   const migratedKnotFeedbackDb = await migrateKnotFeedbackMessages(migratedStreakDb);
-  return migrateNorwegianText(migratedKnotFeedbackDb);
+  const migratedNorwegianDb = await migrateNorwegianText(migratedKnotFeedbackDb);
+  return migrateComments(migratedNorwegianDb);
 }
 
 async function writeDb(nextDb) {
@@ -1803,6 +1812,56 @@ function toPublicSubmission(db, submission, currentUserId = null) {
   };
 }
 
+function toPublicComment(db, comment, currentUserId, allComments) {
+  const author = db.users.find((u) => u.id === comment.authorId);
+  const likes = Array.isArray(comment.likes) ? comment.likes : [];
+  const isDeleted = Boolean(comment.deletedAt);
+
+  const replies =
+    comment.parentId === null
+      ? (allComments ?? [])
+          .filter((c) => c.parentId === comment.id && !c.deletedAt)
+          .sort((a, b) => Date.parse(a.createdAt) - Date.parse(b.createdAt))
+          .map((reply) => toPublicComment(db, reply, currentUserId, []))
+      : [];
+
+  return {
+    id: comment.id,
+    submissionId: comment.submissionId,
+    authorId: comment.authorId,
+    authorName: isDeleted ? 'Slettet' : (author?.profile?.russName ?? author?.name ?? 'Ukjent'),
+    authorPhotoUrl: isDeleted ? '' : (author?.profile?.photoUrl ?? ''),
+    authorIcon: isDeleted ? '' : (author?.profile?.icon ?? ''),
+    text: isDeleted ? 'Denne kommentaren er slettet.' : comment.text,
+    createdAtLabel: getRelativeLabel(comment.createdAt),
+    createdAtRaw: comment.createdAt,
+    likeCount: likes.length,
+    myLiked: currentUserId !== null && likes.includes(currentUserId),
+    isOwn: currentUserId !== null && comment.authorId === currentUserId,
+    parentId: comment.parentId,
+    deleted: isDeleted,
+    replies,
+  };
+}
+
+function buildCommentsBySubmission(db, currentUserId) {
+  const allComments = db.comments ?? [];
+  const result = {};
+
+  allComments
+    .filter((c) => c.parentId === null && !c.deletedAt)
+    .sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt))
+    .forEach((comment) => {
+      const key = comment.submissionId;
+      if (!result[key]) {
+        result[key] = [];
+      }
+      result[key].push(toPublicComment(db, comment, currentUserId, allComments));
+    });
+
+  return result;
+}
+
 function buildClientKnots(db, userId) {
   return db.knots
     .filter((knot) => knot.isActive !== false)
@@ -1884,6 +1943,7 @@ function buildBootstrap(db, user) {
     currentUserActiveBans: buildCurrentUserActiveBans(db, user.id, nowMs),
     knotFeedbackMessages: normalizeKnotFeedbackMessages(db.knotFeedbackMessages),
     moderationPolicy: MODERATION_POLICY,
+    commentsBySubmission: buildCommentsBySubmission(db, user.id),
   };
 }
 
@@ -2621,6 +2681,173 @@ async function handleReportSubmission(request, response, submissionId) {
   sendJson(response, 200, buildBootstrap(nextDb, user));
 }
 
+async function handleCreateComment(request, response, submissionId) {
+  const db = await readDb();
+  const user = getAuthedUser(db, request);
+
+  if (!user) {
+    sendJson(response, 401, { error: 'Ikke logget inn.' });
+    return;
+  }
+
+  const activeBan = (db.bans ?? []).find(
+    (b) => b.userId === user.id && b.type === 'feed' && isBanActive(b),
+  );
+  if (activeBan) {
+    sendJson(response, 403, { error: 'Feed-tilgangen din er midlertidig begrenset.' });
+    return;
+  }
+
+  const submission = db.submissions.find((item) => item.id === submissionId);
+  if (!submission || !isSubmissionVisibleInFeed(submission)) {
+    sendJson(response, 404, { error: 'Fant ikke feed-posten.' });
+    return;
+  }
+
+  const body = await readJsonBody(request);
+  const text = typeof body?.text === 'string' ? body.text.trim().slice(0, 500) : '';
+  const rawParentId = typeof body?.parentId === 'string' ? body.parentId.trim() : null;
+
+  if (!text) {
+    sendJson(response, 400, { error: 'Kommentar kan ikke være tom.' });
+    return;
+  }
+
+  let parentId = null;
+  if (rawParentId) {
+    const parentComment = (db.comments ?? []).find(
+      (c) => c.id === rawParentId && c.submissionId === submissionId && !c.deletedAt && !c.parentId,
+    );
+    if (!parentComment) {
+      sendJson(response, 400, { error: 'Ugyldig svar-kommentar.' });
+      return;
+    }
+    parentId = rawParentId;
+  }
+
+  const nextComment = {
+    id: `comment-${Date.now()}-${randomUUID().slice(0, 8)}`,
+    submissionId,
+    authorId: user.id,
+    text,
+    createdAt: nowIso(),
+    likes: [],
+    parentId,
+    deletedAt: null,
+  };
+
+  const nextDb = { ...db, comments: [...(db.comments ?? []), nextComment] };
+  await writeDb(nextDb);
+  sendJson(response, 200, buildBootstrap(nextDb, user));
+}
+
+async function handleDeleteComment(request, response, commentId) {
+  const db = await readDb();
+  const user = getAuthedUser(db, request);
+
+  if (!user) {
+    sendJson(response, 401, { error: 'Ikke logget inn.' });
+    return;
+  }
+
+  const comment = (db.comments ?? []).find((c) => c.id === commentId);
+  if (!comment || comment.deletedAt) {
+    sendJson(response, 404, { error: 'Fant ikke kommentaren.' });
+    return;
+  }
+
+  if (comment.authorId !== user.id && !assertAdmin(user)) {
+    sendJson(response, 403, { error: 'Du kan bare slette egne kommentarer.' });
+    return;
+  }
+
+  const nextDb = {
+    ...db,
+    comments: (db.comments ?? []).map((c) =>
+      c.id === commentId ? { ...c, deletedAt: nowIso() } : c,
+    ),
+  };
+  await writeDb(nextDb);
+  sendJson(response, 200, buildBootstrap(nextDb, user));
+}
+
+async function handleLikeComment(request, response, commentId) {
+  const db = await readDb();
+  const user = getAuthedUser(db, request);
+
+  if (!user) {
+    sendJson(response, 401, { error: 'Ikke logget inn.' });
+    return;
+  }
+
+  const comment = (db.comments ?? []).find((c) => c.id === commentId && !c.deletedAt);
+  if (!comment) {
+    sendJson(response, 404, { error: 'Fant ikke kommentaren.' });
+    return;
+  }
+
+  const currentLikes = Array.isArray(comment.likes) ? comment.likes : [];
+  const nextLikes = currentLikes.includes(user.id)
+    ? currentLikes.filter((id) => id !== user.id)
+    : [...currentLikes, user.id];
+
+  const nextDb = {
+    ...db,
+    comments: (db.comments ?? []).map((c) =>
+      c.id === commentId ? { ...c, likes: nextLikes } : c,
+    ),
+  };
+  await writeDb(nextDb);
+  sendJson(response, 200, buildBootstrap(nextDb, user));
+}
+
+async function handleReportComment(request, response, commentId) {
+  const db = await readDb();
+  const user = getAuthedUser(db, request);
+
+  if (!user) {
+    sendJson(response, 401, { error: 'Ikke logget inn.' });
+    return;
+  }
+
+  const comment = (db.comments ?? []).find((c) => c.id === commentId && !c.deletedAt);
+  if (!comment) {
+    sendJson(response, 404, { error: 'Fant ikke kommentaren.' });
+    return;
+  }
+
+  const alreadyReported = (db.reports ?? []).some(
+    (r) =>
+      r.commentId === commentId &&
+      r.reporterId === user.id &&
+      r.status === REPORT_STATUS.OPEN,
+  );
+  if (alreadyReported) {
+    sendJson(response, 409, { error: 'Du har allerede rapportert denne kommentaren.' });
+    return;
+  }
+
+  const body = await readJsonBody(request);
+  const nextReport = {
+    id: `report-${Date.now()}-${randomUUID().slice(0, 8)}`,
+    type: 'comment',
+    commentId,
+    submissionId: comment.submissionId,
+    reporterId: user.id,
+    reason: normalizeReportReason(body?.reason),
+    note: typeof body?.note === 'string' ? body.note.trim().slice(0, 300) : '',
+    status: REPORT_STATUS.OPEN,
+    createdAt: nowIso(),
+    reviewedAt: null,
+    reviewedBy: null,
+    resolution: null,
+  };
+
+  const nextDb = { ...db, reports: [nextReport, ...(db.reports ?? [])] };
+  await writeDb(nextDb);
+  sendJson(response, 200, buildBootstrap(nextDb, user));
+}
+
 async function handleAdminReports(request, response) {
   const db = await readDb();
   const user = getAuthedUser(db, request);
@@ -2659,53 +2886,73 @@ async function handleAdminReportAction(request, response, reportId) {
   const body = await readJsonBody(request);
   const action = String(body?.action ?? '');
   const reviewedAt = nowIso();
-  const submission = db.submissions.find((item) => item.id === report.submissionId);
-
-  if (!submission) {
-    sendJson(response, 404, { error: 'Fant ikke innsendingen som ble rapportert.' });
-    return;
-  }
+  const isCommentReport = report.type === 'comment' && report.commentId;
 
   let resolution = 'kept';
   let reportStatus = REPORT_STATUS.DISMISSED;
   let submissions = db.submissions;
+  let comments = db.comments ?? [];
 
-  if (action === 'remove-feed') {
-    reportStatus = REPORT_STATUS.ACTIONED;
-    resolution = 'removed_from_feed';
-    submissions = db.submissions.map((item) =>
-      item.id === submission.id
-        ? {
-            ...item,
-            submissionMode: 'review',
-            isAnonymousFeed: false,
-          }
-        : item,
-    );
-  } else if (action === 'reverse-approval') {
-    reportStatus = REPORT_STATUS.ACTIONED;
-    resolution = 'reversed_approval';
-    submissions = db.submissions.map((item) =>
-      item.id === submission.id
-        ? {
-            ...item,
-            status: 'Avslått',
-            submissionMode: 'review',
-            isAnonymousFeed: false,
-            reviewedAtRaw: reviewedAt,
-            reviewedBy: user.id,
-          }
-        : item,
-    );
-  } else if (action !== 'keep') {
-    sendJson(response, 400, {
-      error: 'Ugyldig rapporthandling. Bruk keep, remove-feed eller reverse-approval.',
-    });
-    return;
+  if (isCommentReport) {
+    if (action === 'delete-comment') {
+      reportStatus = REPORT_STATUS.ACTIONED;
+      resolution = 'comment_deleted';
+      comments = comments.map((c) =>
+        c.id === report.commentId ? { ...c, deletedAt: reviewedAt } : c,
+      );
+    } else if (action !== 'keep') {
+      sendJson(response, 400, {
+        error: 'Ugyldig rapporthandling for kommentar. Bruk keep eller delete-comment.',
+      });
+      return;
+    }
+  } else {
+    const submission = db.submissions.find((item) => item.id === report.submissionId);
+
+    if (!submission) {
+      sendJson(response, 404, { error: 'Fant ikke innsendingen som ble rapportert.' });
+      return;
+    }
+
+    if (action === 'remove-feed') {
+      reportStatus = REPORT_STATUS.ACTIONED;
+      resolution = 'removed_from_feed';
+      submissions = db.submissions.map((item) =>
+        item.id === submission.id
+          ? {
+              ...item,
+              submissionMode: 'review',
+              isAnonymousFeed: false,
+            }
+          : item,
+      );
+    } else if (action === 'reverse-approval') {
+      reportStatus = REPORT_STATUS.ACTIONED;
+      resolution = 'reversed_approval';
+      submissions = db.submissions.map((item) =>
+        item.id === submission.id
+          ? {
+              ...item,
+              status: 'Avslått',
+              submissionMode: 'review',
+              isAnonymousFeed: false,
+              reviewedAtRaw: reviewedAt,
+              reviewedBy: user.id,
+            }
+          : item,
+      );
+    } else if (action !== 'keep') {
+      sendJson(response, 400, {
+        error: 'Ugyldig rapporthandling. Bruk keep, remove-feed eller reverse-approval.',
+      });
+      return;
+    }
   }
 
+  const matchKey = isCommentReport ? 'commentId' : 'submissionId';
+  const matchValue = isCommentReport ? report.commentId : report.submissionId;
   const reports = (db.reports ?? []).map((item) => {
-    if (item.submissionId === report.submissionId && item.status === REPORT_STATUS.OPEN) {
+    if (item[matchKey] === matchValue && item.status === REPORT_STATUS.OPEN) {
       return {
         ...item,
         status: reportStatus,
@@ -2721,6 +2968,7 @@ async function handleAdminReportAction(request, response, reportId) {
   const nextDb = {
     ...db,
     submissions,
+    comments,
     reports,
   };
 
@@ -3518,6 +3766,31 @@ const server = createServer(async (request, response) => {
       const submissionId = url.pathname.split('/')[3];
       await handleReportSubmission(request, response, submissionId);
       return;
+    }
+
+    if (
+      request.method === 'POST' &&
+      /^\/api\/submissions\/[^/]+\/comments$/.test(url.pathname)
+    ) {
+      const submissionId = url.pathname.split('/')[3];
+      await handleCreateComment(request, response, submissionId);
+      return;
+    }
+
+    {
+      let m;
+      if ((m = url.pathname.match(/^\/api\/comments\/([^/]+)$/)) && request.method === 'DELETE') {
+        await handleDeleteComment(request, response, m[1]);
+        return;
+      }
+      if ((m = url.pathname.match(/^\/api\/comments\/([^/]+)\/like$/)) && request.method === 'POST') {
+        await handleLikeComment(request, response, m[1]);
+        return;
+      }
+      if ((m = url.pathname.match(/^\/api\/comments\/([^/]+)\/report$/)) && request.method === 'POST') {
+        await handleReportComment(request, response, m[1]);
+        return;
+      }
     }
 
     if (
