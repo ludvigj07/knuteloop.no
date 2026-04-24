@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import './App.css';
 import './styles/blaruss-refresh.css';
+import { OnboardingModal } from './components/OnboardingModal.jsx';
 import { SettingsModal } from './components/SettingsModal.jsx';
 import { SwipeTabsShell } from './components/SwipeTabsShell.jsx';
 import {
@@ -144,6 +145,7 @@ function App() {
   const [loginError, setLoginError] = useState('');
   const [loginNotice, setLoginNotice] = useState('');
   const [appError, setAppError] = useState('');
+  const [isOnboardingOpen, setIsOnboardingOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [passwordForm, setPasswordForm] = useState(DEFAULT_PASSWORD_FORM);
   const [passwordError, setPasswordError] = useState('');
@@ -455,6 +457,13 @@ function App() {
     };
   }, [sessionToken]);
 
+  useEffect(() => {
+    if (!currentUser) return;
+    if (typeof window !== 'undefined' && !window.localStorage.getItem('onboarding_completed')) {
+      setIsOnboardingOpen(true);
+    }
+  }, [currentUser?.leaderId]);
+
   async function refreshAppData(token = sessionToken) {
     if (!token) {
       setAppData(null);
@@ -520,6 +529,13 @@ function App() {
     setPasswordForm({ ...DEFAULT_PASSWORD_FORM });
     setPasswordError('');
     setIsChangingPassword(false);
+  }
+
+  function handleCompleteOnboarding() {
+    if (typeof window !== 'undefined') {
+      window.localStorage.setItem('onboarding_completed', 'true');
+    }
+    setIsOnboardingOpen(false);
   }
 
   function handleOpenSettings() {
@@ -1121,6 +1137,7 @@ function App() {
           hideNavigation={false}
           mobileOnlySwipe
         />
+        <OnboardingModal isOpen={isOnboardingOpen} onComplete={handleCompleteOnboarding} />
         <SettingsModal
           appVersion={APP_VERSION}
           currentUser={currentUser}
