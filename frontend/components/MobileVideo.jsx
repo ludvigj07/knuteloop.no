@@ -150,6 +150,31 @@ export const MobileVideo = forwardRef(function MobileVideo(
     };
   }, [attemptPlay, autoPlay, isActive, muted, playMode, src, pauseVideo]);
 
+  // Sikkerhetsnett: pause videoen når selve elementet ikke lenger er synlig,
+  // uavhengig av om foreldrens isActive-prop har rukket å oppdateres. Dette
+  // unngår at lyd fortsetter når kortet scrolles ut av synsfelt i feed-reel.
+  useEffect(() => {
+    const videoElement = videoRef.current;
+
+    if (!videoElement || typeof IntersectionObserver === 'undefined') {
+      return undefined;
+    }
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        for (const entry of entries) {
+          if (!entry.isIntersecting && !videoElement.paused) {
+            videoElement.pause();
+          }
+        }
+      },
+      { threshold: 0.25 },
+    );
+
+    observer.observe(videoElement);
+    return () => observer.disconnect();
+  }, [src]);
+
   return (
     <video
       key={src}
