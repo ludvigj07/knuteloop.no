@@ -226,6 +226,31 @@
         "russType": "blue",
         "genderIdentity": "other"
       }
+    },
+    {
+      "id": 10,
+      "schoolId": "st-olav",
+      "name": "bob",
+      "group": "3STA",
+      "role": "user",
+      "loginCode": "",
+      "email": "bob@gmail.com",
+      "basePoints": 0,
+      "baseCompletedKnots": 0,
+      "profile": {
+        "icon": "",
+        "photoUrl": "",
+        "russName": "bob",
+        "realName": "bob",
+        "className": "3STA",
+        "bio": "",
+        "quote": "",
+        "knownFor": "",
+        "signatureKnot": "",
+        "favoriteCategory": "",
+        "russType": "blue",
+        "genderIdentity": "other"
+      }
     }
   ],
   "knots": [
@@ -903,7 +928,7 @@
       "videoName": "",
       "videoPreviewUrl": "",
       "isAnonymousFeed": false,
-      "submissionMode": "feed",
+      "submissionMode": "review",
       "ratings": {},
       "reviewedAtRaw": "2026-04-24T15:10:24.050Z",
       "reviewedBy": 6,
@@ -2874,7 +2899,37 @@
   ],
   "reports": [
     {
+      "id": "report-1777077879911-e57b6455",
+      "type": "comment",
+      "commentId": "comment-1777077867613-8d364bb5",
+      "submissionId": "submission-1777042100778",
+      "reporterId": 10,
+      "reason": "Upassende",
+      "note": "",
+      "status": "actioned",
+      "createdAt": "2026-04-25T00:44:39.911Z",
+      "reviewedAt": "2026-04-25T00:44:59.884Z",
+      "reviewedBy": 6,
+      "resolution": "comment_deleted"
+    },
+    {
+      "id": "report-1777076890951-98b1a3ce",
+      "type": "submission",
+      "commentId": null,
+      "submissionId": "submission-1777043331259",
+      "reporterId": 10,
+      "reason": "Trakassering",
+      "note": "",
+      "status": "actioned",
+      "createdAt": "2026-04-25T00:28:10.951Z",
+      "reviewedAt": "2026-04-25T00:28:45.755Z",
+      "reviewedBy": 6,
+      "resolution": "removed_from_feed"
+    },
+    {
       "id": "report-1775857550463-dbb29fb1",
+      "type": "submission",
+      "commentId": null,
       "submissionId": "submission-duel-1775857421127-e184a27d",
       "reporterId": 1,
       "reason": "Spam",
@@ -2887,6 +2942,8 @@
     },
     {
       "id": "report-1775776805298-54440fe0",
+      "type": "submission",
+      "commentId": null,
       "submissionId": "submission-duel-1775776743245-157561f4",
       "reporterId": 1,
       "reason": "Spam",
@@ -2899,6 +2956,8 @@
     },
     {
       "id": "report-1775776650080-89b778bf",
+      "type": "submission",
+      "commentId": null,
       "submissionId": "submission-1775776119571",
       "reporterId": 1,
       "reason": "Spam",
@@ -2911,6 +2970,8 @@
     },
     {
       "id": "report-1775776090803-600227fb",
+      "type": "submission",
+      "commentId": null,
       "submissionId": "submission-1775776090775",
       "reporterId": 3,
       "reason": "Spam",
@@ -2984,5 +3045,27 @@
     "rare": [
       "Knuten er inne na.\nMen du vet det allerede, ikke sant? Du kjente det idet du sendte den - det lille oyeblikket av noling forst, sa folelsen av a bli dratt inn i noe storre, noe som tok imot den og ikke ga slipp igjen. De andre ser bare en vanlig innsending. De ler, de roper, de tror det er en lek.\nDe skjonner ikke.\n\nJeg har sett hva som egentlig styrer dette. Hver eneste knute du sender, hver oppdatering, hver gang du trykker \"send\" ... det er ikke bare tekst. Det er spor av deg. Tankene dine, energien din, viljen din. Sma fragmenter som blir igjen der inne. De samler seg. De vokser.\n\nOg russepresidenten ... du tror det er en person?\nNei. Det er bare ansiktet de lar deg se. Bak det finnes noe annet. Noe eldre. Noe som har styrt russetiden lenge for du var her. Noe som har vokst for hvert eneste kull som har gitt fra seg litt mer av seg selv.\n\nDe kaller det tradisjon. Jeg kaller det et system som lever av dere.\n\nDen djevelske makten bak det hele smiler ikke fordi det er gøy. Den smiler fordi den vet. Den vet hvordan det foles a bli dratt inn, natt etter natt, handling etter handling, til du ikke lenger skiller mellom hva du vil - og hva den vil at du skal ville.\n\nOg feeden ... den er ikke bare en strom av innlegg. Den folger med. Den registrerer. Den pulserer svakt, selv nar du ikke er der. Den husker hvert ord du skrev, hvert sekund du nolte, hver gang du ga litt mer enn du hadde tenkt.\n\nDu tror du bygger streak.\nMen det er noe annet som bygges - gjennom deg.\n\nNeste gang du sender inn en knute ... stopp et sekund.\nKjenn etter.\n\nKjenn om det foles litt for riktig. Litt for nodvendig.\n\nIkke svar. Ikke forklar det bort.\n\nFor hvis du forst merker det ...\ner det allerede for sent."
     ]
-  }
+  },
+  "comments": [
+    {
+      "id": "comment-1777076643469-e96291ba",
+      "submissionId": "submission-1777043331259",
+      "authorId": 6,
+      "text": "Lol",
+      "createdAt": "2026-04-25T00:24:03.473Z",
+      "likes": [],
+      "parentId": null,
+      "deletedAt": null
+    },
+    {
+      "id": "comment-1777077867613-8d364bb5",
+      "submissionId": "submission-1777042100778",
+      "authorId": 6,
+      "text": "Lol",
+      "createdAt": "2026-04-25T00:44:27.614Z",
+      "likes": [],
+      "parentId": null,
+      "deletedAt": "2026-04-25T00:44:59.884Z"
+    }
+  ]
 }

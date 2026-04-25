@@ -10,7 +10,8 @@
       "Bash(node -e \"import\\('./backend/src/auth/db.mjs'\\).then\\(async m => { m.openAuthDb\\(\\); const u = m.getUserByEmail\\('ingve@kampsporthuset.no'\\); console.log\\('hash:', u.password_hash\\); const bcrypt = await import\\('bcrypt'\\); console.log\\('matches ingve2026:', await bcrypt.default.compare\\('ingve2026', u.password_hash\\)\\); }\\)\")",
       "Bash(node -e \"import\\('./backend/src/auth/db.mjs'\\).then\\(m => { const db = m.openAuthDb\\(\\); const rows = db.prepare\\('SELECT * FROM login_attempts ORDER BY created_at DESC LIMIT 20'\\).all\\(\\); console.log\\('attempts:', rows.length\\); rows.forEach\\(r => console.log\\(new Date\\(r.created_at\\).toISOString\\(\\), r.key\\)\\); }\\)\")",
       "Bash(findstr \":3001 :5173\")",
-      "Bash(grep -n \"submissions\\\\|db\\\\\\\\.submissions\\\\|db\\\\\\\\.knots\" /c/development/repo/knuteloop.no/index.mjs)"
+      "Bash(grep -n \"submissions\\\\|db\\\\\\\\.submissions\\\\|db\\\\\\\\.knots\" /c/development/repo/knuteloop.no/index.mjs)",
+      "PowerShell(Stop-Process *)"
     ]
   }
 }

@@ -1538,11 +1538,17 @@ async function migrateModerationData(db) {
         return null;
       }
 
+      const isComment = report?.type === 'comment' || typeof report?.commentId === 'string';
+      const commentId =
+        typeof report?.commentId === 'string' && report.commentId ? report.commentId : null;
+
       const normalized = {
         id:
           typeof report?.id === 'string' && report.id
             ? report.id
             : `report-${Date.now()}-${randomUUID().slice(0, 8)}`,
+        type: isComment ? 'comment' : 'submission',
+        commentId: isComment ? commentId : null,
         submissionId,
         reporterId,
         reason: normalizeReportReason(report?.reason),
@@ -1570,7 +1576,10 @@ async function migrateModerationData(db) {
   reports
     .sort((left, right) => Date.parse(right.createdAt) - Date.parse(left.createdAt))
     .forEach((report) => {
-      const key = `${report.submissionId}:${report.reporterId}`;
+      const key =
+        report.type === 'comment' && report.commentId
+          ? `comment:${report.commentId}:${report.reporterId}`
+          : `submission:${report.submissionId}:${report.reporterId}`;
 
       if (uniqueReportMap.has(key)) {
         changed = true;
@@ -1711,8 +1720,19 @@ function toPublicReport(db, report) {
     ? db.users.find((user) => user.id === report.reviewedBy)
     : null;
 
+  const comment = report.commentId
+    ? (db.comments ?? []).find((c) => c.id === report.commentId)
+    : null;
+  const commentAuthor = comment
+    ? db.users.find((user) => user.id === comment.authorId)
+    : null;
+
   return {
     id: report.id,
+    type: report.type ?? 'submission',
+    commentId: report.commentId ?? null,
+    commentText: comment?.text ?? null,
+    commentAuthorName: commentAuthor?.name ?? null,
     submissionId: report.submissionId,
     reporterId: report.reporterId,
     reporterName: reporter?.name ?? 'Ukjent',
@@ -2886,7 +2906,7 @@ async function handleAdminReportAction(request, response, reportId) {
   const body = await readJsonBody(request);
   const action = String(body?.action ?? '');
   const reviewedAt = nowIso();
-  const isCommentReport = report.type === 'comment' && report.commentId;
+  const isCommentReport = !!(report.type === 'comment' || report.commentId);
 
   let resolution = 'kept';
   let reportStatus = REPORT_STATUS.DISMISSED;
@@ -2952,7 +2972,9 @@ async function handleAdminReportAction(request, response, reportId) {
   const matchKey = isCommentReport ? 'commentId' : 'submissionId';
   const matchValue = isCommentReport ? report.commentId : report.submissionId;
   const reports = (db.reports ?? []).map((item) => {
-    if (item[matchKey] === matchValue && item.status === REPORT_STATUS.OPEN) {
+    const itemIsComment = item.type === 'comment' || !!item.commentId;
+    const sameType = isCommentReport ? itemIsComment : !itemIsComment;
+    if (item[matchKey] === matchValue && item.status === REPORT_STATUS.OPEN && sameType) {
       return {
         ...item,
         status: reportStatus,
