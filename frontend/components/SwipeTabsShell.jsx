@@ -455,6 +455,7 @@ export function SwipeTabsShell({
                       type="button"
                       className={`bottom-swipe-nav__button ${isActive ? 'is-active' : ''}`}
                       aria-label={page.shortLabel ?? page.label}
+                      data-tour-id={`tab-${page.id}`}
                       onClick={() => goToPage(page.id)}
                     >
                       <span className="bottom-swipe-nav__icon" aria-hidden="true">

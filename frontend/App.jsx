@@ -3,7 +3,7 @@ import { Activity, Home, Play, Shield, Trophy, User } from 'lucide-react';
 import { KnotIcon } from './components/KnotIcon.jsx';
 import './App.css';
 import './styles/blaruss-refresh.css';
-import { OnboardingModal } from './components/OnboardingModal.jsx';
+import { LiveOnboarding } from './components/LiveOnboarding.jsx';
 import { SettingsModal } from './components/SettingsModal.jsx';
 import { SwipeTabsShell } from './components/SwipeTabsShell.jsx';
 import { Toast } from './components/Toast.jsx';
@@ -484,7 +484,7 @@ function App() {
 
   useEffect(() => {
     if (!currentUser) return;
-    if (typeof window !== 'undefined' && !window.localStorage.getItem('onboarding_completed')) {
+    if (typeof window !== 'undefined' && !window.localStorage.getItem('onboarding_v2_completed')) {
       setIsOnboardingOpen(true);
     }
   }, [currentUser?.leaderId]);
@@ -558,9 +558,17 @@ function App() {
 
   function handleCompleteOnboarding() {
     if (typeof window !== 'undefined') {
-      window.localStorage.setItem('onboarding_completed', 'true');
+      window.localStorage.setItem('onboarding_v2_completed', 'true');
     }
     setIsOnboardingOpen(false);
+  }
+
+  function handleRestartTour() {
+    if (typeof window !== 'undefined') {
+      window.localStorage.removeItem('onboarding_v2_completed');
+    }
+    setIsSettingsOpen(false);
+    setIsOnboardingOpen(true);
   }
 
   function handleOpenSettings() {
@@ -1240,7 +1248,12 @@ function App() {
           hideNavigation={false}
           mobileOnlySwipe
         />
-        <OnboardingModal isOpen={isOnboardingOpen} onComplete={handleCompleteOnboarding} />
+        <LiveOnboarding
+          isOpen={isOnboardingOpen}
+          onComplete={handleCompleteOnboarding}
+          currentPage={activePage}
+          onChangePage={handleChangePage}
+        />
         <SettingsModal
           appVersion={APP_VERSION}
           currentUser={currentUser}
@@ -1256,6 +1269,7 @@ function App() {
           onNavigateToKnots={handleSettingsOpenKnots}
           onNavigateToProfile={handleSettingsOpenProfile}
           onOpenProfileEditor={handleSettingsOpenProfileEditor}
+          onRestartTour={handleRestartTour}
           onSubmitPasswordChange={handleChangeOwnPassword}
           onToggleDark={() => setIsDark((prev) => !prev)}
           passwordError={passwordError}
