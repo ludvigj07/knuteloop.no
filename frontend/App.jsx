@@ -9,6 +9,7 @@ import './styles/admin-density.css';
 import { AchievementCelebration } from './components/AchievementCelebration.jsx';
 import { ConfettiBurst } from './components/ConfettiBurst.jsx';
 import { LiveOnboarding } from './components/LiveOnboarding.jsx';
+import { RankUpToast } from './components/RankUpToast.jsx';
 import { SettingsModal } from './components/SettingsModal.jsx';
 import { SwipeTabsShell } from './components/SwipeTabsShell.jsx';
 import { Toast } from './components/Toast.jsx';
@@ -176,8 +177,10 @@ function App() {
   });
   const [confettiTrigger, setConfettiTrigger] = useState(0);
   const [pendingAchievementCelebration, setPendingAchievementCelebration] = useState(null);
+  const [pendingRankUp, setPendingRankUp] = useState(null);
   const skipNextPageTopResetRef = useRef(false);
   const previousApprovedSubmissionIdsRef = useRef(null);
+  const previousRankRef = useRef(null);
 
   function showToast(message, type = 'success') {
     setToast({ message, type, key: Date.now() });
@@ -274,6 +277,45 @@ function App() {
   const selectedProfile =
     profiles.find((profile) => profile.id === selectedProfileId) ?? profiles[0];
   const activityLog = appData?.activityLog ?? EMPTY_ARRAY;
+
+  // Rank-up: vis toast når currentUser passerer noen på topplisten.
+  useEffect(() => {
+    if (!currentUser) {
+      previousRankRef.current = null;
+      return;
+    }
+    const myRank = displayLeaders.find(
+      (leader) => leader.id === currentUser.leaderId,
+    )?.rank;
+    if (!Number.isFinite(myRank)) return;
+
+    const previousRank = previousRankRef.current;
+    previousRankRef.current = myRank;
+
+    if (!Number.isFinite(previousRank)) return;
+    if (myRank >= previousRank) return;
+
+    let rivalName = null;
+    for (let candidateRank = previousRank - 1; candidateRank >= myRank; candidateRank -= 1) {
+      const rival = displayLeaders.find(
+        (leader) =>
+          leader.rank === candidateRank && leader.id !== currentUser.leaderId,
+      );
+      if (rival) {
+        rivalName = rival.russName ?? rival.realName ?? rival.name ?? null;
+        break;
+      }
+    }
+
+    if (!rivalName) return;
+
+    setPendingRankUp({
+      passedName: rivalName,
+      newRank: myRank,
+      key: Date.now(),
+    });
+  }, [currentUser, displayLeaders]);
+
   // Tidsstempel for nyeste feed-post — brukes til å avgjøre om Feed-tabben
   // skal vise en rød "nytt innhold"-prikk.
   const latestFeedEntryAt = useMemo(() => {
@@ -1362,6 +1404,11 @@ function App() {
         <AchievementCelebration
           achievement={pendingAchievementCelebration}
           onClose={() => setPendingAchievementCelebration(null)}
+        />
+        <RankUpToast
+          key={pendingRankUp?.key ?? 'rank-up'}
+          data={pendingRankUp}
+          onClose={() => setPendingRankUp(null)}
         />
       </div>
     </div>
