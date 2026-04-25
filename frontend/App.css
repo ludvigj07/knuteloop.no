@@ -1689,6 +1689,98 @@
   font-weight: 700;
 }
 
+/* Danger-section i settings (Slett konto) */
+.settings-section--danger {
+  border-color: color-mix(in srgb, var(--danger, #ef4444) 50%, var(--border) 50%);
+  background: color-mix(in srgb, var(--danger, #ef4444) 6%, var(--card) 94%);
+}
+
+.settings-section--danger .settings-section__header h4 {
+  color: var(--danger, #ef4444);
+}
+
+.action-button--danger-outline {
+  background: transparent;
+  color: var(--danger, #ef4444);
+  border: 1px solid color-mix(in srgb, var(--danger, #ef4444) 60%, transparent);
+}
+
+.action-button--danger-outline:hover {
+  background: color-mix(in srgb, var(--danger, #ef4444) 10%, transparent);
+}
+
+/* Vilkårs-modal — gjenbruker .settings-modal og .settings-modal__body */
+.terms-modal {
+  width: min(720px, 100%);
+}
+
+.terms-modal__body {
+  display: grid;
+  gap: 18px;
+  max-height: 70vh;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+
+.terms-section {
+  display: grid;
+  gap: 8px;
+}
+
+.terms-section__heading {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 800;
+  color: var(--text-strong);
+}
+
+.terms-section__paragraph {
+  margin: 0;
+  color: var(--text);
+  line-height: 1.55;
+}
+
+/* Liste over samtykke-punkter på invitasjonssiden */
+.terms-clause-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 10px;
+}
+
+.terms-clause-list__item {
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: var(--surface);
+  padding: 12px 14px;
+  transition: border-color 0.15s ease, background-color 0.15s ease;
+}
+
+.terms-clause-list__item:has(input:checked) {
+  border-color: var(--primary);
+  background: color-mix(in srgb, var(--primary) 6%, var(--card) 94%);
+}
+
+.terms-clause-list__label {
+  display: grid;
+  grid-template-columns: 22px 1fr;
+  gap: 12px;
+  align-items: start;
+  cursor: pointer;
+  font-size: 0.95rem;
+  line-height: 1.5;
+  color: var(--text);
+}
+
+.terms-clause-list__label input[type='checkbox'] {
+  width: 22px;
+  height: 22px;
+  margin: 0;
+  accent-color: var(--primary);
+  cursor: pointer;
+}
+
 .dashboard-progress-grid,
 .dashboard-message-list,
 .dashboard-rival-list,

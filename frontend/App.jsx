@@ -30,6 +30,7 @@ import {
   createComment,
   deleteComment,
   deleteKnot,
+  deleteOwnAccount,
   deleteSubmission,
   likeComment,
   reportComment,
@@ -161,6 +162,7 @@ function App() {
   const [passwordForm, setPasswordForm] = useState(DEFAULT_PASSWORD_FORM);
   const [passwordError, setPasswordError] = useState('');
   const [isChangingPassword, setIsChangingPassword] = useState(false);
+  const [isDeletingAccount, setIsDeletingAccount] = useState(false);
   const [isLoadingApp, setIsLoadingApp] = useState(true);
   const [isLoggingIn, setIsLoggingIn] = useState(false);
   const [knuterSettledToken, setKnuterSettledToken] = useState(0);
@@ -657,6 +659,23 @@ function App() {
       );
     } finally {
       setIsChangingPassword(false);
+    }
+  }
+
+  async function handleDeleteAccount() {
+    if (isDeletingAccount) return;
+    setIsDeletingAccount(true);
+    try {
+      await deleteOwnAccount(sessionToken);
+      await handleLogout({
+        noticeMessage: 'Kontoen din er slettet. Takk for at du var med.',
+      });
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : 'Kunne ikke slette kontoen akkurat nå.';
+      window.alert(message);
+    } finally {
+      setIsDeletingAccount(false);
     }
   }
 
@@ -1193,9 +1212,11 @@ function App() {
           currentUser={currentUser}
           isDark={isDark}
           isChangingPassword={isChangingPassword}
+          isDeletingAccount={isDeletingAccount}
           isOpen={isSettingsOpen}
           onChangePasswordField={handleChangePasswordField}
           onClose={handleCloseSettings}
+          onDeleteAccount={handleDeleteAccount}
           onLogout={() => handleLogout()}
           onNavigateToFeed={handleSettingsOpenFeed}
           onNavigateToKnots={handleSettingsOpenKnots}
