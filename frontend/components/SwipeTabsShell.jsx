@@ -3,10 +3,12 @@ import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 const MOBILE_BREAKPOINT = 900;
 const MOBILE_PAGE_GAP = 0;
 const MOBILE_PAGE_PEEK = 0;
-const SWIPE_THRESHOLD_RATIO = 0.18;
-const SWIPE_VELOCITY_THRESHOLD = 0.45;
+const SWIPE_THRESHOLD_RATIO = 0.13;
+const SWIPE_VELOCITY_THRESHOLD = 0.3;
 const EDGE_RESISTANCE = 0.32;
-const SETTLE_TRANSITION = 'transform 0.22s cubic-bezier(0.25, 0.46, 0.45, 0.94)';
+const VELOCITY_WINDOW_MS = 80;
+// easeOutQuint — snappy start, soft landing (Insta/TikTok feel)
+const SETTLE_TRANSITION = 'transform 280ms cubic-bezier(0.22, 1, 0.36, 1)';
 
 function createIdlePointerState() {
   return {
@@ -18,7 +20,24 @@ function createIdlePointerState() {
     lastX: 0,
     lastTime: 0,
     velocityX: 0,
+    velocitySamples: [],
   };
+}
+
+function pushVelocitySample(samples, x, t) {
+  samples.push({ x, t });
+  const cutoff = t - VELOCITY_WINDOW_MS;
+  while (samples.length > 1 && samples[0].t < cutoff) {
+    samples.shift();
+  }
+}
+
+function computeVelocityFromSamples(samples) {
+  if (!samples || samples.length < 2) return 0;
+  const first = samples[0];
+  const last = samples[samples.length - 1];
+  const elapsed = Math.max(last.t - first.t, 1);
+  return (last.x - first.x) / elapsed;
 }
 
 function supportsHaptics() {
@@ -138,8 +157,16 @@ export function SwipeTabsShell({
   function applyTrackTransform(dragOffset = 0, animated = false) {
     if (!trackRef.current) return;
     const translate = -activeIndexRef.current * pageAdvanceRef.current + dragOffset;
+    const targetTransform = `translate3d(${translate}px, 0, 0)`;
+    // If we're not animating and the inline transform is already at the target,
+    // skip the write so we don't kill an in-progress settle transition. This
+    // prevents the visible "snap" that happened when the post-swipe layoutEffect
+    // re-applied the same transform with `transition: none`.
+    if (!animated && trackRef.current.style.transform === targetTransform) {
+      return;
+    }
     trackRef.current.style.transition = animated ? SETTLE_TRANSITION : 'none';
-    trackRef.current.style.transform = `translate3d(${translate}px, 0, 0)`;
+    trackRef.current.style.transform = targetTransform;
   }
 
   function syncViewportWidth() {
@@ -259,6 +286,16 @@ export function SwipeTabsShell({
       return;
     }
 
+    // Animate the track to the new page position before React updates state.
+    // Same trick as a successful swipe — keeps tab clicks feeling smooth
+    // instead of snapping instantly.
+    const nextIndex = pageIndexById[pageId];
+    if (typeof nextIndex === 'number' && trackRef.current) {
+      const newTranslate = -nextIndex * pageAdvanceRef.current;
+      trackRef.current.style.transition = SETTLE_TRANSITION;
+      trackRef.current.style.transform = `translate3d(${newTranslate}px, 0, 0)`;
+    }
+
     pulseHaptics(10);
     onChangePage(pageId);
     scrollAppToTop(viewportRef.current);
@@ -269,6 +306,7 @@ export function SwipeTabsShell({
     if (shouldIgnoreSwipeStart(event.target)) return;
 
     suppressNextClickRef.current = false;
+    const now = performance.now();
     pointerStateRef.current = {
       active: true,
       mode: 'pending',
@@ -276,8 +314,9 @@ export function SwipeTabsShell({
       startX: event.clientX,
       startY: event.clientY,
       lastX: event.clientX,
-      lastTime: performance.now(),
+      lastTime: now,
       velocityX: 0,
+      velocitySamples: [{ x: event.clientX, t: now }],
     };
   }
 
@@ -311,8 +350,7 @@ export function SwipeTabsShell({
     if (pointerState.mode !== 'horizontal') return;
 
     const now = performance.now();
-    const elapsed = Math.max(now - pointerState.lastTime, 1);
-    pointerState.velocityX = (event.clientX - pointerState.lastX) / elapsed;
+    pushVelocitySample(pointerState.velocitySamples, event.clientX, now);
     pointerState.lastX = event.clientX;
     pointerState.lastTime = now;
 
@@ -351,12 +389,15 @@ export function SwipeTabsShell({
     const ai = activeIndexRef.current;
     const pl = pageLengthRef.current;
     const threshold = Math.max(pa * SWIPE_THRESHOLD_RATIO, 48);
+    // Smoothed velocity from the last 80ms — much less noisy than the
+    // previous single-sample value, so flicks register reliably.
+    const velocityX = computeVelocityFromSamples(pointerState.velocitySamples);
 
     const nextIndexByDistance =
       absDeltaX > threshold ? (deltaX < 0 ? ai + 1 : ai - 1) : ai;
     const nextIndexByVelocity =
-      Math.abs(pointerState.velocityX) > SWIPE_VELOCITY_THRESHOLD
-        ? pointerState.velocityX < 0 ? ai + 1 : ai - 1
+      Math.abs(velocityX) > SWIPE_VELOCITY_THRESHOLD
+        ? velocityX < 0 ? ai + 1 : ai - 1
         : ai;
     const desiredIndex = nextIndexByVelocity !== ai ? nextIndexByVelocity : nextIndexByDistance;
     const clampedIndex = clamp(desiredIndex, 0, pl - 1);
