@@ -955,6 +955,7 @@ function App() {
           onDeleteSubmission={handleDeleteSubmission}
           onExit={() => handleChangePage('dashboard')}
           onOpenProfile={handleOpenProfile}
+          onOpenKnots={() => handleChangePage('knuter')}
           onReportSubmission={handleReportSubmission}
           onRateSubmission={handleRateSubmission}
         />

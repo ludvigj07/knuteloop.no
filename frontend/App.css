@@ -9456,3 +9456,41 @@ textarea.text-input:focus {
 }
 
 
+
+
+/* Feed tom-state — vises når det ikke er noen feed-poster */
+.feed-empty {
+  display: grid;
+  place-items: center;
+  padding: 48px 24px;
+  text-align: center;
+  background: var(--feature-soft, var(--card));
+  border-radius: 24px;
+}
+
+.feed-empty__inner {
+  display: grid;
+  gap: 14px;
+  max-width: 360px;
+  justify-items: center;
+}
+
+.feed-empty__icon {
+  color: var(--primary);
+  display: grid;
+  place-items: center;
+}
+
+.feed-empty__title {
+  margin: 0;
+  font-size: 1.25rem;
+  color: var(--text-strong);
+}
+
+.feed-empty__copy {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 0.95rem;
+  line-height: 1.5;
+}
+
