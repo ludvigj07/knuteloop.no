@@ -7,6 +7,7 @@ import {
   ReactionFlyOverlay,
   REACTION_FLY_DURATION_MS,
 } from '../components/ReactionPicker.jsx';
+import { PhotoZoomViewer } from '../components/PhotoZoomViewer.jsx';
 import anonymousFeedJoker from '../assets/anonymous-feed-joker.jpg';
 import anonymousFeedMask from '../assets/anonymous-feed-mask.png';
 import anonymousFeedWolf from '../assets/anonymous-feed-wolf.png';
@@ -146,6 +147,7 @@ function FeedMedia({ entry, variant = 'mobile', isActive = false }) {
   const [videoFailed, setVideoFailed] = useState(false);
   const [lightboxOpen, setLightboxOpen] = useState(false);
   const [autoplayBlocked, setAutoplayBlocked] = useState(false);
+  const [zoomOrigin, setZoomOrigin] = useState(null);
   const videoRef = useRef(null);
   const isDesktop = variant === 'desktop';
   const mediaClass = isDesktop ? 'feed-card-desktop__media' : 'feed-reel-card__media';
@@ -267,6 +269,25 @@ function FeedMedia({ entry, variant = 'mobile', isActive = false }) {
   }
 
   if (entry.mediaType === 'image' && entry.imagePreviewUrl) {
+    const handleOpenZoom = (event) => {
+      const target = event?.currentTarget;
+      const imgEl = target?.querySelector?.('img') ?? target;
+      const rect = imgEl?.getBoundingClientRect?.();
+      if (rect && rect.width > 0 && rect.height > 0) {
+        const viewportW = window.innerWidth || rect.width;
+        const viewportH = window.innerHeight || rect.height;
+        const targetW = Math.min(viewportW, viewportH * (rect.width / rect.height));
+        setZoomOrigin({
+          x: rect.left + rect.width / 2,
+          y: rect.top + rect.height / 2,
+          scale: Math.max(0.2, rect.width / targetW),
+        });
+      } else {
+        setZoomOrigin({ x: window.innerWidth / 2, y: window.innerHeight / 2, scale: 0.4 });
+      }
+      setLightboxOpen(true);
+    };
+
     const image = (
       <img
         className={mediaClass}
@@ -282,13 +303,14 @@ function FeedMedia({ entry, variant = 'mobile', isActive = false }) {
             className="feed-card-desktop__media-wrap feed-media--clickable"
             role="button"
             tabIndex={0}
-            onClick={() => setLightboxOpen(true)}
+            onClick={handleOpenZoom}
             onKeyDown={(event) => {
               if (event.key === 'Enter' || event.key === ' ') {
-                setLightboxOpen(true);
+                handleOpenZoom(event);
               }
             }}
             aria-label="Apne bilde i fullskjerm"
+            data-no-long-press="true"
           >
             {image}
           </div>
@@ -298,13 +320,14 @@ function FeedMedia({ entry, variant = 'mobile', isActive = false }) {
               className="feed-reel-card__media-frame-button"
               role="button"
               tabIndex={0}
-              onClick={() => setLightboxOpen(true)}
+              onClick={handleOpenZoom}
               onKeyDown={(event) => {
                 if (event.key === 'Enter' || event.key === ' ') {
-                  setLightboxOpen(true);
+                  handleOpenZoom(event);
                 }
               }}
               aria-label="Apne bilde i fullskjerm"
+              data-no-long-press="true"
             >
               {image}
             </div>,
@@ -317,7 +340,12 @@ function FeedMedia({ entry, variant = 'mobile', isActive = false }) {
           )
         )}
         {lightboxOpen ? (
-          <FeedLightbox entry={entry} onClose={() => setLightboxOpen(false)} />
+          <PhotoZoomViewer
+            src={entry.imagePreviewUrl}
+            alt={`${entry.studentName} sitt bildebevis for ${entry.knotTitle}`}
+            origin={zoomOrigin}
+            onClose={() => setLightboxOpen(false)}
+          />
         ) : null}
       </>
     );
