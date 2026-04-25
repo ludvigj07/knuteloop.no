@@ -76,6 +76,14 @@ export function changeOwnPassword(token, payload) {
   });
 }
 
+export function deleteOwnAccount(token, payload = {}) {
+  return apiRequest('/auth/account', {
+    method: 'DELETE',
+    token,
+    body: payload,
+  });
+}
+
 export function fetchBootstrap(token) {
   return apiRequest('/bootstrap', { token });
 }
