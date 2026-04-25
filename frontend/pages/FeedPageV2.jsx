@@ -1363,6 +1363,7 @@ export function FeedPage({
   onReportComment,
   onDeleteSubmission,
   onExit,
+  onOpenKnots,
   onOpenProfile,
   onReportSubmission,
   onRateSubmission,
@@ -1737,10 +1738,30 @@ export function FeedPage({
 
   if (!feedEntries.length) {
     return (
-      <section className="section-card">
-        <div className="section-card__header">
-          <h3>Feed</h3>
-          <p>Ingen synlige feed-poster ligger ute enna.</p>
+      <section className="section-card feed-empty">
+        <div className="feed-empty__inner">
+          <div className="feed-empty__icon" aria-hidden="true">
+            <svg viewBox="0 0 64 64" width="64" height="64" fill="none">
+              <circle cx="32" cy="32" r="30" fill="currentColor" opacity="0.08" />
+              <path
+                d="M22 24h20a3 3 0 013 3v14a3 3 0 01-3 3H30l-6 5v-5h-2a3 3 0 01-3-3V27a3 3 0 013-3z"
+                fill="currentColor"
+                opacity="0.45"
+              />
+              <circle cx="28" cy="34" r="2" fill="#ffffff" />
+              <circle cx="36" cy="34" r="2" fill="#ffffff" />
+            </svg>
+          </div>
+          <h3 className="feed-empty__title">Ingen knuter i feeden ennå</h3>
+          <p className="feed-empty__copy">
+            Når noen sender inn en knute og deler den med kullet, dukker den opp her.
+            Klart for første post?
+          </p>
+          {typeof onOpenKnots === 'function' ? (
+            <button type="button" className="action-button" onClick={onOpenKnots}>
+              Send inn en knute
+            </button>
+          ) : null}
         </div>
       </section>
     );

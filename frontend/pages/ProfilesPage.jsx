@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { SectionCard } from '../components/SectionCard.jsx';
 import {
@@ -61,6 +61,7 @@ export function ProfilesPage({
   achievements,
   currentUserId,
   currentUserRole,
+  editRequest = 0,
   onBackToOverview,
   onDeleteSubmission,
   onSelectProfile,
@@ -85,6 +86,20 @@ export function ProfilesPage({
     text: '',
   });
   const normalizedProfileSearchQuery = profileSearchQuery.trim().toLowerCase();
+
+  // Når innstillinger ber om å åpne editoren (via editRequest-tellern),
+  // åpnes editor-modalen automatisk hvis brukeren ser sin egen profil.
+  useEffect(() => {
+    if (!editRequest) return;
+    if (!selectedProfile) return;
+    const ownsProfile = selectedProfile.id === currentUserId;
+    const canEdit = ownsProfile || currentUserRole === 'admin';
+    if (!canEdit) return;
+    setProfileEditorError('');
+    setDraft(createProfileDraft(selectedProfile));
+    setIsEditing(true);
+  }, [editRequest, selectedProfile, currentUserId, currentUserRole]);
+
   const filteredProfiles = useMemo(() => {
     if (!normalizedProfileSearchQuery) {
       return profiles;
@@ -552,6 +567,19 @@ export function ProfilesPage({
                     <p className="profile-real-name">{selectedProfile.realName}</p>
                     <p className="profile-bio-copy">{selectedProfile.bio}</p>
                     <p className="profile-quote">"{selectedProfile.quote}"</p>
+                    {isOwnProfile && !isEditing ? (
+                      <p className="profile-self-hint">
+                        Stemmer ikke navnet ditt? Trykk{' '}
+                        <button
+                          type="button"
+                          className="profile-self-hint__link"
+                          onClick={handleOpenEditor}
+                        >
+                          Rediger profil
+                        </button>{' '}
+                        for å fikse det.
+                      </p>
+                    ) : null}
                   </div>
 
                   {canEditProfile ? (

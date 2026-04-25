@@ -6,6 +6,7 @@ import './styles/blaruss-refresh.css';
 import { OnboardingModal } from './components/OnboardingModal.jsx';
 import { SettingsModal } from './components/SettingsModal.jsx';
 import { SwipeTabsShell } from './components/SwipeTabsShell.jsx';
+import { Toast } from './components/Toast.jsx';
 import {
   buildActivityLog,
   buildClassLeaderboard,
@@ -166,7 +167,13 @@ function App() {
   const [isLoadingApp, setIsLoadingApp] = useState(true);
   const [isLoggingIn, setIsLoggingIn] = useState(false);
   const [knuterSettledToken, setKnuterSettledToken] = useState(0);
+  const [profileEditRequest, setProfileEditRequest] = useState(0);
+  const [toast, setToast] = useState(null);
   const skipNextPageTopResetRef = useRef(false);
+
+  function showToast(message, type = 'success') {
+    setToast({ message, type, key: Date.now() });
+  }
 
   const currentUser = appData?.currentUser ?? null;
   const knots = appData?.knots ?? EMPTY_ARRAY;
@@ -698,6 +705,16 @@ function App() {
     }
   }
 
+  function handleSettingsOpenProfileEditor() {
+    setIsSettingsOpen(false);
+    if (currentUser?.leaderId) {
+      handleOpenProfile(currentUser.leaderId);
+    } else {
+      handleChangePage('profiler');
+    }
+    setProfileEditRequest((token) => token + 1);
+  }
+
   async function handleImportKnots(rawText, defaultPoints, defaultFolder, description) {
     const result = await importKnots(sessionToken, {
       rawText,
@@ -781,6 +798,21 @@ function App() {
     });
 
     setAppData(nextAppData);
+
+    // Bekreftelse til bruker — annen tekst avhengig av om posten gikk
+    // direkte til feeden eller til admin-godkjenning.
+    if (shouldSendSubmissionMode) {
+      if (normalizedSubmissionMode === 'feed') {
+        showToast('Knuten er lagt ut i feeden!');
+      } else if (normalizedSubmissionMode === 'anonymous-feed') {
+        showToast('Knuten er lagt ut anonymt i feeden!');
+      } else {
+        showToast('Knuten er sendt inn for godkjenning.');
+      }
+    } else {
+      showToast('Knuten er oppdatert.');
+    }
+
     return nextAppData;
   }
 
@@ -1107,6 +1139,7 @@ function App() {
           commentsBySubmission={appData?.commentsBySubmission ?? {}}
           onDeleteSubmission={handleDeleteSubmission}
           onExit={() => handleChangePage('dashboard')}
+          onOpenKnots={() => handleChangePage('knuter')}
           onOpenProfile={handleOpenProfile}
           onReportSubmission={handleReportSubmission}
           onRateSubmission={handleRateSubmission}
@@ -1123,6 +1156,7 @@ function App() {
           onBackToOverview={handleBackToProfileOverview}
           onSetKnotVisibility={handleSetKnotVisibility}
           profileViewMode={profileViewMode}
+          editRequest={profileEditRequest}
         />
       );
     } else if (page.id === 'status') {
@@ -1221,11 +1255,20 @@ function App() {
           onNavigateToFeed={handleSettingsOpenFeed}
           onNavigateToKnots={handleSettingsOpenKnots}
           onNavigateToProfile={handleSettingsOpenProfile}
+          onOpenProfileEditor={handleSettingsOpenProfileEditor}
           onSubmitPasswordChange={handleChangeOwnPassword}
           onToggleDark={() => setIsDark((prev) => !prev)}
           passwordError={passwordError}
           passwordForm={passwordForm}
         />
+        {toast ? (
+          <Toast
+            key={toast.key}
+            message={toast.message}
+            type={toast.type}
+            onClose={() => setToast(null)}
+          />
+        ) : null}
       </div>
     </div>
   );

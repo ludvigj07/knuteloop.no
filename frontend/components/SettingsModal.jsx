@@ -16,6 +16,7 @@ export function SettingsModal({
   onNavigateToFeed,
   onNavigateToKnots,
   onNavigateToProfile,
+  onOpenProfileEditor,
   onSubmitPasswordChange,
   onToggleDark,
   passwordError,
@@ -131,6 +132,25 @@ export function SettingsModal({
                     {isChangingPassword ? 'Oppdaterer...' : 'Bytt passord'}
                   </button>
                 </form>
+              </section>
+
+              <section className="settings-section">
+                <div className="settings-section__header">
+                  <h4>Min profil</h4>
+                  <p>
+                    Stemmer ikke navnet ditt? Du kan rette navn, klasse, bilde og bio
+                    selv her.
+                  </p>
+                </div>
+                <div className="settings-shortcuts">
+                  <button
+                    type="button"
+                    className="action-button"
+                    onClick={onOpenProfileEditor}
+                  >
+                    Rediger min profil
+                  </button>
+                </div>
               </section>
 
               <section className="settings-section">

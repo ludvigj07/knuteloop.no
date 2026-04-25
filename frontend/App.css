@@ -10871,3 +10871,131 @@ textarea.text-input:focus {
   padding-left: 14px;
 }
 
+
+
+/* Profil self-hint — vises på egen profil i ikke-edit-modus */
+.profile-self-hint {
+  margin: 8px 0 0;
+  padding: 10px 12px;
+  background: color-mix(in srgb, #fff1c7 30%, transparent);
+  border: 1px solid rgba(255, 241, 199, 0.5);
+  border-radius: 12px;
+  color: #fff1c7;
+  font-size: 0.88rem;
+  line-height: 1.5;
+}
+
+.profile-self-hint__link {
+  background: none;
+  border: none;
+  padding: 0;
+  font: inherit;
+  color: inherit;
+  text-decoration: underline;
+  cursor: pointer;
+  font-weight: 700;
+}
+
+.profile-self-hint__link:hover {
+  text-decoration: none;
+}
+
+/* Feed tom-state — vises når det ikke er noen feed-poster */
+.feed-empty {
+  display: grid;
+  place-items: center;
+  padding: 48px 24px;
+  text-align: center;
+  background: var(--feature-soft, var(--card));
+  border-radius: 24px;
+}
+
+.feed-empty__inner {
+  display: grid;
+  gap: 14px;
+  max-width: 360px;
+  justify-items: center;
+}
+
+.feed-empty__icon {
+  color: var(--primary);
+  display: grid;
+  place-items: center;
+}
+
+.feed-empty__title {
+  margin: 0;
+  font-size: 1.25rem;
+  color: var(--text-strong);
+}
+
+.feed-empty__copy {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 0.95rem;
+  line-height: 1.5;
+}
+
+/* Toast / snackbar — bekreftelse etter handlinger */
+.toast {
+  position: fixed;
+  left: 50%;
+  bottom: calc(96px + env(safe-area-inset-bottom, 0px));
+  transform: translateX(-50%) translateY(20px);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 18px;
+  border-radius: 999px;
+  background: var(--text-strong, #0f172a);
+  color: #ffffff;
+  font-weight: 600;
+  font-size: 0.92rem;
+  box-shadow: 0 12px 32px rgba(15, 23, 42, 0.28);
+  opacity: 0;
+  pointer-events: none;
+  transition: transform 0.22s ease, opacity 0.22s ease;
+  max-width: calc(100vw - 32px);
+  z-index: 60;
+}
+
+.toast.is-visible {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}
+
+.toast--success {
+  background: #16a34a;
+}
+
+.toast--error {
+  background: #dc2626;
+}
+
+.toast--info {
+  background: var(--text-strong, #0f172a);
+}
+
+.toast__icon {
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.18);
+  font-weight: 800;
+  font-size: 0.85rem;
+}
+
+.toast__message {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+@media (min-width: 901px) {
+  .toast {
+    bottom: 32px;
+  }
+}
+
