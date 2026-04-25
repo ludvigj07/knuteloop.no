@@ -446,10 +446,7 @@ export function SwipeTabsShell({
 
           {!hideNavigation ? (
             <nav className="bottom-swipe-nav" aria-label="Hovednavigasjon">
-              <div
-                className="bottom-swipe-nav__grid"
-                style={{ gridTemplateColumns: `repeat(${pages.length}, minmax(0, 1fr))` }}
-              >
+              <div className="bottom-swipe-nav__grid">
                 {pages.map((page) => {
                   const isActive = page.id === activePageId;
                   return (
@@ -463,6 +460,11 @@ export function SwipeTabsShell({
                       <span className="bottom-swipe-nav__icon" aria-hidden="true">
                         {page.icon}
                       </span>
+                      {isActive ? (
+                        <span className="bottom-swipe-nav__label" aria-hidden="true">
+                          {page.shortLabel ?? page.label}
+                        </span>
+                      ) : null}
                     </button>
                   );
                 })}
