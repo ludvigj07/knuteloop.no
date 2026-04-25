@@ -1748,16 +1748,20 @@ export function KnotsPage({
 
       {/* Empty states */}
       {knots.length > 0 && visibleFolderKnots.length === 0 ? (
-        <p ref={knotResultsRef} className="folder-empty">
-          Det ligger ingen knuter i denne mappen ennå.
-        </p>
+        <div ref={knotResultsRef} className="folder-empty empty-state">
+          <div className="empty-state__icon" aria-hidden="true">🪢</div>
+          <h3 className="empty-state__title">Tomt her</h3>
+          <p className="empty-state__hint">
+            Knuter dukker opp her når noen legger dem til.
+          </p>
+        </div>
       ) : null}
       {visibleFolderKnots.length > 0 && visibleKnots.length === 0 ? (
-        <div ref={knotResultsRef} className="filter-empty-state">
-          <h3>Ingen knuter matcher søket ditt</h3>
-          <p>
-            Prøv et annet søk, bytt statusfilter eller nullstill filtrene for å se hele
-            mappen igjen.
+        <div ref={knotResultsRef} className="filter-empty-state empty-state">
+          <div className="empty-state__icon" aria-hidden="true">🔍</div>
+          <h3 className="empty-state__title">Ingen knuter matcher</h3>
+          <p className="empty-state__hint">
+            Prøv andre filtre eller nullstill for å se hele mappen igjen.
           </p>
           <button
             type="button"
