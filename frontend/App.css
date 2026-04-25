@@ -11959,3 +11959,51 @@ textarea.text-input:focus {
     animation: none !important;
   }
 }
+
+
+/* ----------------------------------------------------------------------- */
+/* Confetti fallback (CSS-only) — brukes om canvas-confetti ikke er tilgjengelig */
+/* ----------------------------------------------------------------------- */
+
+.confetti-fallback {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 9999;
+  overflow: hidden;
+}
+
+.confetti-fallback__piece {
+  position: absolute;
+  top: -20px;
+  width: 10px;
+  height: 14px;
+  border-radius: 2px;
+  opacity: 0;
+  animation-name: confetti-fall;
+  animation-timing-function: cubic-bezier(0.4, 0.7, 0.6, 1);
+  animation-iteration-count: 1;
+  animation-fill-mode: forwards;
+}
+
+@keyframes confetti-fall {
+  0% {
+    transform: translateY(-20vh) rotate(0deg);
+    opacity: 0;
+  }
+  10% {
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(110vh) rotate(720deg);
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .confetti-fallback__piece {
+    animation: none !important;
+    display: none;
+  }
+}
+

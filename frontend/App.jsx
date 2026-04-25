@@ -3,7 +3,9 @@ import { Activity, Home, Play, Shield, Trophy, User } from 'lucide-react';
 import { KnotIcon } from './components/KnotIcon.jsx';
 import './App.css';
 import './styles/blaruss-refresh.css';
+import { ConfettiBurst } from './components/ConfettiBurst.jsx';
 import { LiveOnboarding } from './components/LiveOnboarding.jsx';
+import { LoadingSplash } from './components/LoadingSplash.jsx';
 import { SettingsModal } from './components/SettingsModal.jsx';
 import { SwipeTabsShell } from './components/SwipeTabsShell.jsx';
 import { Toast } from './components/Toast.jsx';
@@ -165,6 +167,13 @@ function App() {
   const [isChangingPassword, setIsChangingPassword] = useState(false);
   const [isDeletingAccount, setIsDeletingAccount] = useState(false);
   const [isLoadingApp, setIsLoadingApp] = useState(true);
+  // Mock: garanterer at splash vises minst 1.8s så vi får evaluert designet.
+  // Fjern når du bestemmer deg for om splash skal beholdes eller ei.
+  const [mockSplashActive, setMockSplashActive] = useState(true);
+  useEffect(() => {
+    const id = window.setTimeout(() => setMockSplashActive(false), 1800);
+    return () => window.clearTimeout(id);
+  }, []);
   const [isLoggingIn, setIsLoggingIn] = useState(false);
   const [knuterSettledToken, setKnuterSettledToken] = useState(0);
   const [profileEditRequest, setProfileEditRequest] = useState(0);
@@ -172,7 +181,9 @@ function App() {
   const [focusedFeedCommentId, setFocusedFeedCommentId] = useState(null);
   const [focusedFeedScrollRequest, setFocusedFeedScrollRequest] = useState(0);
   const [toast, setToast] = useState(null);
+  const [confettiTrigger, setConfettiTrigger] = useState(0);
   const skipNextPageTopResetRef = useRef(false);
+  const previousApprovedSubmissionIdsRef = useRef(null);
 
   function showToast(message, type = 'success') {
     setToast({ message, type, key: Date.now() });
@@ -491,6 +502,43 @@ function App() {
       setIsOnboardingOpen(true);
     }
   }, [currentUser?.leaderId]);
+
+  // Confetti når brukerens egen submission går fra ikke-godkjent til "Godkjent".
+  // Vi husker hvilke submission-IDer som var godkjente forrige render, og fyrer
+  // av når en ny ID dukker opp i settet.
+  useEffect(() => {
+    if (!currentUser) return;
+    const myLeaderId = currentUser.leaderId;
+    const currentApprovedIds = new Set(
+      submissions
+        .filter(
+          (submission) =>
+            submission?.leaderId === myLeaderId && submission?.status === 'Godkjent',
+        )
+        .map((submission) => submission.id),
+    );
+
+    const previous = previousApprovedSubmissionIdsRef.current;
+    previousApprovedSubmissionIdsRef.current = currentApprovedIds;
+
+    // Første gang vi har data — bare lagre, ikke fyr av confetti for eksisterende godkjente.
+    if (previous === null) {
+      return;
+    }
+
+    let foundNewApproved = false;
+    for (const id of currentApprovedIds) {
+      if (!previous.has(id)) {
+        foundNewApproved = true;
+        break;
+      }
+    }
+
+    if (foundNewApproved) {
+      setConfettiTrigger((current) => current + 1);
+      showToast('Knuten din er godkjent! 🎉');
+    }
+  }, [submissions, currentUser]);
 
   async function refreshAppData(token = sessionToken) {
     if (!token) {
@@ -1217,16 +1265,10 @@ function App() {
     );
   }
 
-  if (isLoadingApp) {
+  if (isLoadingApp || mockSplashActive) {
     return (
       <div className="app-theme">
-        <div className="app-shell">
-          <section className="section-card">
-            <p className="eyebrow">Laster</p>
-            <h2>Kobler til lagret data</h2>
-            <p>Henter brukere, knuter, submissions og profiler fra backend.</p>
-          </section>
-        </div>
+        <LoadingSplash />
       </div>
     );
   }
@@ -1297,6 +1339,7 @@ function App() {
             onClose={() => setToast(null)}
           />
         ) : null}
+        <ConfettiBurst triggerKey={confettiTrigger} />
       </div>
     </div>
   );
