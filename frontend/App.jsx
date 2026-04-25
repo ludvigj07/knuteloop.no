@@ -7,6 +7,7 @@ import { AchievementCelebration } from './components/AchievementCelebration.jsx'
 import { ConfettiBurst } from './components/ConfettiBurst.jsx';
 import { LiveOnboarding } from './components/LiveOnboarding.jsx';
 import { LoadingSplash } from './components/LoadingSplash.jsx';
+import { RankUpToast } from './components/RankUpToast.jsx';
 import { SettingsModal } from './components/SettingsModal.jsx';
 import { SwipeTabsShell } from './components/SwipeTabsShell.jsx';
 import { Toast } from './components/Toast.jsx';
@@ -350,6 +351,50 @@ function App() {
       }),
     [leaders, profiles],
   );
+
+  // Rank-up: vis toast når currentUser passerer noen på topplisten.
+  // Vi sammenligner forrige rank med ny — om ny < forrige (lavere = bedre),
+  // finner vi den som tidligere lå én plass over (gammel rank - 1) og som
+  // ikke er brukeren selv, og viser navnet.
+  useEffect(() => {
+    if (!currentUser) {
+      previousRankRef.current = null;
+      return;
+    }
+    const myRank = displayLeaders.find(
+      (leader) => leader.id === currentUser.leaderId,
+    )?.rank;
+    if (!Number.isFinite(myRank)) return;
+
+    const previousRank = previousRankRef.current;
+    previousRankRef.current = myRank;
+
+    if (!Number.isFinite(previousRank)) return; // første render — ikke fyr av
+    if (myRank >= previousRank) return; // ingen rank-up
+
+    // Finn navn på den vi gikk forbi: rivalen som tidligere lå like over,
+    // dvs. på (previousRank - 1) — eller hvis det er oss, gå én til over.
+    let rivalName = null;
+    for (let candidateRank = previousRank - 1; candidateRank >= myRank; candidateRank -= 1) {
+      const rival = displayLeaders.find(
+        (leader) =>
+          leader.rank === candidateRank && leader.id !== currentUser.leaderId,
+      );
+      if (rival) {
+        rivalName = rival.russName ?? rival.realName ?? rival.name ?? null;
+        break;
+      }
+    }
+
+    if (!rivalName) return;
+
+    setPendingRankUp({
+      passedName: rivalName,
+      newRank: myRank,
+      key: Date.now(),
+    });
+  }, [currentUser, displayLeaders]);
+
   const activityLog = useMemo(
     () => buildActivityLog(profiles, submissions),
     [profiles, submissions],
@@ -1467,6 +1512,11 @@ function App() {
         <AchievementCelebration
           achievement={pendingAchievementCelebration}
           onClose={() => setPendingAchievementCelebration(null)}
+        />
+        <RankUpToast
+          key={pendingRankUp?.key ?? 'rank-up'}
+          data={pendingRankUp}
+          onClose={() => setPendingRankUp(null)}
         />
       </div>
     </div>
