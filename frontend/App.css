@@ -1456,6 +1456,32 @@
   align-self: start;
 }
 
+.profile-self-hint {
+  margin: 8px 0 0;
+  padding: 10px 12px;
+  background: color-mix(in srgb, #fff1c7 30%, transparent);
+  border: 1px solid rgba(255, 241, 199, 0.5);
+  border-radius: 12px;
+  color: #fff1c7;
+  font-size: 0.88rem;
+  line-height: 1.5;
+}
+
+.profile-self-hint__link {
+  background: none;
+  border: none;
+  padding: 0;
+  font: inherit;
+  color: inherit;
+  text-decoration: underline;
+  cursor: pointer;
+  font-weight: 700;
+}
+
+.profile-self-hint__link:hover {
+  text-decoration: none;
+}
+
 .profile-summary--social {
   margin-bottom: 0;
 }
