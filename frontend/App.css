@@ -12181,3 +12181,40 @@ textarea.text-input:focus {
   }
 }
 
+
+/* ----------------------------------------------------------------------- */
+/* Tab badges - rod prikk pa bunnav-knapper for nytt innhold              */
+/* ----------------------------------------------------------------------- */
+
+.bottom-swipe-nav__badge {
+  position: absolute;
+  top: -3px;
+  right: -6px;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: #ef4444;
+  box-shadow: 0 0 0 2px var(--color-bg, #ffffff);
+  pointer-events: none;
+  animation: tab-badge-pulse 1.8s ease-in-out infinite;
+}
+
+[data-theme='dark'] .bottom-swipe-nav__badge {
+  box-shadow: 0 0 0 2px var(--color-bg, #111827);
+}
+
+@keyframes tab-badge-pulse {
+  0%, 100% {
+    box-shadow: 0 0 0 2px var(--color-bg, #ffffff), 0 0 0 0 rgba(239, 68, 68, 0.55);
+  }
+  50% {
+    box-shadow: 0 0 0 2px var(--color-bg, #ffffff), 0 0 0 5px rgba(239, 68, 68, 0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .bottom-swipe-nav__badge {
+    animation: none !important;
+  }
+}
+

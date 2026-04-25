@@ -182,6 +182,12 @@ function App() {
   const [focusedFeedScrollRequest, setFocusedFeedScrollRequest] = useState(0);
   const [toast, setToast] = useState(null);
   const [confettiTrigger, setConfettiTrigger] = useState(0);
+  const [lastVisitedFeedAt, setLastVisitedFeedAt] = useState(() => {
+    if (typeof window === 'undefined') return 0;
+    const stored = window.localStorage.getItem('lastVisitedFeedAt');
+    const parsed = Number(stored);
+    return Number.isFinite(parsed) ? parsed : 0;
+  });
   const skipNextPageTopResetRef = useRef(false);
   const previousApprovedSubmissionIdsRef = useRef(null);
 
@@ -271,6 +277,25 @@ function App() {
     () => buildActivityLog(profiles, submissions),
     [profiles, submissions],
   );
+  // Tidsstempel for nyeste feed-post — brukes til å avgjøre om Feed-tabben
+  // skal vise en rød "nytt innhold"-prikk.
+  const latestFeedEntryAt = useMemo(() => {
+    let max = 0;
+    for (const entry of activityLog) {
+      if (!entry?.submissionId) continue;
+      if (entry.shareDetails === false) continue;
+      const raw = entry.submittedAtRaw ?? entry.completedAtRaw ?? null;
+      const ts = raw ? new Date(raw).getTime() : NaN;
+      if (Number.isFinite(ts) && ts > max) {
+        max = ts;
+      }
+    }
+    return max;
+  }, [activityLog]);
+  const hasNewFeedPosts =
+    activePage !== 'feed' &&
+    latestFeedEntryAt > 0 &&
+    latestFeedEntryAt > lastVisitedFeedAt;
   const classLeaderboard = useMemo(
     () => buildClassLeaderboard(displayLeaders),
     [displayLeaders],
@@ -503,6 +528,18 @@ function App() {
     }
   }, [currentUser?.leaderId]);
 
+  // Hold lastVisitedFeedAt oppdatert mens brukeren er på Feed-siden, slik at
+  // badge-prikken ikke vises med en gang man bytter bort.
+  useEffect(() => {
+    if (activePage !== 'feed') return;
+    if (latestFeedEntryAt > 0 && latestFeedEntryAt > lastVisitedFeedAt) {
+      setLastVisitedFeedAt(latestFeedEntryAt);
+      if (typeof window !== 'undefined') {
+        window.localStorage.setItem('lastVisitedFeedAt', String(latestFeedEntryAt));
+      }
+    }
+  }, [activePage, latestFeedEntryAt, lastVisitedFeedAt]);
+
   // Confetti når brukerens egen submission går fra ikke-godkjent til "Godkjent".
   // Vi husker hvilke submission-IDer som var godkjente forrige render, og fyrer
   // av når en ny ID dukker opp i settet.
@@ -574,6 +611,14 @@ function App() {
 
     if (nextPage === 'profiler') {
       setProfileViewMode('overview');
+    }
+
+    if (nextPage === 'feed') {
+      const now = Date.now();
+      setLastVisitedFeedAt(now);
+      if (typeof window !== 'undefined') {
+        window.localStorage.setItem('lastVisitedFeedAt', String(now));
+      }
     }
   }
 
@@ -1304,6 +1349,7 @@ function App() {
           renderPage={renderPageContent}
           hideNavigation={false}
           mobileOnlySwipe
+          pageBadges={{ feed: hasNewFeedPosts }}
         />
         <LiveOnboarding
           isOpen={isOnboardingOpen}

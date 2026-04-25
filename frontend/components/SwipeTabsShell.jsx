@@ -109,6 +109,7 @@ export function SwipeTabsShell({
   renderPage,
   mobileOnlySwipe = true,
   hideNavigation = false,
+  pageBadges = {},
 }) {
   const shellRef = useRef(null);
   const viewportRef = useRef(null);
@@ -490,17 +491,25 @@ export function SwipeTabsShell({
               <div className="bottom-swipe-nav__grid">
                 {pages.map((page) => {
                   const isActive = page.id === activePageId;
+                  const showBadge = !isActive && Boolean(pageBadges[page.id]);
                   return (
                     <button
                       key={page.id}
                       type="button"
                       className={`bottom-swipe-nav__button ${isActive ? 'is-active' : ''}`}
-                      aria-label={page.shortLabel ?? page.label}
+                      aria-label={
+                        showBadge
+                          ? `${page.shortLabel ?? page.label} (nytt innhold)`
+                          : page.shortLabel ?? page.label
+                      }
                       data-tour-id={`tab-${page.id}`}
                       onClick={() => goToPage(page.id)}
                     >
                       <span className="bottom-swipe-nav__icon" aria-hidden="true">
                         {page.icon}
+                        {showBadge ? (
+                          <span className="bottom-swipe-nav__badge" aria-hidden="true" />
+                        ) : null}
                       </span>
                       {isActive ? (
                         <span className="bottom-swipe-nav__label" aria-hidden="true">
