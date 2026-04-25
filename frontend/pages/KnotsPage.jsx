@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
+import { AnimatedNumber } from '../components/AnimatedNumber.jsx';
 import { MobileVideo } from '../components/MobileVideo.jsx';
 import { isGoldKnot } from '../data/badgeSystem.js';
 import { NOTE_MAX_CHARS } from '../data/appHelpers.js';
@@ -1642,7 +1643,9 @@ export function KnotsPage({
 
         <div className="knots-page__points sticker">
           <small>Dine poeng</small>
-          <span>{currentUserPoints}p</span>
+          <span>
+            <AnimatedNumber value={currentUserPoints} />p
+          </span>
         </div>
 
         {streakCount > 0 ? (
