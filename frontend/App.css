@@ -12951,3 +12951,75 @@ textarea.text-input:focus {
   .comment-reaction-pill { transition: none; }
 }
 
+/* ── Universal button ripple ─────────────────────────────────────────────── */
+
+/* A subtle ring-pulse on press for primary clickable elements. The
+   ::after pseudo expands from the button center as a thin border ring,
+   then fades. Combined with the existing scale(0.97) at :active.
+   Buttons with .no-ripple opt out. We keep selectors specific so we
+   don't fight the !important rules in blaruss-refresh.css. */
+
+.action-button:not(.no-ripple),
+.bottom-swipe-nav__button:not(.no-ripple) {
+  position: relative;
+}
+
+.action-button:not(.no-ripple)::after,
+.bottom-swipe-nav__button:not(.no-ripple)::after,
+button[type="button"]:not(.no-ripple):not(.action-button):not(.bottom-swipe-nav__button):not(.feed-comment__menu-btn):not(.feed-comment__like-btn):not(.feed-sheet__send-btn):not(.feed-sheet__close):not(.comment-reaction-picker__emoji):not(.comment-reaction-pill)::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 6px;
+  height: 6px;
+  border-radius: 999px;
+  border: 2px solid currentColor;
+  opacity: 0;
+  transform: translate(-50%, -50%) scale(1);
+  pointer-events: none;
+  z-index: 0;
+}
+
+.action-button:not(.no-ripple):active,
+.bottom-swipe-nav__button:not(.no-ripple):active,
+button[type="button"]:not(.no-ripple):not(.action-button):not(.bottom-swipe-nav__button):not(.feed-comment__menu-btn):not(.feed-comment__like-btn):not(.feed-sheet__send-btn):not(.feed-sheet__close):not(.comment-reaction-picker__emoji):not(.comment-reaction-pill):active {
+  transform: scale(0.97);
+}
+
+.action-button:not(.no-ripple):active::after,
+.bottom-swipe-nav__button:not(.no-ripple):active::after,
+button[type="button"]:not(.no-ripple):not(.action-button):not(.bottom-swipe-nav__button):not(.feed-comment__menu-btn):not(.feed-comment__like-btn):not(.feed-sheet__send-btn):not(.feed-sheet__close):not(.comment-reaction-picker__emoji):not(.comment-reaction-pill):active::after {
+  animation: button-ring-pulse 360ms ease-out;
+}
+
+/* Bottom-nav uses ::before for its background and shrinks on :active by
+   itself — keep that. The added ::after still pulses on top, but its
+   transform must coexist with the parent's existing transform. We
+   override only the inline transform on :active for ::after to keep the
+   center anchor. */
+.bottom-swipe-nav__button:not(.no-ripple):active::after {
+  transform: translate(-50%, -50%) scale(1);
+}
+
+@keyframes button-ring-pulse {
+  0% {
+    width: 6px;
+    height: 6px;
+    opacity: 0.45;
+  }
+  100% {
+    width: 140%;
+    height: 140%;
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .action-button:not(.no-ripple):active::after,
+  .bottom-swipe-nav__button:not(.no-ripple):active::after,
+  button[type="button"]:not(.no-ripple):not(.action-button):not(.bottom-swipe-nav__button):active::after {
+    animation: none;
+  }
+}
+
