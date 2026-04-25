@@ -6,6 +6,7 @@ import './styles/blaruss-refresh.css';
 import './styles/admin-mobile.css';
 import './styles/mobile-polish.css';
 import './styles/admin-density.css';
+import { ConfettiBurst } from './components/ConfettiBurst.jsx';
 import { LiveOnboarding } from './components/LiveOnboarding.jsx';
 import { SettingsModal } from './components/SettingsModal.jsx';
 import { SwipeTabsShell } from './components/SwipeTabsShell.jsx';
@@ -172,7 +173,9 @@ function App() {
     const parsed = Number(stored);
     return Number.isFinite(parsed) ? parsed : 0;
   });
+  const [confettiTrigger, setConfettiTrigger] = useState(0);
   const skipNextPageTopResetRef = useRef(false);
+  const previousApprovedSubmissionIdsRef = useRef(null);
 
   function showToast(message, type = 'success') {
     setToast({ message, type, key: Date.now() });
@@ -458,6 +461,39 @@ function App() {
     }
   }, [activePage, latestFeedEntryAt, lastVisitedFeedAt]);
 
+  // Confetti når brukerens egen submission går fra ikke-godkjent til "Godkjent".
+  useEffect(() => {
+    if (!currentUser) return;
+    const myLeaderId = currentUser.leaderId;
+    const currentApprovedIds = new Set(
+      submissions
+        .filter(
+          (submission) =>
+            submission?.leaderId === myLeaderId && submission?.status === 'Godkjent',
+        )
+        .map((submission) => submission.id),
+    );
+
+    const previous = previousApprovedSubmissionIdsRef.current;
+    previousApprovedSubmissionIdsRef.current = currentApprovedIds;
+
+    if (previous === null) {
+      return;
+    }
+
+    let foundNewApproved = false;
+    for (const id of currentApprovedIds) {
+      if (!previous.has(id)) {
+        foundNewApproved = true;
+        break;
+      }
+    }
+
+    if (foundNewApproved) {
+      setConfettiTrigger((current) => current + 1);
+      showToast('Knuten din er godkjent! 🎉');
+    }
+  }, [submissions, currentUser]);
 
   async function refreshAppData(token = sessionToken) {
     if (!token) {
@@ -1256,6 +1292,7 @@ function App() {
             onClose={() => setToast(null)}
           />
         ) : null}
+        <ConfettiBurst triggerKey={confettiTrigger} />
       </div>
     </div>
   );
