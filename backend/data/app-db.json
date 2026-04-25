@@ -251,6 +251,56 @@
         "russType": "blue",
         "genderIdentity": "other"
       }
+    },
+    {
+      "id": 11,
+      "schoolId": "st-olav",
+      "name": "ohio",
+      "group": "3STD",
+      "role": "user",
+      "loginCode": "",
+      "email": "ohio@gmail.com",
+      "basePoints": 0,
+      "baseCompletedKnots": 0,
+      "profile": {
+        "icon": "",
+        "photoUrl": "",
+        "russName": "ohio",
+        "realName": "ohio",
+        "className": "3STD",
+        "bio": "",
+        "quote": "",
+        "knownFor": "",
+        "signatureKnot": "",
+        "favoriteCategory": "",
+        "russType": "blue",
+        "genderIdentity": "other"
+      }
+    },
+    {
+      "id": 12,
+      "schoolId": "st-olav",
+      "name": "L",
+      "group": "3STD",
+      "role": "admin",
+      "loginCode": "",
+      "email": "l@gmail.com",
+      "basePoints": 0,
+      "baseCompletedKnots": 0,
+      "profile": {
+        "icon": "",
+        "photoUrl": "",
+        "russName": "L",
+        "realName": "L",
+        "className": "3STD",
+        "bio": "",
+        "quote": "",
+        "knownFor": "",
+        "signatureKnot": "",
+        "favoriteCategory": "",
+        "russType": "blue",
+        "genderIdentity": "other"
+      }
     }
   ],
   "knots": [
@@ -956,7 +1006,9 @@
       "videoPreviewUrl": "",
       "isAnonymousFeed": false,
       "submissionMode": "feed",
-      "ratings": {},
+      "ratings": {
+        "6": 5
+      },
       "reviewedAtRaw": "2026-04-24T14:48:33.149Z",
       "reviewedBy": 6,
       "profileHidden": false
@@ -2899,6 +2951,174 @@
   ],
   "reports": [
     {
+      "id": "report-1777139103771-3077629f",
+      "type": "comment",
+      "commentId": "comment-1777138660711-1252897c",
+      "submissionId": "submission-1777042100778",
+      "reporterId": 6,
+      "reason": "Spam",
+      "note": "",
+      "status": "open",
+      "createdAt": "2026-04-25T17:45:03.771Z",
+      "reviewedAt": null,
+      "reviewedBy": 0,
+      "resolution": null
+    },
+    {
+      "id": "report-1777138476609-983e0886",
+      "type": "comment",
+      "commentId": "comment-1777138327964-07bf5b21",
+      "submissionId": "submission-1777042100778",
+      "reporterId": 11,
+      "reason": "Spam",
+      "note": "",
+      "status": "open",
+      "createdAt": "2026-04-25T17:34:36.609Z",
+      "reviewedAt": null,
+      "reviewedBy": 0,
+      "resolution": null
+    },
+    {
+      "id": "report-1777137660982-3e11ad40",
+      "type": "comment",
+      "commentId": "comment-1777137630037-165a2b96",
+      "submissionId": "submission-1777042100778",
+      "reporterId": 6,
+      "reason": "Spam",
+      "note": "",
+      "status": "open",
+      "createdAt": "2026-04-25T17:21:00.982Z",
+      "reviewedAt": null,
+      "reviewedBy": 0,
+      "resolution": null
+    },
+    {
+      "id": "report-1777136550625-c2bc0ddb",
+      "type": "comment",
+      "commentId": "comment-1777136321557-f041b2d4",
+      "submissionId": "submission-1777042100778",
+      "reporterId": 11,
+      "reason": "Annet",
+      "note": "",
+      "status": "open",
+      "createdAt": "2026-04-25T17:02:30.625Z",
+      "reviewedAt": null,
+      "reviewedBy": 0,
+      "resolution": null
+    },
+    {
+      "id": "report-1777136545956-20edbe18",
+      "type": "comment",
+      "commentId": "comment-1777136332534-cc74990c",
+      "submissionId": "submission-1777042100778",
+      "reporterId": 11,
+      "reason": "Upassende",
+      "note": "",
+      "status": "open",
+      "createdAt": "2026-04-25T17:02:25.956Z",
+      "reviewedAt": null,
+      "reviewedBy": 0,
+      "resolution": null
+    },
+    {
+      "id": "report-1777136540831-3f30fdfe",
+      "type": "comment",
+      "commentId": "comment-1777136335793-12023f5e",
+      "submissionId": "submission-1777042100778",
+      "reporterId": 11,
+      "reason": "Trakassering",
+      "note": "",
+      "status": "open",
+      "createdAt": "2026-04-25T17:02:20.831Z",
+      "reviewedAt": null,
+      "reviewedBy": 0,
+      "resolution": null
+    },
+    {
+      "id": "report-1777136535678-c8b7f851",
+      "type": "comment",
+      "commentId": "comment-1777136342013-3097eccb",
+      "submissionId": "submission-1777042100778",
+      "reporterId": 11,
+      "reason": "Spam",
+      "note": "",
+      "status": "open",
+      "createdAt": "2026-04-25T17:02:15.678Z",
+      "reviewedAt": null,
+      "reviewedBy": 0,
+      "resolution": null
+    },
+    {
+      "id": "report-1777135577729-88e358ec",
+      "type": "submission",
+      "commentId": null,
+      "submissionId": "submission-1776342489994",
+      "reporterId": 6,
+      "reason": "Spam",
+      "note": "",
+      "status": "open",
+      "createdAt": "2026-04-25T16:46:17.729Z",
+      "reviewedAt": null,
+      "reviewedBy": 0,
+      "resolution": null
+    },
+    {
+      "id": "report-1777135575446-f35f25b7",
+      "type": "submission",
+      "commentId": null,
+      "submissionId": "submission-1776346915452",
+      "reporterId": 6,
+      "reason": "Spam",
+      "note": "",
+      "status": "open",
+      "createdAt": "2026-04-25T16:46:15.446Z",
+      "reviewedAt": null,
+      "reviewedBy": 0,
+      "resolution": null
+    },
+    {
+      "id": "report-1777135573126-1c7e98d1",
+      "type": "submission",
+      "commentId": null,
+      "submissionId": "submission-1776366638975",
+      "reporterId": 6,
+      "reason": "Spam",
+      "note": "",
+      "status": "open",
+      "createdAt": "2026-04-25T16:46:13.126Z",
+      "reviewedAt": null,
+      "reviewedBy": 0,
+      "resolution": null
+    },
+    {
+      "id": "report-1777135570242-ad3a734f",
+      "type": "submission",
+      "commentId": null,
+      "submissionId": "submission-1776716511294",
+      "reporterId": 6,
+      "reason": "Spam",
+      "note": "",
+      "status": "open",
+      "createdAt": "2026-04-25T16:46:10.242Z",
+      "reviewedAt": null,
+      "reviewedBy": 0,
+      "resolution": null
+    },
+    {
+      "id": "report-1777135567284-f0324f93",
+      "type": "submission",
+      "commentId": null,
+      "submissionId": "submission-1777042100778",
+      "reporterId": 6,
+      "reason": "Spam",
+      "note": "",
+      "status": "open",
+      "createdAt": "2026-04-25T16:46:07.284Z",
+      "reviewedAt": null,
+      "reviewedBy": 0,
+      "resolution": null
+    },
+    {
       "id": "report-1777077879911-e57b6455",
       "type": "comment",
       "commentId": "comment-1777077867613-8d364bb5",
@@ -2985,6 +3205,26 @@
   ],
   "bans": [
     {
+      "id": "ban-1777135520123-af7020aa",
+      "userId": 5,
+      "type": "submission",
+      "startedAt": "2026-04-25T16:45:20.123Z",
+      "expiresAt": "2026-04-26T16:45:20.123Z",
+      "createdBy": 6,
+      "active": true,
+      "endedAt": null
+    },
+    {
+      "id": "ban-1777135511987-e235f735",
+      "userId": 5,
+      "type": "feed",
+      "startedAt": "2026-04-25T16:45:11.987Z",
+      "expiresAt": "2026-04-26T16:45:11.987Z",
+      "createdBy": 6,
+      "active": false,
+      "endedAt": "2026-04-25T16:45:14.440Z"
+    },
+    {
       "id": "ban-1775777068661-84a36a06",
       "userId": 2,
       "type": "submission",
@@ -3066,6 +3306,86 @@
       "likes": [],
       "parentId": null,
       "deletedAt": "2026-04-25T00:44:59.884Z"
+    },
+    {
+      "id": "comment-1777136321557-f041b2d4",
+      "submissionId": "submission-1777042100778",
+      "authorId": 6,
+      "text": "Mø shimma",
+      "createdAt": "2026-04-25T16:58:41.557Z",
+      "likes": [],
+      "parentId": null,
+      "deletedAt": null
+    },
+    {
+      "id": "comment-1777136332534-cc74990c",
+      "submissionId": "submission-1777042100778",
+      "authorId": 6,
+      "text": "Lololol",
+      "createdAt": "2026-04-25T16:58:52.534Z",
+      "likes": [],
+      "parentId": null,
+      "deletedAt": null
+    },
+    {
+      "id": "comment-1777136335793-12023f5e",
+      "submissionId": "submission-1777042100778",
+      "authorId": 6,
+      "text": "Mo fikk jhf",
+      "createdAt": "2026-04-25T16:58:55.793Z",
+      "likes": [],
+      "parentId": null,
+      "deletedAt": "2026-04-25T17:19:19.046Z"
+    },
+    {
+      "id": "comment-1777136342013-3097eccb",
+      "submissionId": "submission-1777042100778",
+      "authorId": 6,
+      "text": "Hi",
+      "createdAt": "2026-04-25T16:59:02.013Z",
+      "likes": [],
+      "parentId": null,
+      "deletedAt": "2026-04-25T17:19:41.500Z"
+    },
+    {
+      "id": "comment-1777137630037-165a2b96",
+      "submissionId": "submission-1777042100778",
+      "authorId": 11,
+      "text": "lololol",
+      "createdAt": "2026-04-25T17:20:30.037Z",
+      "likes": [],
+      "parentId": null,
+      "deletedAt": "2026-04-25T17:28:42.367Z"
+    },
+    {
+      "id": "comment-1777138327964-07bf5b21",
+      "submissionId": "submission-1777042100778",
+      "authorId": 6,
+      "text": "lllllllllllllllllllllllllllllllllllllll",
+      "createdAt": "2026-04-25T17:32:07.964Z",
+      "likes": [],
+      "parentId": null,
+      "deletedAt": null
+    },
+    {
+      "id": "comment-1777138362233-60b0fef1",
+      "submissionId": "submission-1777042100778",
+      "authorId": 11,
+      "text": "mmmmmmmmmmmmmmmm",
+      "createdAt": "2026-04-25T17:32:42.233Z",
+      "likes": [],
+      "parentId": null,
+      "deletedAt": "2026-04-25T17:32:54.498Z"
+    },
+    {
+      "id": "comment-1777138660711-1252897c",
+      "submissionId": "submission-1777042100778",
+      "authorId": 11,
+      "text": "Hodeb",
+      "createdAt": "2026-04-25T17:37:40.711Z",
+      "likes": [],
+      "parentId": null,
+      "deletedAt": "2026-04-25T17:45:37.551Z"
     }
   ]
 }

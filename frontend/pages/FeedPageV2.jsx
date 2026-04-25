@@ -622,6 +622,9 @@ function CommentItem({
   pendingDeleteId,
   confirmReportId,
   reportReason,
+  isFlagged = false,
+  canModerate = false,
+  onDismissFlag,
   onReply,
   onReplyDraftChange,
   onSubmitReply,
@@ -639,35 +642,92 @@ function CommentItem({
   const isConfirmingReport = confirmReportId === comment.id;
   const visibleReplies = comment.replies?.filter((reply) => !reply.deleted) ?? [];
 
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const menuWrapRef = useRef(null);
+
+  useEffect(() => {
+    if (!isMenuOpen) return undefined;
+    const handler = (event) => {
+      if (menuWrapRef.current && !menuWrapRef.current.contains(event.target)) {
+        setIsMenuOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [isMenuOpen]);
+
+  const ownsComment = Boolean(comment.isOwn);
+  const canShowReport = !ownsComment && !isDisabled;
+  const canShowAdminDelete = canModerate && !ownsComment;
+  const showMenuButton =
+    !comment.deleted && (ownsComment || canShowReport || canShowAdminDelete);
+
+  function handleMenuDelete() {
+    setIsMenuOpen(false);
+    onDelete(comment.id);
+  }
+
+  function handleMenuReport() {
+    setIsMenuOpen(false);
+    onStartReport(comment.id);
+  }
+
   return (
-    <article className={`feed-sheet__comment ${comment.deleted ? 'is-deleted' : ''}`}>
+    <article
+      className={`feed-sheet__comment ${comment.deleted ? 'is-deleted' : ''} ${isFlagged ? 'is-flagged-flash' : ''}`}
+    >
       <div className="feed-comment__header">
         <CommentAvatar comment={comment} size="small" />
         <div className="feed-comment__author-info">
           <strong className="feed-comment__author-name">{comment.authorName}</strong>
         </div>
-        {!comment.deleted && !isDisabled && !comment.isOwn ? (
-          <button
-            type="button"
-            className="feed-comment__report-btn"
-            title="Rapporter kommentar"
-            aria-label="Rapporter kommentar"
-            onClick={() => onStartReport(comment.id)}
-          >
-            ⚑
-          </button>
-        ) : null}
-        {!comment.deleted && comment.isOwn ? (
-          <button
-            type="button"
-            className={`feed-comment__delete-btn ${isDeleting ? 'is-pending' : ''}`}
-            title="Slett kommentar"
-            aria-label="Slett kommentar"
-            onClick={() => onDelete(comment.id)}
-            disabled={isDeleting}
-          >
-            ✕
-          </button>
+        {showMenuButton ? (
+          <div className="feed-comment__menu-wrap" ref={menuWrapRef}>
+            <button
+              type="button"
+              className="feed-comment__menu-btn"
+              title="Flere valg"
+              aria-label="Flere valg"
+              aria-haspopup="menu"
+              aria-expanded={isMenuOpen}
+              onClick={() => setIsMenuOpen((open) => !open)}
+            >
+              ⋯
+            </button>
+            {isMenuOpen ? (
+              <div className="feed-comment__menu" role="menu">
+                {ownsComment ? (
+                  <button
+                    type="button"
+                    className="feed-comment__menu-item is-danger"
+                    onClick={handleMenuDelete}
+                    disabled={isDeleting}
+                  >
+                    {isDeleting ? 'Sletter...' : 'Slett'}
+                  </button>
+                ) : null}
+                {canShowReport ? (
+                  <button
+                    type="button"
+                    className="feed-comment__menu-item"
+                    onClick={handleMenuReport}
+                  >
+                    Rapporter
+                  </button>
+                ) : null}
+                {canShowAdminDelete ? (
+                  <button
+                    type="button"
+                    className="feed-comment__menu-item is-danger"
+                    onClick={handleMenuDelete}
+                    disabled={isDeleting}
+                  >
+                    {isDeleting ? 'Sletter...' : 'Slett (admin)'}
+                  </button>
+                ) : null}
+              </div>
+            ) : null}
+          </div>
         ) : null}
       </div>
 
@@ -744,6 +804,18 @@ function CommentItem({
             </button>
           </div>
         </div>
+      ) : null}
+
+      {isFlagged && canModerate ? (
+        <button
+          type="button"
+          className="feed-comment__flag-marker"
+          title="Klikk for å fjerne markering"
+          aria-label="Fjern rapportmarkering"
+          onClick={() => onDismissFlag?.(comment.id)}
+        >
+          ⚑
+        </button>
       ) : null}
 
       {visibleReplies.length > 0 ? (
@@ -828,6 +900,9 @@ function CommentItem({
 function FeedCommentSheet({
   entry,
   comments,
+  flaggedCommentId = null,
+  canModerate = false,
+  onDismissFlag,
   onClose,
   onSubmitComment,
   onDeleteComment,
@@ -1048,6 +1123,9 @@ function FeedCommentSheet({
                 pendingDeleteId={pendingDeleteId}
                 confirmReportId={confirmReportId}
                 reportReason={reportReason}
+                isFlagged={String(comment.id) === String(flaggedCommentId)}
+                canModerate={canModerate}
+                onDismissFlag={onDismissFlag}
                 onReply={setReplyingToId}
                 onReplyDraftChange={setReplyDraft}
                 onSubmitReply={handleSubmitReply}
@@ -1357,6 +1435,10 @@ export function FeedPage({
   commentsBySubmission = {},
   currentUserId = null,
   currentUserActiveBans = [],
+  focusedSubmissionId = null,
+  focusedCommentId = null,
+  focusScrollRequest = 0,
+  isAdmin = false,
   onCreateComment,
   onDeleteComment,
   onLikeComment,
@@ -1384,6 +1466,7 @@ export function FeedPage({
   const [deleteToast, setDeleteToast] = useState('');
   const [activeMobileIndex, setActiveMobileIndex] = useState(0);
   const [commentSheetEntry, setCommentSheetEntry] = useState(null);
+  const [flaggedCommentId, setFlaggedCommentId] = useState(null);
   const isDesktop = useDesktopFeed();
   const mobileReelRef = useRef(null);
   const cardRefMap = useRef(new Map());
@@ -1427,6 +1510,39 @@ export function FeedPage({
     },
     [],
   );
+
+  // Scroll til en spesifikk post når admin trykker "Se i feed".
+  // Rekkefølge:
+  // 1. Scroll til posten (smooth)
+  // 2. Vent 300ms slik at scrollen er på plass
+  // 3. Åpne kommentarpanelet og marker den rapporterte kommentaren
+  // Det røde markeringen blir liggende (med liten rød flagg-prikk) til
+  // panelet lukkes — så admin kan finne kommentaren igjen om den ruller bort.
+  useEffect(() => {
+    if (!focusScrollRequest || !focusedSubmissionId) return;
+    const key = String(focusedSubmissionId);
+    const node = cardRefMap.current.get(key);
+    const targetEntry = feedEntries.find(
+      (entry) => String(entry.submissionId) === key,
+    );
+
+    const scrollFrame = requestAnimationFrame(() => {
+      node?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    });
+
+    let openSheetTimer = null;
+    if (focusedCommentId && targetEntry) {
+      openSheetTimer = window.setTimeout(() => {
+        setCommentSheetEntry(targetEntry);
+        setFlaggedCommentId(focusedCommentId);
+      }, 300);
+    }
+
+    return () => {
+      cancelAnimationFrame(scrollFrame);
+      if (openSheetTimer) window.clearTimeout(openSheetTimer);
+    };
+  }, [focusScrollRequest, focusedSubmissionId, focusedCommentId, feedEntries]);
 
   useEffect(() => {
     if (isDesktop) {
@@ -1726,6 +1842,7 @@ export function FeedPage({
 
   function closeCommentSheet() {
     setCommentSheetEntry(null);
+    setFlaggedCommentId(null);
     window.setTimeout(() => {
       const container = mobileReelRef.current;
       if (!container) return;
@@ -1869,6 +1986,9 @@ export function FeedPage({
           entry={commentSheetEntry}
           comments={activeComments}
           currentUserId={currentUserId}
+          flaggedCommentId={flaggedCommentId}
+          canModerate={isAdmin}
+          onDismissFlag={() => setFlaggedCommentId(null)}
           onClose={closeCommentSheet}
           onSubmitComment={(text, parentId) =>
             onCreateComment?.(commentSheetEntry.submissionId, text, parentId)

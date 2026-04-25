@@ -17,6 +17,7 @@ export function SettingsModal({
   onNavigateToKnots,
   onNavigateToProfile,
   onOpenProfileEditor,
+  onRestartTour,
   onSubmitPasswordChange,
   onToggleDark,
   passwordError,
@@ -250,6 +251,17 @@ export function SettingsModal({
                 <div className="settings-section__header">
                   <h4>Om og hjelp</h4>
                 </div>
+                {typeof onRestartTour === 'function' ? (
+                  <div className="settings-shortcuts">
+                    <button
+                      type="button"
+                      className="action-button action-button--ghost"
+                      onClick={onRestartTour}
+                    >
+                      Vis intro-tour på nytt
+                    </button>
+                  </div>
+                ) : null}
                 <p className="settings-meta">Versjon: {appVersion}</p>
                 <p className="settings-hint">
                   Trenger du hjelp med konto eller moderering, kontakt admin for kullet ditt.

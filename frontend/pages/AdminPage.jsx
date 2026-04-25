@@ -271,6 +271,7 @@ function buildOpenCommentReportQueue(reports) {
     const key = report.commentId;
     const currentGroup = accumulator[key] ?? {
       commentId: report.commentId,
+      submissionId: report.submissionId,
       commentText: report.commentText,
       commentAuthorName: report.commentAuthorName,
       knotTitle: report.knotTitle,
@@ -455,6 +456,7 @@ export function AdminPage({
   onResolveDuel,
   onReviewSubmission,
   onUpdateKnotPoints,
+  onOpenFeedPost,
   reports = [],
   stats,
   submissions,
@@ -470,6 +472,7 @@ export function AdminPage({
   const [activeReviewFilter, setActiveReviewFilter] = useState(
     REVIEW_FILTER.APPROVAL_ONLY,
   );
+  const [activeReportsFilter, setActiveReportsFilter] = useState('posts');
   const [, setReviewFeedback] = useState('');
   const [selectedBanUserId, setSelectedBanUserId] = useState('');
   const [selectedBanType, setSelectedBanType] = useState(BAN_TYPE_OPTIONS[0].value);
@@ -1371,7 +1374,33 @@ export function AdminPage({
             </div>
           </div>
 
+          <div className="admin-review-toolbar">
+            <div className="admin-review-filters" aria-label="Filtrer rapporter">
+              <button
+                type="button"
+                className={`admin-review-filter ${
+                  activeReportsFilter === 'posts' ? 'is-active' : ''
+                }`}
+                onClick={() => setActiveReportsFilter('posts')}
+              >
+                <span>Feed-poster</span>
+                <strong>{reportQueue.length}</strong>
+              </button>
+              <button
+                type="button"
+                className={`admin-review-filter ${
+                  activeReportsFilter === 'comments' ? 'is-active' : ''
+                }`}
+                onClick={() => setActiveReportsFilter('comments')}
+              >
+                <span>Kommentarer</span>
+                <strong>{commentReportQueue.length}</strong>
+              </button>
+            </div>
+          </div>
+
           <div className="admin-task-panel">
+            {activeReportsFilter === 'posts' ? (
             <div className="admin-subsection">
               <div className="section-card__header">
                 <h3>Rapporterte feed-poster</h3>
@@ -1398,6 +1427,15 @@ export function AdminPage({
                       </div>
 
                       <div className="config-row__actions">
+                        {typeof onOpenFeedPost === 'function' ? (
+                          <button
+                            type="button"
+                            className="action-button action-button--ghost"
+                            onClick={() => onOpenFeedPost(reportGroup.submissionId)}
+                          >
+                            Se i feed
+                          </button>
+                        ) : null}
                         <button
                           type="button"
                           className="action-button action-button--ghost"
@@ -1434,7 +1472,9 @@ export function AdminPage({
                 )}
               </div>
             </div>
+            ) : null}
 
+            {activeReportsFilter === 'comments' ? (
             <div className="admin-subsection">
               <div className="section-card__header">
                 <h3>Rapporterte kommentarer</h3>
@@ -1464,6 +1504,17 @@ export function AdminPage({
                       </div>
 
                       <div className="config-row__actions">
+                        {typeof onOpenFeedPost === 'function' ? (
+                          <button
+                            type="button"
+                            className="action-button action-button--ghost"
+                            onClick={() =>
+                              onOpenFeedPost(reportGroup.submissionId, reportGroup.commentId)
+                            }
+                          >
+                            Se i feed
+                          </button>
+                        ) : null}
                         <button
                           type="button"
                           className="action-button action-button--ghost"
@@ -1490,6 +1541,7 @@ export function AdminPage({
                 )}
               </div>
             </div>
+            ) : null}
           </div>
         </SectionCard>
       ) : null}
