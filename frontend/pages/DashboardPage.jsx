@@ -1,6 +1,15 @@
 import { useEffect, useRef, useState } from 'react';
+import anonymousFeedJoker from '../assets/anonymous-feed-joker.jpg';
+import anonymousFeedMask from '../assets/anonymous-feed-mask.png';
+import anonymousFeedWolf from '../assets/anonymous-feed-wolf.png';
 import streakFlameIcon from '../assets/streak-flame.svg';
 import { MobileVideo } from '../components/MobileVideo.jsx';
+
+const ANONYMOUS_FEED_AVATARS = [
+  anonymousFeedJoker,
+  anonymousFeedMask,
+  anonymousFeedWolf,
+];
 
 // ─── Animated counter ─────────────────────────────────────────────────────────
 
@@ -41,18 +50,40 @@ function AnimatedPoints({ target, duration = 800 }) {
 
 // ─── Tiny avatar ─────────────────────────────────────────────────────────────
 
+function getAnonymousAvatarByEntry(entry) {
+  const numericSubmissionId = Number(entry?.submissionId);
+
+  if (Number.isInteger(numericSubmissionId) && numericSubmissionId > 0) {
+    return ANONYMOUS_FEED_AVATARS[numericSubmissionId % ANONYMOUS_FEED_AVATARS.length];
+  }
+
+  const fallbackKey = String(entry?.id ?? entry?.knotTitle ?? '');
+  let hash = 0;
+
+  for (let index = 0; index < fallbackKey.length; index += 1) {
+    hash = ((hash << 5) - hash + fallbackKey.charCodeAt(index)) | 0;
+  }
+
+  return ANONYMOUS_FEED_AVATARS[Math.abs(hash) % ANONYMOUS_FEED_AVATARS.length];
+}
+
 function MiniAvatar({ person }) {
-  if (person?.photoUrl) {
+  const photoUrl = person?.isAnonymous
+    ? getAnonymousAvatarByEntry(person)
+    : person?.photoUrl;
+
+  if (photoUrl) {
     return (
       <img
         className="db-mini-avatar"
-        src={person.photoThumbUrl || person.photoUrl}
-        alt={person.russName ?? person.name}
+        src={person?.isAnonymous ? photoUrl : (person.photoThumbUrl || person.photoUrl)}
+        alt={person?.isAnonymous ? 'Anonym profilbilde' : person?.russName ?? person?.name}
         loading="lazy"
         decoding="async"
       />
     );
   }
+
   return (
     <span className="db-mini-avatar db-mini-avatar--icon">
       {person?.icon ?? '👤'}
@@ -260,9 +291,13 @@ export function DashboardPage({
               <div className="db-weekly-post__author">
                 <MiniAvatar
                   person={{
+                    id: weeklyTopPost.id,
+                    submissionId: weeklyTopPost.submissionId,
+                    isAnonymous: true,
                     photoUrl: weeklyTopPost.studentPhotoUrl,
                     icon: weeklyTopPost.studentIcon,
                     russName: weeklyTopPost.studentName,
+                    knotTitle: weeklyTopPost.knotTitle,
                   }}
                 />
                 <div className="db-weekly-post__author-copy">
@@ -278,9 +313,13 @@ export function DashboardPage({
               >
                 <MiniAvatar
                   person={{
+                    id: weeklyTopPost.id,
+                    submissionId: weeklyTopPost.submissionId,
+                    isAnonymous: false,
                     photoUrl: weeklyTopPost.studentPhotoUrl,
                     icon: weeklyTopPost.studentIcon,
                     russName: weeklyTopPost.studentName,
+                    knotTitle: weeklyTopPost.knotTitle,
                   }}
                 />
                 <div className="db-weekly-post__author-copy">

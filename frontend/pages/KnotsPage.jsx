@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { MobileVideo } from '../components/MobileVideo.jsx';
 import { isGoldKnot } from '../data/badgeSystem.js';
-import { NOTE_MAX_CHARS, NOTE_MAX_WORDS } from '../data/appHelpers.js';
+import { NOTE_MAX_CHARS } from '../data/appHelpers.js';
 import { KNOT_FOLDERS, resolveKnotFolder } from '../data/knotFolders.js';
 
 const MOBILE_BREAKPOINT = 900;
@@ -116,12 +116,6 @@ er det allerede for sent.`,
 
 function isRejectedStatus(status) {
   return status === 'Avslått' || status === 'Avslaatt';
-}
-
-function getWordCount(text) {
-  const trimmedText = text.trim();
-  if (!trimmedText) return 0;
-  return trimmedText.split(/\s+/).length;
 }
 
 function getCharacterCount(text) {
@@ -360,9 +354,7 @@ function SubmissionFormContent({
   effectiveMode,
   activeFeedBan,
   activeSubmissionBan,
-  wordCount,
   characterCount,
-  isOverWordLimit,
   isOverCharacterLimit,
   buttonLabel,
   onUpdateNote,
@@ -397,13 +389,13 @@ function SubmissionFormContent({
         <span>Forklaring:</span>
         <textarea
           className="text-input text-input--area text-input--compact"
-          placeholder="Kort forklaring på hvordan knuten ble gjort. Maks 100 ord."
+          placeholder="Kort forklaring på hvordan knuten ble gjort. Maks 300 tegn."
           value={draft.note ?? ''}
           onChange={(e) => onUpdateNote(e.target.value)}
           maxLength={NOTE_MAX_CHARS}
         />
-        <span className={`word-counter ${isOverWordLimit || isOverCharacterLimit ? 'is-invalid' : ''}`}>
-          {wordCount}/{NOTE_MAX_WORDS} ord - {characterCount}/{NOTE_MAX_CHARS} tegn
+        <span className={`word-counter ${isOverCharacterLimit ? 'is-invalid' : ''}`}>
+          {characterCount}/{NOTE_MAX_CHARS} tegn
         </span>
       </label>
 
@@ -453,164 +445,126 @@ function SubmissionFormContent({
       ) : null}
 
       <div className="submission-upload-grid">
-        <div className="upload-field upload-field--compact">
-          <span>{showDesktopPasteHint ? 'Bilde' : 'Last opp bilde'}</span>
+        <div className="upload-field upload-field--compact evidence-picker">
+          <div className="evidence-picker__top">
+            <span>Bevis</span>
+            <small>{hasImage || hasVideo ? 'Klart for innsending' : 'Velg ett bevis'}</small>
+          </div>
 
-          {showDesktopPasteHint ? (
-            <>
-              <div className="upload-file-row">
-                <input
-                  type="file"
-                  accept="image/*"
-                  className="upload-file-input"
-                  onChange={(e) => {
-                    const file = e.target.files?.[0];
-                    onUpdateFile('image', file);
-                    e.target.value = '';
-                  }}
-                />
-                <span className="upload-file-name">{draft.imageName || 'Ingen fil valgt'}</span>
-                <button
-                  type="button"
-                  className="upload-remove-btn"
-                  onClick={onRemoveImage}
-                  disabled={!hasImage}
-                >
-                  Slett bilde
-                </button>
-              </div>
+          <div className="evidence-picker__actions" role="group" aria-label="Velg bevis">
+            <label className="action-button action-button--ghost evidence-picker__action evidence-picker__action--image">
+              Ta bilde
               <input
-                type="text"
-                readOnly
-                className="upload-paste-target"
-                value="Lim inn bilde i boksen (Ctrl+V)"
-                aria-label="Lim inn bilde i boksen med Ctrl+V"
-                onPaste={onPasteImage}
+                type="file"
+                accept="image/*"
+                capture="environment"
+                className="evidence-picker__input"
+                onChange={handleImageInputChange}
               />
-            </>
-          ) : (
-            <>
-              <div className="upload-capture-row" style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
-                <label className="action-button action-button--ghost" style={{ cursor: 'pointer' }}>
-                  Ta bilde
-                  <input
-                    type="file"
-                    accept="image/*"
-                    capture="environment"
-                    style={{ position: 'absolute', width: 1, height: 1, opacity: 0, pointerEvents: 'none' }}
-                    onChange={handleImageInputChange}
-                  />
-                </label>
-                <label className="action-button action-button--ghost" style={{ cursor: 'pointer' }}>
-                  Velg fra galleri
-                  <input
-                    type="file"
-                    accept="image/*"
-                    style={{ position: 'absolute', width: 1, height: 1, opacity: 0, pointerEvents: 'none' }}
-                    onChange={handleImageInputChange}
-                  />
-                </label>
-              </div>
-              <small>{draft.imageName || 'Valgfritt bildebevis'}</small>
-              <button
-                type="button"
-                className="upload-remove-btn upload-remove-btn--mobile"
-                onClick={onRemoveImage}
-                disabled={!hasImage}
-              >
-                Slett bilde
-              </button>
-            </>
-          )}
-        </div>
-
-        <div className="upload-field upload-field--compact">
-          <span>{showDesktopPasteHint ? 'Video (maks 20 sek, 30 MB)' : 'Last opp video (maks 20 sek, 30 MB)'}</span>
-
-          {showDesktopPasteHint ? (
-            <div className="upload-file-row">
+            </label>
+            <label className="action-button action-button--ghost evidence-picker__action evidence-picker__action--image">
+              Velg bilde
+              <input
+                type="file"
+                accept="image/*"
+                className="evidence-picker__input"
+                onChange={handleImageInputChange}
+              />
+            </label>
+            <label className="action-button action-button--ghost evidence-picker__action evidence-picker__action--video">
+              Ta video
               <input
                 type="file"
                 accept="video/*"
-                className="upload-file-input"
+                capture="environment"
+                className="evidence-picker__input"
                 onChange={handleVideoInputChange}
               />
-              <span className="upload-file-name">{draft.videoName || 'Ingen fil valgt'}</span>
-              <button
-                type="button"
-                className="upload-remove-btn"
-                onClick={onRemoveVideo}
-                disabled={!hasVideo}
-              >
-                Slett video
-              </button>
-            </div>
-          ) : (
-            <>
-              <div className="upload-capture-row" style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
-                <label className="action-button action-button--ghost" style={{ cursor: 'pointer' }}>
-                  Ta video
-                  <input
-                    type="file"
-                    accept="video/*"
-                    capture="environment"
-                    style={{ position: 'absolute', width: 1, height: 1, opacity: 0, pointerEvents: 'none' }}
-                    onChange={handleVideoInputChange}
-                  />
-                </label>
-                <label className="action-button action-button--ghost" style={{ cursor: 'pointer' }}>
-                  Velg video
-                  <input
-                    type="file"
-                    accept="video/*"
-                    style={{ position: 'absolute', width: 1, height: 1, opacity: 0, pointerEvents: 'none' }}
-                    onChange={handleVideoInputChange}
-                  />
-                </label>
+            </label>
+            <label className="action-button action-button--ghost evidence-picker__action evidence-picker__action--video">
+              Velg video
+              <input
+                type="file"
+                accept="video/*"
+                className="evidence-picker__input"
+                onChange={handleVideoInputChange}
+              />
+            </label>
+          </div>
+
+          <small className="evidence-picker__hint">Video maks 20 sek, 30 MB.</small>
+
+          <div className="evidence-picker__selected" aria-live="polite">
+            {hasImage ? (
+              <div className="evidence-chip">
+                <span>Bilde: {draft.imageName || 'valgt'}</span>
+                <button
+                  type="button"
+                  className="upload-remove-btn evidence-chip__remove"
+                  onClick={onRemoveImage}
+                >
+                  Fjern
+                </button>
               </div>
-              <small>{draft.videoName || 'Valgfritt videobevis'}</small>
-              <button
-                type="button"
-                className="upload-remove-btn upload-remove-btn--mobile"
-                onClick={onRemoveVideo}
-                disabled={!hasVideo}
-              >
-                Slett video
-              </button>
-            </>
-          )}
+            ) : null}
+            {hasVideo ? (
+              <div className="evidence-chip">
+                <span>Video: {draft.videoName || 'valgt'}</span>
+                <button
+                  type="button"
+                  className="upload-remove-btn evidence-chip__remove"
+                  onClick={onRemoveVideo}
+                >
+                  Fjern
+                </button>
+              </div>
+            ) : null}
+            {!hasImage && !hasVideo ? (
+              <small className="evidence-picker__empty">Ingen bevis valgt</small>
+            ) : null}
+          </div>
+
+          {showDesktopPasteHint ? (
+            <input
+              type="text"
+              readOnly
+              className="upload-paste-target"
+              value="Lim inn bilde i boksen (Ctrl+V)"
+              aria-label="Lim inn bilde i boksen med Ctrl+V"
+              onPaste={onPasteImage}
+            />
+          ) : null}
+
+          {draft.imagePreviewUrl || draft.videoPreviewUrl ? (
+            <div className="evidence-picker__previews">
+              {draft.imagePreviewUrl ? (
+                <div className="evidence-card evidence-card--compact">
+                  <span>Bildepreview</span>
+                  <img src={draft.imagePreviewUrl} alt="Bevis" />
+                </div>
+              ) : null}
+              {draft.videoPreviewUrl ? (
+                <div className="evidence-card evidence-card--compact">
+                  <span>Videopreview</span>
+                  <MobileVideo
+                    controls
+                    autoPlay
+                    muted
+                    loop
+                    src={draft.videoPreviewUrl}
+                  />
+                </div>
+              ) : null}
+            </div>
+          ) : null}
         </div>
       </div>
-
-      {draft.imagePreviewUrl || draft.videoPreviewUrl ? (
-        <div className="submission-preview-grid">
-          {draft.imagePreviewUrl ? (
-            <div className="evidence-card">
-              <span>Bildepreview</span>
-              <img src={draft.imagePreviewUrl} alt="Bevis" />
-            </div>
-          ) : null}
-          {draft.videoPreviewUrl ? (
-            <div className="evidence-card">
-              <span>Videopreview</span>
-              <MobileVideo
-                controls
-                preload="metadata"
-                muted
-                playsInline
-                src={draft.videoPreviewUrl}
-              />
-
-            </div>
-          ) : null}
-        </div>
-      ) : null}
 
       <div className="submission-form__actions">
         <button
           type="button"
           className="action-button action-button--hero"
-          disabled={isOverWordLimit || isOverCharacterLimit || Boolean(activeSubmissionBan)}
+          disabled={isOverCharacterLimit || Boolean(activeSubmissionBan)}
           onClick={onSubmit}
         >
           {buttonLabel}
@@ -647,9 +601,7 @@ function KnotRow({
 }) {
   const submissionMode = normalizeSubmissionMode(draft.submissionMode);
   const effectiveMode = activeFeedBan ? SUBMISSION_MODE.REVIEW : submissionMode;
-  const wordCount = getWordCount(draft.note ?? '');
   const characterCount = getCharacterCount(draft.note ?? '');
-  const isOverWordLimit = wordCount > NOTE_MAX_WORDS;
   const isOverCharacterLimit = characterCount > NOTE_MAX_CHARS;
   const statusKey = getStatusKey(knot.status);
   const statusLabel = getStatusLabel(knot.status);
@@ -709,20 +661,21 @@ function KnotRow({
                 <span className="knot-row__doc-btn-icon" aria-hidden="true">
                   <svg viewBox="0 0 24 24" fill="none" role="img">
                     <path
-                      d="M7.5 4.5h6l3 3v12h-9z"
-                      stroke="currentColor"
-                      strokeWidth="1.8"
-                      strokeLinejoin="round"
-                    />
-                    <path
-                      d="M13.5 4.5v3h3"
+                      d="M4.75 8.25h3.3l1.25-2h5.4l1.25 2h3.3v10.5H4.75z"
                       stroke="currentColor"
                       strokeWidth="1.8"
                       strokeLinecap="round"
                       strokeLinejoin="round"
                     />
+                    <circle
+                      cx="12"
+                      cy="13.25"
+                      r="3.15"
+                      stroke="currentColor"
+                      strokeWidth="1.8"
+                    />
                     <path
-                      d="M9.5 11h5M9.5 14h5M9.5 17h3.5"
+                      d="M17.25 10.25h.01"
                       stroke="currentColor"
                       strokeWidth="1.8"
                       strokeLinecap="round"
@@ -741,7 +694,7 @@ function KnotRow({
             aria-label="Vis detaljer"
             onClick={onToggleDetail}
           >
-            <span className="knot-row__expand-icon" aria-hidden="true" />
+            <span className="knot-row__expand-icon" aria-hidden="true">i</span>
           </button>
         </div>
       </div>
@@ -775,9 +728,7 @@ function KnotRow({
             effectiveMode={effectiveMode}
             activeFeedBan={activeFeedBan}
             activeSubmissionBan={activeSubmissionBan}
-            wordCount={wordCount}
             characterCount={characterCount}
-            isOverWordLimit={isOverWordLimit}
             isOverCharacterLimit={isOverCharacterLimit}
             buttonLabel={buttonLabel}
             onUpdateNote={onUpdateNote}
@@ -818,9 +769,7 @@ function KnotBottomSheet({
 
   const submissionMode = normalizeSubmissionMode(draft.submissionMode);
   const effectiveMode = activeFeedBan ? SUBMISSION_MODE.REVIEW : submissionMode;
-  const wordCount = getWordCount(draft.note ?? '');
   const characterCount = getCharacterCount(draft.note ?? '');
-  const isOverWordLimit = wordCount > NOTE_MAX_WORDS;
   const isOverCharacterLimit = characterCount > NOTE_MAX_CHARS;
 
   useEffect(() => {
@@ -889,9 +838,7 @@ function KnotBottomSheet({
               effectiveMode={effectiveMode}
               activeFeedBan={activeFeedBan}
               activeSubmissionBan={activeSubmissionBan}
-              wordCount={wordCount}
               characterCount={characterCount}
-              isOverWordLimit={isOverWordLimit}
               isOverCharacterLimit={isOverCharacterLimit}
               buttonLabel={buttonLabel}
               onUpdateNote={onUpdateNote}
@@ -992,8 +939,10 @@ export function KnotsPage({
 
   const draftsRef = useRef(drafts);
   const focusedCardRef = useRef(null);
+  const knotResultsRef = useRef(null);
   const handledFocusOpenRequestRef = useRef(0);
   const handledScrollRequestRef = useRef(0);
+  const folderScrollFrameRef = useRef(0);
   const highlightTimeoutRef = useRef(null);
 
   // ── Derived ──────────────────────────────────────────────────────────────
@@ -1151,6 +1100,9 @@ export function KnotsPage({
 
   useEffect(
     () => () => {
+      if (folderScrollFrameRef.current) {
+        window.cancelAnimationFrame(folderScrollFrameRef.current);
+      }
       if (highlightTimeoutRef.current) {
         window.clearTimeout(highlightTimeoutRef.current);
       }
@@ -1330,11 +1282,16 @@ export function KnotsPage({
     const nameField = type === 'image' ? 'imageName' : 'videoName';
     const fileField = type === 'image' ? 'imageFile' : 'videoFile';
     const removeField = type === 'image' ? 'removeImage' : 'removeVideo';
+    const oppositePreviewField = type === 'image' ? 'videoPreviewUrl' : 'imagePreviewUrl';
+    const oppositeNameField = type === 'image' ? 'videoName' : 'imageName';
+    const oppositeFileField = type === 'image' ? 'videoFile' : 'imageFile';
+    const oppositeRemoveField = type === 'image' ? 'removeVideo' : 'removeImage';
     const nextPreviewUrl = URL.createObjectURL(file);
 
     setDrafts((d) => {
       const cur = d[knotId] ?? {};
       revokeObjectUrl(cur[previewField]);
+      revokeObjectUrl(cur[oppositePreviewField]);
       return {
         ...d,
         [knotId]: {
@@ -1343,6 +1300,10 @@ export function KnotsPage({
           [fileField]: file,
           [previewField]: nextPreviewUrl,
           [removeField]: false,
+          [oppositeNameField]: '',
+          [oppositeFileField]: undefined,
+          [oppositePreviewField]: '',
+          [oppositeRemoveField]: true,
         },
       };
     });
@@ -1432,13 +1393,7 @@ export function KnotsPage({
     const effectiveSubmissionMode = activeFeedBan
       ? SUBMISSION_MODE.REVIEW
       : submissionMode;
-    const draftWordCount = getWordCount(draft.note ?? '');
     const draftCharacterCount = getCharacterCount(draft.note ?? '');
-    if (draftWordCount > NOTE_MAX_WORDS) {
-      setFeedbackMessage(`Hold forklaringen under ${NOTE_MAX_WORDS} ord.`);
-      setIsRareFeedbackActive(false);
-      return;
-    }
     if (draftCharacterCount > NOTE_MAX_CHARS) {
       setFeedbackMessage(`Hold forklaringen under ${NOTE_MAX_CHARS} tegn.`);
       setIsRareFeedbackActive(false);
@@ -1542,6 +1497,89 @@ export function KnotsPage({
     setActiveFolder(folderId);
     setOpenDetailId(null);
     setOpenFormId(null);
+    setSheetKnotId(null);
+    scheduleScrollToKnotResults();
+  }
+
+  function scrollToKnotResults() {
+    if (typeof window === 'undefined' || typeof document === 'undefined') {
+      return;
+    }
+
+    const element = knotResultsRef.current;
+    if (!element) {
+      return;
+    }
+
+    const rect = element.getBoundingClientRect();
+    const viewportHeight = window.innerHeight || 0;
+    const topOffset = isMobileViewport
+      ? Math.max(Math.round(viewportHeight * 0.18), 84)
+      : 88;
+    const isiOSWebKit =
+      typeof navigator !== 'undefined' &&
+      /iP(hone|od|ad)/i.test(navigator.userAgent ?? '');
+    const scrollBehavior = isiOSWebKit ? 'auto' : 'smooth';
+
+    let scrollContainer = element.parentElement;
+    while (scrollContainer && scrollContainer !== document.body) {
+      const style = window.getComputedStyle(scrollContainer);
+      const canScrollY = /(auto|scroll|overlay)/.test(style.overflowY);
+      if (canScrollY && scrollContainer.scrollHeight > scrollContainer.clientHeight) {
+        break;
+      }
+      scrollContainer = scrollContainer.parentElement;
+    }
+
+    if (scrollContainer && scrollContainer !== document.body) {
+      const containerRect = scrollContainer.getBoundingClientRect();
+      const targetWithinContainer = Math.max(
+        Math.round(scrollContainer.scrollTop + rect.top - containerRect.top - 16),
+        0,
+      );
+
+      scrollContainer.scrollTo({
+        top: targetWithinContainer,
+        left: 0,
+        behavior: scrollBehavior,
+      });
+
+      if (isiOSWebKit) {
+        scrollContainer.scrollTop = targetWithinContainer;
+      }
+      return;
+    }
+
+    const targetTop = Math.max(Math.round(window.scrollY + rect.top - topOffset), 0);
+    window.scrollTo({
+      top: targetTop,
+      left: 0,
+      behavior: scrollBehavior,
+    });
+
+    if (isiOSWebKit) {
+      const scrollingElement = document.scrollingElement ?? document.documentElement;
+      scrollingElement.scrollTop = targetTop;
+      document.documentElement.scrollTop = targetTop;
+      document.body.scrollTop = targetTop;
+    }
+  }
+
+  function scheduleScrollToKnotResults() {
+    if (typeof window === 'undefined') {
+      return;
+    }
+
+    if (folderScrollFrameRef.current) {
+      window.cancelAnimationFrame(folderScrollFrameRef.current);
+    }
+
+    folderScrollFrameRef.current = window.requestAnimationFrame(() => {
+      folderScrollFrameRef.current = window.requestAnimationFrame(() => {
+        folderScrollFrameRef.current = 0;
+        scrollToKnotResults();
+      });
+    });
   }
 
   function handleResetFilters() {
@@ -1713,10 +1751,12 @@ export function KnotsPage({
 
       {/* Empty states */}
       {visibleFolderKnots.length === 0 ? (
-        <p className="folder-empty">Det ligger ingen knuter i denne mappen ennå.</p>
+        <p ref={knotResultsRef} className="folder-empty">
+          Det ligger ingen knuter i denne mappen ennå.
+        </p>
       ) : null}
       {visibleFolderKnots.length > 0 && visibleKnots.length === 0 ? (
-        <div className="filter-empty-state">
+        <div ref={knotResultsRef} className="filter-empty-state">
           <h3>Ingen knuter matcher søket ditt</h3>
           <p>
             Prøv et annet søk, bytt statusfilter eller nullstill filtrene for å se hele
@@ -1734,7 +1774,7 @@ export function KnotsPage({
 
       {/* Knot list */}
       {visibleKnots.length > 0 ? (
-        <div className="knot-list">
+        <div ref={knotResultsRef} className="knot-list">
           {visibleKnots.map((knot) => {
             const canSubmit =
               knot.status === 'Tilgjengelig' ||

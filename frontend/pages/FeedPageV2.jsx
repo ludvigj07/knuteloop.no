@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { MobileVideo } from '../components/MobileVideo.jsx';
+import { PostActionsMenu } from '../components/PostActionsMenu.jsx';
 import anonymousFeedJoker from '../assets/anonymous-feed-joker.jpg';
 import anonymousFeedMask from '../assets/anonymous-feed-mask.png';
 import anonymousFeedWolf from '../assets/anonymous-feed-wolf.png';
@@ -31,7 +32,8 @@ const COMMENT_PRESETS = {
   ],
 };
 const LOCAL_FEED_COMMENTS = new Map();
-const DELETE_UNDO_DELAY_MS = 10000;
+const DELETE_FADE_OUT_MS = 200;
+const DELETE_TOAST_MS = 2800;
 const COMMENT_SEND_FEEDBACK_MS = 180;
 const COMMENT_COMPOSER_CLOSE_MS = 155;
 const COMMENT_HIGHLIGHT_MS = 3000;
@@ -457,43 +459,23 @@ function FeedRatingRow({
   );
 }
 
-function FeedDeleteButton({
-  canDelete,
+function FeedPostActions({
+  canManage,
   entry,
   isDeleting,
   onDelete,
   variant = 'floating',
 }) {
-  if (!canDelete || !entry.submissionId) {
+  if (!canManage || !entry.submissionId) {
     return null;
   }
 
-  if (variant === 'hud') {
-    return (
-      <button
-        type="button"
-        className="feed-reel-card__hud-button feed-reel-card__hud-button--danger"
-        onClick={() => onDelete(entry)}
-        disabled={isDeleting}
-        aria-label="Slett feed-post"
-        title="Slett feed-post"
-      >
-        {isDeleting ? '...' : '\u00D7'}
-      </button>
-    );
-  }
-
   return (
-    <button
-      type="button"
-      className="feed-card-delete-button"
-      onClick={() => onDelete(entry)}
-      disabled={isDeleting}
-      aria-label="Slett feed-post"
-      title="Slett feed-post"
-    >
-      {isDeleting ? '...' : '\u00D7'}
-    </button>
+    <PostActionsMenu
+      className={variant === 'hud' ? 'post-actions-menu--hud' : 'post-actions-menu--card'}
+      isDeleting={isDeleting}
+      onDelete={() => onDelete(entry)}
+    />
   );
 }
 
@@ -526,6 +508,75 @@ function FeedReportButton({ entry, isSubmitting, onReport, variant = 'default' }
     >
       Rapporter
     </button>
+  );
+}
+
+function FeedDeleteConfirmDialog({
+  entry,
+  isDeleting,
+  onCancel,
+  onConfirm,
+}) {
+  useEffect(() => {
+    function handleKeyDown(event) {
+      if (event.key === 'Escape') {
+        onCancel();
+      }
+    }
+
+    document.addEventListener('keydown', handleKeyDown);
+
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [onCancel]);
+
+  if (!entry || typeof document === 'undefined') {
+    return null;
+  }
+
+  return createPortal(
+    <div
+      className="feed-report-modal-backdrop"
+      role="presentation"
+      onClick={(event) => {
+        if (event.target === event.currentTarget && !isDeleting) {
+          onCancel();
+        }
+      }}
+    >
+      <div
+        className="feed-report-modal feed-delete-dialog"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="feed-delete-dialog-title"
+      >
+        <h3 id="feed-delete-dialog-title">Er du sikker du vil slette?</h3>
+        <p className="feed-report-modal__subtitle">
+          Dette kan ikke angres. Innlegget slettes permanent.
+        </p>
+
+        <div className="feed-report-modal__actions">
+          <button
+            type="button"
+            className="action-button action-button--ghost"
+            onClick={onCancel}
+            disabled={isDeleting}
+          >
+            Avbryt
+          </button>
+          <button
+            type="button"
+            className="action-button feed-delete-dialog__confirm"
+            onClick={onConfirm}
+            disabled={isDeleting}
+          >
+            {isDeleting ? 'Sletter...' : 'Slett'}
+          </button>
+        </div>
+      </div>
+    </div>,
+    document.body,
   );
 }
 
@@ -973,11 +1024,12 @@ function FeedCommentSheet({
 }
 
 function FeedCardMobile({
-  canDelete,
+  canManage,
   entry,
   index,
   isActive,
   isDeleting,
+  isRemoving,
   isReporting,
   total,
   isSubmitting,
@@ -1004,7 +1056,7 @@ function FeedCardMobile({
       ref={(node) => registerCardRef(entry.submissionId, node)}
       className={`feed-reel-card ${isActive ? 'is-active' : ''} ${
         isLightScene ? 'feed-reel-card--light-scene' : 'feed-reel-card--media-scene'
-      }`}
+      } ${isRemoving ? 'is-removing' : ''}`}
       data-feed-index={index}
     >
       <FeedMedia entry={entry} variant="mobile" isActive={isActive} />
@@ -1025,8 +1077,8 @@ function FeedCardMobile({
             <span className="feed-reel-card__hud-pill">Feed</span>
           </div>
           <div className="feed-reel-card__hud-side feed-reel-card__hud-side--end">
-            <FeedDeleteButton
-              canDelete={canDelete}
+            <FeedPostActions
+              canManage={canManage}
               entry={entry}
               isDeleting={isDeleting}
               onDelete={onDelete}
@@ -1108,10 +1160,11 @@ function FeedCardMobile({
 }
 
 function FeedCardDesktop({
-  canDelete,
+  canManage,
   entry,
   index,
   isDeleting,
+  isRemoving,
   isReporting,
   total,
   isSubmitting,
@@ -1128,9 +1181,9 @@ function FeedCardDesktop({
   const isTextOnly = entry.mediaType === 'none';
 
   return (
-    <article className="feed-card-desktop">
-      <FeedDeleteButton
-        canDelete={canDelete}
+    <article className={`feed-card-desktop ${isRemoving ? 'is-removing' : ''}`}>
+      <FeedPostActions
+        canManage={canManage}
         entry={entry}
         isDeleting={isDeleting}
         onDelete={onDelete}
@@ -1221,7 +1274,7 @@ function getNearestCardIndex(container, entries, cardRefMap) {
 
 export function FeedPage({
   activityLog,
-  canDeletePosts = false,
+  currentUserId = null,
   currentUserActiveBans = [],
   onDeleteSubmission,
   onExit,
@@ -1232,7 +1285,8 @@ export function FeedPage({
 }) {
   const [pendingBySubmission, setPendingBySubmission] = useState({});
   const [deletingBySubmission, setDeletingBySubmission] = useState({});
-  const [pendingDelete, setPendingDelete] = useState(null);
+  const [deleteDialogEntry, setDeleteDialogEntry] = useState(null);
+  const [removingBySubmission, setRemovingBySubmission] = useState({});
   const [reportingBySubmission, setReportingBySubmission] = useState({});
   const [ratingDraftBySubmission, setRatingDraftBySubmission] = useState({});
   const [ratingErrorBySubmission, setRatingErrorBySubmission] = useState({});
@@ -1242,6 +1296,7 @@ export function FeedPage({
   const [reportError, setReportError] = useState('');
   const [reportFeedback, setReportFeedback] = useState('');
   const [deleteFeedback, setDeleteFeedback] = useState('');
+  const [deleteToast, setDeleteToast] = useState('');
   const [activeMobileIndex, setActiveMobileIndex] = useState(0);
   const [commentSheetEntry, setCommentSheetEntry] = useState(null);
   const [localCommentsBySubmission, setLocalCommentsBySubmission] = useState(
@@ -1255,7 +1310,7 @@ export function FeedPage({
   const isDesktop = useDesktopFeed();
   const mobileReelRef = useRef(null);
   const cardRefMap = useRef(new Map());
-  const pendingDeleteTimeoutRef = useRef(null);
+  const deleteToastTimeoutRef = useRef(null);
   const commentTimerRef = useRef(new Map());
 
   const activeFeedBan =
@@ -1265,23 +1320,33 @@ export function FeedPage({
         activeFeedBan.remainingLabel ? ` (${activeFeedBan.remainingLabel})` : ''
       }.`
     : '';
-  const hiddenSubmissionId = pendingDelete?.submissionId ?? null;
+  const currentUserIdKey =
+    currentUserId === null || currentUserId === undefined
+      ? ''
+      : String(currentUserId);
   const feedEntries = useMemo(
     () =>
       activityLog.filter(
         (entry) =>
           Boolean(entry.submissionId) &&
-          entry.shareDetails !== false &&
-          entry.submissionId !== hiddenSubmissionId,
+          entry.shareDetails !== false,
       ),
-    [activityLog, hiddenSubmissionId],
+    [activityLog],
   );
+
+  function canManageEntry(entry) {
+    if (!currentUserIdKey || entry?.studentId === null || entry?.studentId === undefined) {
+      return false;
+    }
+
+    return String(entry.studentId) === currentUserIdKey;
+  }
 
   useEffect(
     () => () => {
-      if (pendingDeleteTimeoutRef.current) {
-        clearTimeout(pendingDeleteTimeoutRef.current);
-        pendingDeleteTimeoutRef.current = null;
+      if (deleteToastTimeoutRef.current) {
+        clearTimeout(deleteToastTimeoutRef.current);
+        deleteToastTimeoutRef.current = null;
       }
 
       commentTimerRef.current.forEach((timers) => {
@@ -1475,71 +1540,79 @@ export function FeedPage({
     }
   }
 
-  async function handleDelete(entry) {
+  function handleDelete(entry) {
     if (!entry.submissionId || !onDeleteSubmission) {
       return;
     }
 
-    if (deletingBySubmission[entry.submissionId] || pendingDelete) {
+    if (!canManageEntry(entry) || deletingBySubmission[entry.submissionId]) {
       return;
     }
 
     setDeleteFeedback('');
-    setPendingDelete({
-      submissionId: entry.submissionId,
-      knotTitle: entry.knotTitle ?? '',
-    });
-
-    if (pendingDeleteTimeoutRef.current) {
-      clearTimeout(pendingDeleteTimeoutRef.current);
-      pendingDeleteTimeoutRef.current = null;
-    }
-
-    pendingDeleteTimeoutRef.current = setTimeout(async () => {
-      setDeletingBySubmission((current) => ({
-        ...current,
-        [entry.submissionId]: true,
-      }));
-
-      try {
-        await onDeleteSubmission(entry.submissionId);
-      } catch (error) {
-        const message =
-          error instanceof Error && error.message ? error.message : '';
-        const normalizedMessage = message.trim().toLowerCase();
-
-        if (normalizedMessage.includes('ikke synlig i feeden')) {
-          setDeleteFeedback('');
-        } else {
-          setDeleteFeedback(
-            message || 'Kunne ikke slette feed-posten akkurat na.',
-          );
-        }
-      } finally {
-        setPendingDelete((current) =>
-          current?.submissionId === entry.submissionId ? null : current,
-        );
-        setDeletingBySubmission((current) => {
-          const next = { ...current };
-          delete next[entry.submissionId];
-          return next;
-        });
-        pendingDeleteTimeoutRef.current = null;
-      }
-    }, DELETE_UNDO_DELAY_MS);
+    setDeleteDialogEntry(entry);
   }
 
-  function handleUndoDelete() {
-    if (!pendingDelete) {
+  function closeDeleteDialog() {
+    if (deleteDialogEntry?.submissionId && deletingBySubmission[deleteDialogEntry.submissionId]) {
       return;
     }
 
-    if (pendingDeleteTimeoutRef.current) {
-      clearTimeout(pendingDeleteTimeoutRef.current);
-      pendingDeleteTimeoutRef.current = null;
+    setDeleteDialogEntry(null);
+  }
+
+  async function confirmDelete() {
+    if (!deleteDialogEntry?.submissionId || !onDeleteSubmission) {
+      return;
     }
 
-    setPendingDelete(null);
+    const entry = deleteDialogEntry;
+
+    if (!canManageEntry(entry) || deletingBySubmission[entry.submissionId]) {
+      return;
+    }
+
+    setDeleteFeedback('');
+    setDeletingBySubmission((current) => ({
+      ...current,
+      [entry.submissionId]: true,
+    }));
+
+    try {
+      await onDeleteSubmission(entry.submissionId, {
+        beforeApply: () => {
+          setDeleteDialogEntry(null);
+          setRemovingBySubmission((current) => ({
+            ...current,
+            [entry.submissionId]: true,
+          }));
+          setDeleteToast('Innlegget ble slettet');
+
+          if (deleteToastTimeoutRef.current) {
+            clearTimeout(deleteToastTimeoutRef.current);
+          }
+
+          deleteToastTimeoutRef.current = setTimeout(() => {
+            setDeleteToast('');
+            deleteToastTimeoutRef.current = null;
+          }, DELETE_TOAST_MS);
+        },
+        delayAppDataMs: DELETE_FADE_OUT_MS,
+      });
+    } catch {
+      setDeleteFeedback('Noe gikk galt. Prøv igjen.');
+      setRemovingBySubmission((current) => {
+        const next = { ...current };
+        delete next[entry.submissionId];
+        return next;
+      });
+    } finally {
+      setDeletingBySubmission((current) => {
+        const next = { ...current };
+        delete next[entry.submissionId];
+        return next;
+      });
+    }
   }
 
   function openReportModal(entry) {
@@ -1773,7 +1846,7 @@ export function FeedPage({
     );
   }
 
-  if (!feedEntries.length && !pendingDelete) {
+  if (!feedEntries.length) {
     return (
       <section className="section-card feed-empty">
         <div className="feed-empty__inner">
@@ -1841,22 +1914,10 @@ export function FeedPage({
 
       {reportFeedback ? <p className="form-feedback">{reportFeedback}</p> : null}
       {deleteFeedback ? <p className="form-feedback">{deleteFeedback}</p> : null}
-      {pendingDelete && typeof document !== 'undefined'
+      {deleteToast && typeof document !== 'undefined'
         ? createPortal(
-            <div className="feed-undo-toast" role="status" aria-live="polite">
-              <p>
-                Posten{pendingDelete.knotTitle ? ` "${pendingDelete.knotTitle}"` : ''} slettes om
-                10 sekunder.
-              </p>
-              <button
-                type="button"
-                className="feed-undo-toast__undo-button"
-                onClick={handleUndoDelete}
-                aria-label="Angre sletting"
-                title="Angre sletting"
-              >
-                {'\u21A9'}
-              </button>
+            <div className="feed-delete-toast" role="status" aria-live="polite">
+              <p>{deleteToast}</p>
             </div>,
             document.body,
           )
@@ -1867,13 +1928,14 @@ export function FeedPage({
           {feedEntries.map((entry, index) => (
             <FeedCardDesktop
               key={entry.id}
-              canDelete={canDeletePosts && !pendingDelete}
+              canManage={canManageEntry(entry)}
               entry={{
                 ...entry,
                 myRating: ratingDraftBySubmission[entry.submissionId] ?? entry.myRating,
               }}
               index={index}
               isDeleting={Boolean(deletingBySubmission[entry.submissionId])}
+              isRemoving={Boolean(removingBySubmission[entry.submissionId])}
               isReporting={Boolean(reportingBySubmission[entry.submissionId])}
               total={feedEntries.length}
               isSubmitting={Boolean(pendingBySubmission[entry.submissionId])}
@@ -1894,7 +1956,7 @@ export function FeedPage({
           {feedEntries.map((entry, index) => (
             <FeedCardMobile
               key={entry.id}
-              canDelete={canDeletePosts && !pendingDelete}
+              canManage={canManageEntry(entry)}
               entry={{
                 ...entry,
                 myRating: ratingDraftBySubmission[entry.submissionId] ?? entry.myRating,
@@ -1902,6 +1964,7 @@ export function FeedPage({
               index={index}
               isActive={activeMobileIndex === index}
               isDeleting={Boolean(deletingBySubmission[entry.submissionId])}
+              isRemoving={Boolean(removingBySubmission[entry.submissionId])}
               isReporting={Boolean(reportingBySubmission[entry.submissionId])}
               total={feedEntries.length}
               isSubmitting={Boolean(pendingBySubmission[entry.submissionId])}
@@ -1938,6 +2001,15 @@ export function FeedPage({
           onSubmitPreset={(preset) => handleSubmitLocalComment(commentSheetEntry, preset)}
           isDisabled={Boolean(activeFeedBan)}
           disabledReason={feedInteractionMessage}
+        />
+      ) : null}
+
+      {deleteDialogEntry ? (
+        <FeedDeleteConfirmDialog
+          entry={deleteDialogEntry}
+          isDeleting={Boolean(deletingBySubmission[deleteDialogEntry.submissionId])}
+          onCancel={closeDeleteDialog}
+          onConfirm={confirmDelete}
         />
       ) : null}
 

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import './App.css';
 import './styles/blaruss-refresh.css';
+import { OnboardingModal } from './components/OnboardingModal.jsx';
 import { SettingsModal } from './components/SettingsModal.jsx';
 import { SwipeTabsShell } from './components/SwipeTabsShell.jsx';
 import { Toast } from './components/Toast.jsx';
@@ -8,7 +9,6 @@ import {
   assertVideoWithinLimits,
   changeOwnPassword,
   completeDuel,
-  convertToMp4,
   createBan,
   deleteKnot,
   deleteSubmission,
@@ -57,7 +57,7 @@ const PAGE_CONFIG = {
     id: 'knuter',
     label: 'Knuter',
     shortLabel: 'Knuter',
-    icon: '\u2630',
+    icon: '\u{1FAA2}',
     title: 'Knuter',
     description: 'Velg knuter i eget tempo, og del det du har gjort.',
   },
@@ -130,6 +130,7 @@ function App() {
   const [loginError, setLoginError] = useState('');
   const [loginNotice, setLoginNotice] = useState('');
   const [appError, setAppError] = useState('');
+  const [isOnboardingOpen, setIsOnboardingOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [passwordForm, setPasswordForm] = useState(DEFAULT_PASSWORD_FORM);
   const [passwordError, setPasswordError] = useState('');
@@ -382,6 +383,13 @@ function App() {
     };
   }, [sessionToken]);
 
+  useEffect(() => {
+    if (!currentUser) return;
+    if (typeof window !== 'undefined' && !window.localStorage.getItem('onboarding_completed')) {
+      setIsOnboardingOpen(true);
+    }
+  }, [currentUser?.leaderId]);
+
   async function refreshAppData(token = sessionToken) {
     if (!token) {
       setAppData(null);
@@ -447,6 +455,13 @@ function App() {
     setPasswordForm({ ...DEFAULT_PASSWORD_FORM });
     setPasswordError('');
     setIsChangingPassword(false);
+  }
+
+  function handleCompleteOnboarding() {
+    if (typeof window !== 'undefined') {
+      window.localStorage.setItem('onboarding_completed', 'true');
+    }
+    setIsOnboardingOpen(false);
   }
 
   function handleOpenSettings() {
@@ -665,9 +680,9 @@ function App() {
       imageDataUrl: evidence.imageFile
         ? await readFileAsDataUrl(evidence.imageFile)
         : '',
-      videoName: convertedVideoFile?.name ?? evidence.videoName ?? '',
-      videoDataUrl: convertedVideoFile
-        ? await readFileAsDataUrl(convertedVideoFile)
+      videoName: evidence.videoFile?.name ?? evidence.videoName ?? '',
+      videoDataUrl: evidence.videoFile
+        ? await readFileAsDataUrl(evidence.videoFile)
         : '',
     });
 
@@ -735,9 +750,6 @@ function App() {
         evidence.submissionMode === 'review'
           ? evidence.submissionMode
           : 'feed';
-      const convertedVideoFile = evidence.videoFile
-        ? await convertToMp4(evidence.videoFile)
-        : null;
       const nextAppData = await completeDuel(sessionToken, duelId, {
         submissionMode: normalizedSubmissionMode,
         note: evidence.note ?? '',
@@ -745,9 +757,9 @@ function App() {
         imageDataUrl: evidence.imageFile
           ? await readFileAsDataUrl(evidence.imageFile)
           : '',
-        videoName: convertedVideoFile?.name ?? evidence.videoName ?? '',
-        videoDataUrl: convertedVideoFile
-          ? await readFileAsDataUrl(convertedVideoFile)
+        videoName: evidence.videoFile?.name ?? evidence.videoName ?? '',
+        videoDataUrl: evidence.videoFile
+          ? await readFileAsDataUrl(evidence.videoFile)
           : '',
       });
 
@@ -796,12 +808,21 @@ function App() {
     setAppData(nextAppData);
   }
 
-  async function handleDeleteSubmission(submissionId) {
+  async function handleDeleteSubmission(submissionId, options = {}) {
     if (!submissionId) {
       return;
     }
 
     const nextAppData = await deleteSubmission(sessionToken, submissionId);
+    options.beforeApply?.();
+
+    const delayAppDataMs = Number(options.delayAppDataMs) || 0;
+    if (delayAppDataMs > 0) {
+      await new Promise((resolve) => {
+        window.setTimeout(resolve, delayAppDataMs);
+      });
+    }
+
     setAppData(nextAppData);
   }
 
@@ -982,7 +1003,7 @@ function App() {
       content = (
         <FeedPage
           activityLog={activityLog}
-          canDeletePosts={currentUser.role === 'admin'}
+          currentUserId={currentUser.leaderId}
           currentUserActiveBans={currentUserActiveBans}
           onDeleteSubmission={handleDeleteSubmission}
           onExit={() => handleChangePage('dashboard')}
@@ -1083,6 +1104,7 @@ function App() {
           hideNavigation={false}
           mobileOnlySwipe
         />
+        <OnboardingModal isOpen={isOnboardingOpen} onComplete={handleCompleteOnboarding} />
         <SettingsModal
           appVersion={APP_VERSION}
           currentUser={currentUser}

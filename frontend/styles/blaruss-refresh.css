@@ -448,11 +448,13 @@
 .app-theme .swipe-tabs-shell__viewport {
   overflow-x: clip;
   overflow-y: visible;
+  contain: layout paint;
 }
 
 .app-theme .swipe-tabs-shell__page {
   overflow-x: clip;
   overflow-y: visible;
+  contain: layout paint;
 }
 
 .app-theme .swipe-tabs-shell.is-mobile-swipe .swipe-tabs-shell__page {
@@ -460,6 +462,10 @@
   isolation: isolate;
   z-index: 1;
   background: var(--app-canvas-background);
+}
+
+.app-theme .swipe-tabs-shell.is-mobile-swipe .swipe-tabs-shell__page:not(.is-active) {
+  pointer-events: none;
 }
 
 .app-theme .swipe-tabs-shell.is-mobile-swipe .swipe-tabs-shell__page.is-active {
@@ -1091,6 +1097,19 @@
   box-shadow: 3px 3px 0 0 var(--foreground) !important;
 }
 
+.app-theme .knot-row__expand-icon {
+  display: grid;
+  place-items: center;
+  width: 1em;
+  height: 1em;
+  font-family: Georgia, Cambria, "Times New Roman", Times, serif;
+  font-size: 1.36rem;
+  font-style: italic;
+  font-weight: 500;
+  line-height: 1;
+  transform: translateY(-0.02em);
+}
+
 .app-theme .knot-row__expand-btn.is-active,
 .app-theme .knot-row__expand-btn:hover {
   background: color-mix(in srgb, var(--secondary) 76%, white 24%) !important;
@@ -1098,7 +1117,7 @@
 
 .app-theme .knot-row__expand-icon::before,
 .app-theme .knot-row__expand-icon::after {
-  background: currentColor !important;
+  content: none !important;
 }
 
 .app-theme .knot-row__detail {
@@ -1165,6 +1184,14 @@
   gap: 14px;
 }
 
+.app-theme .knot-submission-form .field-group {
+  gap: 6px;
+}
+
+.app-theme .knot-submission-form textarea.text-input.text-input--compact {
+  min-height: 72px;
+}
+
 .app-theme .knot-submission-form .submission-mode-segment {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -1189,20 +1216,57 @@
 
 .app-theme .knot-submission-form .upload-field.upload-field--compact,
 .app-theme .knot-submission-form .upload-paste-target,
-.app-theme .knot-submission-form .upload-remove-btn {
+.app-theme .knot-submission-form .upload-remove-btn,
+.app-theme .knot-submission-form .evidence-chip {
   border: 2px solid color-mix(in srgb, var(--foreground) 16%, transparent) !important;
   box-shadow: none !important;
 }
 
 .app-theme .knot-submission-form .upload-field.upload-field--compact,
-.app-theme .knot-submission-form .upload-paste-target {
+.app-theme .knot-submission-form .upload-paste-target,
+.app-theme .knot-submission-form .evidence-chip {
   background: var(--card) !important;
   color: var(--foreground) !important;
 }
 
 .app-theme .knot-submission-form .upload-field.upload-field--compact > span,
+.app-theme .knot-submission-form .evidence-picker__top > span,
 .app-theme .submission-mode-options__label {
   color: var(--foreground) !important;
+}
+
+.app-theme .knot-submission-form .evidence-picker__top small,
+.app-theme .knot-submission-form .evidence-picker__empty,
+.app-theme .knot-submission-form .evidence-chip span {
+  color: var(--muted-foreground) !important;
+}
+
+.app-theme .knot-submission-form .evidence-picker__action {
+  border: 2px solid var(--foreground) !important;
+  background: var(--card) !important;
+  color: var(--foreground) !important;
+  box-shadow: 2px 2px 0 0 var(--foreground) !important;
+  font-weight: 800;
+}
+
+.app-theme .knot-submission-form .evidence-picker__action--image {
+  border-color: #1d4ed8 !important;
+  background: #2563eb !important;
+  color: #fff !important;
+  box-shadow: 2px 2px 0 0 #1d4ed8 !important;
+}
+
+.app-theme .knot-submission-form .evidence-picker__action--video {
+  border-color: #b91c1c !important;
+  background: #dc2626 !important;
+  color: #fff !important;
+  box-shadow: 2px 2px 0 0 #b91c1c !important;
+}
+
+.app-theme .knot-submission-form .evidence-card--compact {
+  border: 2px solid color-mix(in srgb, var(--foreground) 16%, transparent) !important;
+  background: var(--card) !important;
+  box-shadow: none !important;
 }
 
 .app-theme .knot-submission-form .upload-paste-target {
@@ -1213,6 +1277,39 @@
 .app-theme .knot-submission-form .upload-remove-btn {
   background: color-mix(in srgb, var(--danger) 10%, white 90%) !important;
   color: var(--danger-strong) !important;
+}
+
+@media (max-width: 900px) {
+  .app-theme .knot-submission-form {
+    gap: 10px;
+  }
+
+  .app-theme .knot-submission-form textarea.text-input.text-input--compact {
+    min-height: 58px;
+    max-height: 74px;
+  }
+
+  .app-theme .knot-submission-form .submission-mode-segment {
+    gap: 8px;
+  }
+
+  .app-theme .knot-submission-form .submission-mode-pill {
+    min-height: 38px;
+    box-shadow: 2px 2px 0 0 var(--foreground) !important;
+  }
+
+  .app-theme .knot-submission-form .evidence-picker__action {
+    min-height: 36px;
+    box-shadow: 2px 2px 0 0 var(--foreground) !important;
+  }
+
+  .app-theme .knot-submission-form .evidence-picker__action--image {
+    box-shadow: 2px 2px 0 0 #1d4ed8 !important;
+  }
+
+  .app-theme .knot-submission-form .evidence-picker__action--video {
+    box-shadow: 2px 2px 0 0 #b91c1c !important;
+  }
 }
 
 .app-theme .knot-sheet-backdrop.is-open {
@@ -1330,7 +1427,22 @@
   }
 
   .app-theme .bottom-swipe-nav {
-    padding: 7px 8px;
+    inset: auto 0 0 0 !important;
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
+    margin: 0;
+    padding:
+      8px max(8px, env(safe-area-inset-right, 0px))
+      calc(16px + env(safe-area-inset-bottom, 0px))
+      max(8px, env(safe-area-inset-left, 0px));
+    border-radius: 22px 22px 0 0 !important;
+    border-right: 0;
+    border-bottom: 0;
+    border-left: 0;
+    background: #fffaf0;
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
   }
 
   .app-theme .bottom-swipe-nav__grid {
@@ -1454,7 +1566,7 @@
   }
 
   .app-theme .knot-submission-form .submission-mode-segment {
-    grid-template-columns: 1fr;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .app-theme .knot-row__detail-label {

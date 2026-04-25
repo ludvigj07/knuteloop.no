@@ -1,8 +1,8 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 
 const MOBILE_BREAKPOINT = 900;
-const MOBILE_PAGE_GAP = 6;
-const MOBILE_PAGE_PEEK = 4;
+const MOBILE_PAGE_GAP = 0;
+const MOBILE_PAGE_PEEK = 0;
 const SWIPE_THRESHOLD_RATIO = 0.18;
 const SWIPE_VELOCITY_THRESHOLD = 0.45;
 const EDGE_RESISTANCE = 0.32;

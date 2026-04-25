@@ -1,7 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { MobileVideo } from '../components/MobileVideo.jsx';
 import { SectionCard } from '../components/SectionCard.jsx';
-import { convertToMp4 } from '../data/api.js';
 
 const MAX_DUEL_NOTE_WORDS = 100;
 const SUBMISSION_MODE = {
@@ -271,12 +270,7 @@ export function DuelPage({
       return;
     }
 
-    const nextFile =
-      type === 'video' ? await convertToMp4(file) : file;
-
-    if (!nextFile) {
-      return;
-    }
+    const nextFile = file;
 
     const previewField =
       type === 'image' ? 'imagePreviewUrl' : 'videoPreviewUrl';
