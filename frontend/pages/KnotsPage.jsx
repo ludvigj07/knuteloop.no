@@ -1523,13 +1523,23 @@ export function KnotsPage({
 
       {/* Empty states */}
       {knots.length > 0 && visibleFolderKnots.length === 0 ? (
-        <p className="folder-empty">
-          Det ligger ingen knuter i denne mappen ennå.
-        </p>
+        <div className="folder-empty empty-state">
+          <div className="empty-state__icon" aria-hidden="true">🪢</div>
+          <h3 className="empty-state__title">Tomt her</h3>
+          <p className="empty-state__hint">
+            Knuter dukker opp her når noen legger dem til.
+          </p>
+        </div>
       ) : null}
       {visibleFolderKnots.length > 0 && visibleKnots.length === 0 ? (
-        <div className="filter-empty-state">
-          <h3>{statusFilter === 'tatt' ? 'Du har ikke tatt noen knuter ennå' : 'Ingen knuter igjen i denne kategorien'}</h3>
+        <div className="filter-empty-state empty-state">
+          <div className="empty-state__icon" aria-hidden="true">🔍</div>
+          <h3 className="empty-state__title">
+            {statusFilter === 'tatt' ? 'Du har ikke tatt noen knuter ennå' : 'Ingen knuter igjen i denne kategorien'}
+          </h3>
+          <p className="empty-state__hint">
+            Prøv andre filtre eller nullstill for å se hele mappen igjen.
+          </p>
           <button
             type="button"
             className="action-button action-button--sticker action-button--compact"
