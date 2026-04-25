@@ -1730,8 +1730,24 @@ export function KnotsPage({
         </div>
       ) : null}
 
+      {/* Skeleton loaders — vises mens data fortsatt laster */}
+      {knots.length === 0 ? (
+        <div className="knot-list knot-list--skeleton" aria-hidden="true">
+          {Array.from({ length: 5 }).map((_, index) => (
+            <div key={index} className="skeleton skeleton-row">
+              <div className="skeleton-row__dot" />
+              <div className="skeleton-row__lines">
+                <div className="skeleton-row__line skeleton-row__line--title" />
+                <div className="skeleton-row__line skeleton-row__line--sub" />
+              </div>
+              <div className="skeleton-row__cta" />
+            </div>
+          ))}
+        </div>
+      ) : null}
+
       {/* Empty states */}
-      {visibleFolderKnots.length === 0 ? (
+      {knots.length > 0 && visibleFolderKnots.length === 0 ? (
         <p ref={knotResultsRef} className="folder-empty">
           Det ligger ingen knuter i denne mappen ennå.
         </p>

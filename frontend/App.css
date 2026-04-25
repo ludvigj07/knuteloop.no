@@ -12007,3 +12007,122 @@ textarea.text-input:focus {
   }
 }
 
+
+/* ----------------------------------------------------------------------- */
+/* Skeleton loaders — pulserende grå plassholdere mens data laster        */
+/* ----------------------------------------------------------------------- */
+
+.skeleton {
+  position: relative;
+  overflow: hidden;
+  background-color: rgba(0, 0, 0, 0.06);
+  border-radius: 12px;
+}
+
+[data-theme='dark'] .skeleton {
+  background-color: rgba(255, 255, 255, 0.06);
+}
+
+.skeleton::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 255, 255, 0.45),
+    transparent
+  );
+  background-size: 200% 100%;
+  animation: skeleton-shimmer 1.4s ease-in-out infinite;
+}
+
+[data-theme='dark'] .skeleton::before {
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 255, 255, 0.08),
+    transparent
+  );
+  background-size: 200% 100%;
+}
+
+@keyframes skeleton-shimmer {
+  0%   { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+/* Skeleton - knute-rad */
+.knot-list--skeleton {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.skeleton-row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 14px 16px;
+  min-height: 64px;
+}
+
+.skeleton-row__dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.12);
+  flex-shrink: 0;
+}
+
+[data-theme='dark'] .skeleton-row__dot {
+  background: rgba(255, 255, 255, 0.18);
+}
+
+.skeleton-row__lines {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.skeleton-row__line {
+  height: 10px;
+  border-radius: 6px;
+  background: rgba(0, 0, 0, 0.12);
+}
+
+[data-theme='dark'] .skeleton-row__line {
+  background: rgba(255, 255, 255, 0.14);
+}
+
+.skeleton-row__line--title { width: 70%; }
+.skeleton-row__line--sub   { width: 45%; height: 8px; }
+
+.skeleton-row__cta {
+  width: 80px;
+  height: 28px;
+  border-radius: 14px;
+  background: rgba(0, 0, 0, 0.12);
+  flex-shrink: 0;
+}
+
+[data-theme='dark'] .skeleton-row__cta {
+  background: rgba(255, 255, 255, 0.14);
+}
+
+/* Skeleton - feed-kort (forberedt for evt. fremtidig bruk) */
+.skeleton-card {
+  width: 100%;
+  height: 280px;
+  border-radius: 16px;
+  margin-bottom: 14px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .skeleton::before {
+    animation: none !important;
+  }
+}
+
