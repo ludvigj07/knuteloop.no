@@ -12790,3 +12790,61 @@ textarea.text-input:focus {
   }
 }
 
+/* Heart pop on comment-like */
+.feed-comment__like-btn {
+  position: relative;
+}
+
+.feed-comment__like-btn span[aria-hidden='true'] {
+  display: inline-flex;
+  position: relative;
+  transition: color 0.12s;
+}
+
+.feed-comment__like-btn.is-liked span[aria-hidden='true'] {
+  color: #ef4444;
+  animation: feed-comment-heart-pop 420ms cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.feed-comment__like-btn.is-liked span[aria-hidden='true']::before {
+  content: "";
+  position: absolute;
+  inset: 50% 50%;
+  width: 0;
+  height: 0;
+  border-radius: 999px;
+  background: radial-gradient(circle, rgba(239, 68, 68, 0.55) 0%, transparent 70%);
+  pointer-events: none;
+  opacity: 0;
+  animation: feed-comment-heart-burst 520ms ease-out;
+}
+
+@keyframes feed-comment-heart-pop {
+  0%   { transform: scale(1); }
+  35%  { transform: scale(1.4); }
+  65%  { transform: scale(0.9); }
+  100% { transform: scale(1); }
+}
+
+@keyframes feed-comment-heart-burst {
+  0% {
+    width: 0;
+    height: 0;
+    inset: 50% 50%;
+    opacity: 0.85;
+  }
+  100% {
+    width: 56px;
+    height: 56px;
+    inset: calc(50% - 28px) calc(50% - 28px);
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .feed-comment__like-btn.is-liked span[aria-hidden='true'],
+  .feed-comment__like-btn.is-liked span[aria-hidden='true']::before {
+    animation: none !important;
+  }
+}
+
