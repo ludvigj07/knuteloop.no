@@ -1066,6 +1066,7 @@ function App() {
           onDeleteComment={handleDeleteComment}
           onLikeComment={handleLikeComment}
           onReportComment={handleReportComment}
+          onRefresh={() => refreshAppData(sessionToken)}
         />
       );
     } else if (page.id === 'profiler') {
