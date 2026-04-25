@@ -1,31 +1,20 @@
-export function KnotIcon({ size = 22, strokeWidth }) {
+export function KnotIcon({ size = 22 }) {
   return (
     <svg
-      viewBox="0 0 60 36"
+      viewBox="0 0 100 56"
       width={size}
-      height={Math.round(size * 0.6)}
-      fill="currentColor"
+      height={Math.round(size * 56 / 100)}
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="11"
+      strokeLinecap="round"
+      strokeLinejoin="round"
       aria-hidden="true"
     >
-      {/* Left rope tail — overlaps loop edge so they visually connect */}
-      <rect x="0" y="13" width="10" height="10" rx="4" />
-
-      {/* Left loop — donut using evenodd */}
-      <path
-        fillRule="evenodd"
-        d="M31,18 A13,13,0,1,0,5,18 A13,13,0,1,0,31,18 Z
-           M25,18 A7,7,0,1,0,11,18 A7,7,0,1,0,25,18 Z"
-      />
-
-      {/* Right loop — donut */}
-      <path
-        fillRule="evenodd"
-        d="M55,18 A13,13,0,1,0,29,18 A13,13,0,1,0,55,18 Z
-           M49,18 A7,7,0,1,0,35,18 A7,7,0,1,0,49,18 Z"
-      />
-
-      {/* Right rope tail — overlaps loop edge */}
-      <rect x="50" y="13" width="10" height="10" rx="4" />
+      {/* Under strand at crossing — drawn first so loop sits on top */}
+      <path d="M 38,28 C 44,38 56,40 66,34 L 100,28" />
+      {/* Main loop + left tail — drawn on top at crossing */}
+      <path d="M 0,28 C 16,28 20,12 32,8 C 44,4 60,6 68,18 C 76,30 70,46 56,50 C 42,54 28,46 28,36 C 28,24 36,16 46,16 C 56,16 64,22 66,28" />
     </svg>
   );
 }
