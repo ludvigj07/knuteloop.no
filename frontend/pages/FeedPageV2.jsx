@@ -2,6 +2,11 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { MobileVideo } from '../components/MobileVideo.jsx';
 import { PostActionsMenu } from '../components/PostActionsMenu.jsx';
+import {
+  ReactionPicker,
+  ReactionFlyOverlay,
+  REACTION_FLY_DURATION_MS,
+} from '../components/ReactionPicker.jsx';
 import anonymousFeedJoker from '../assets/anonymous-feed-joker.jpg';
 import anonymousFeedMask from '../assets/anonymous-feed-mask.png';
 import anonymousFeedWolf from '../assets/anonymous-feed-wolf.png';
@@ -1181,6 +1186,71 @@ function FeedCommentSheet({
   );
 }
 
+const LONG_PRESS_MS = 500;
+const LONG_PRESS_MOVE_THRESHOLD_PX = 10;
+
+function useLongPressReaction(onLongPress) {
+  const stateRef = useRef({ pointerId: null, timer: null, x: 0, y: 0, fired: false });
+
+  const cleanup = useCallback(() => {
+    if (stateRef.current.timer) {
+      window.clearTimeout(stateRef.current.timer);
+      stateRef.current.timer = null;
+    }
+    stateRef.current.pointerId = null;
+    stateRef.current.fired = false;
+  }, []);
+
+  useEffect(() => () => cleanup(), [cleanup]);
+
+  const onPointerDown = useCallback((event) => {
+    if (event.pointerType === 'mouse' && event.button !== 0) return;
+    // Skip when starting on interactive control to avoid hijacking buttons
+    const target = event.target;
+    if (
+      target?.closest?.(
+        'button, a, input, textarea, select, [data-no-long-press="true"]',
+      )
+    ) {
+      return;
+    }
+    cleanup();
+    stateRef.current.pointerId = event.pointerId;
+    stateRef.current.x = event.clientX;
+    stateRef.current.y = event.clientY;
+    stateRef.current.fired = false;
+    const startX = event.clientX;
+    const startY = event.clientY;
+    const captureTarget = event.currentTarget;
+    stateRef.current.timer = window.setTimeout(() => {
+      if (stateRef.current.pointerId === event.pointerId) {
+        stateRef.current.fired = true;
+        try {
+          captureTarget?.setPointerCapture?.(event.pointerId);
+        } catch {
+          // ignore
+        }
+        onLongPress(startX, startY);
+      }
+    }, LONG_PRESS_MS);
+  }, [cleanup, onLongPress]);
+
+  const onPointerMove = useCallback((event) => {
+    if (stateRef.current.pointerId !== event.pointerId) return;
+    if (stateRef.current.fired) return;
+    const dx = event.clientX - stateRef.current.x;
+    const dy = event.clientY - stateRef.current.y;
+    if (Math.abs(dx) > LONG_PRESS_MOVE_THRESHOLD_PX || Math.abs(dy) > LONG_PRESS_MOVE_THRESHOLD_PX) {
+      cleanup();
+    }
+  }, [cleanup]);
+
+  const onPointerUp = useCallback(() => cleanup(), [cleanup]);
+  const onPointerCancel = useCallback(() => cleanup(), [cleanup]);
+
+  return { onPointerDown, onPointerMove, onPointerUp, onPointerCancel };
+}
+
 function FeedCardMobile({
   canManage,
   entry,
@@ -1201,7 +1271,11 @@ function FeedCardMobile({
   feedInteractionsDisabled,
   feedInteractionMessage,
   registerCardRef,
+  onLongPressReaction,
 }) {
+  const longPress = useLongPressReaction((x, y) => {
+    onLongPressReaction?.(x, y);
+  });
   const isLightScene = entry.mediaType === 'none';
   const noteText =
     entry.note && entry.note.trim() && entry.note.trim() !== entry.knotTitle
@@ -1216,6 +1290,10 @@ function FeedCardMobile({
         isLightScene ? 'feed-reel-card--light-scene' : 'feed-reel-card--media-scene'
       } ${isRemoving ? 'is-removing' : ''}`}
       data-feed-index={index}
+      onPointerDown={longPress.onPointerDown}
+      onPointerMove={longPress.onPointerMove}
+      onPointerUp={longPress.onPointerUp}
+      onPointerCancel={longPress.onPointerCancel}
     >
       <FeedMedia entry={entry} variant="mobile" isActive={isActive} />
 
@@ -1362,11 +1440,21 @@ function FeedCardDesktop({
   comments,
   feedInteractionsDisabled,
   feedInteractionMessage,
+  onLongPressReaction,
 }) {
   const isTextOnly = entry.mediaType === 'none';
+  const longPress = useLongPressReaction((x, y) => {
+    onLongPressReaction?.(x, y);
+  });
 
   return (
-    <article className={`feed-card-desktop ${isRemoving ? 'is-removing' : ''}`}>
+    <article
+      className={`feed-card-desktop ${isRemoving ? 'is-removing' : ''}`}
+      onPointerDown={longPress.onPointerDown}
+      onPointerMove={longPress.onPointerMove}
+      onPointerUp={longPress.onPointerUp}
+      onPointerCancel={longPress.onPointerCancel}
+    >
       <FeedPostActions
         canManage={canManage}
         entry={entry}
@@ -1470,6 +1558,26 @@ export function FeedPage({
   const [flaggedCommentId, setFlaggedCommentId] = useState(null);
   const [pullDistance, setPullDistance] = useState(0);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [reactionPicker, setReactionPicker] = useState(null);
+  const [flyingReactions, setFlyingReactions] = useState([]);
+
+  const handleOpenReactionPicker = useCallback((x, y) => {
+    setReactionPicker({ x, y });
+  }, []);
+  const handleCloseReactionPicker = useCallback(() => setReactionPicker(null), []);
+  const handleSelectReaction = useCallback((emoji) => {
+    setReactionPicker((current) => {
+      if (!current) return null;
+      const id = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+      const x = current.x;
+      const y = current.y;
+      setFlyingReactions((prev) => [...prev, { id, emoji, x, y }]);
+      window.setTimeout(() => {
+        setFlyingReactions((prev) => prev.filter((item) => item.id !== id));
+      }, REACTION_FLY_DURATION_MS + 50);
+      return null;
+    });
+  }, []);
   const isDesktop = useDesktopFeed();
   const mobileReelRef = useRef(null);
   const cardRefMap = useRef(new Map());
@@ -2056,6 +2164,7 @@ export function FeedPage({
               comments={commentsBySubmission[String(entry.submissionId)] ?? []}
               feedInteractionsDisabled={Boolean(activeFeedBan)}
               feedInteractionMessage={feedInteractionMessage}
+              onLongPressReaction={handleOpenReactionPicker}
             />
           ))}
         </div>
@@ -2129,10 +2238,21 @@ export function FeedPage({
               feedInteractionsDisabled={Boolean(activeFeedBan)}
               feedInteractionMessage={feedInteractionMessage}
               registerCardRef={registerCardRef}
+              onLongPressReaction={handleOpenReactionPicker}
             />
           ))}
         </div>
       )}
+
+      {reactionPicker ? (
+        <ReactionPicker
+          x={reactionPicker.x}
+          y={reactionPicker.y}
+          onClose={handleCloseReactionPicker}
+          onSelect={handleSelectReaction}
+        />
+      ) : null}
+      <ReactionFlyOverlay items={flyingReactions} />
 
       {commentSheetEntry ? (
         <FeedCommentSheet

@@ -12624,3 +12624,91 @@ textarea.text-input:focus {
   100% { opacity: 0; transform: translate(-50%, 30%); }
 }
 
+/* Reaction picker (long-press emoji menu on feed posts) */
+.reaction-picker {
+  position: fixed;
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 8px;
+  border-radius: 999px;
+  background: rgba(20, 22, 26, 0.92);
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.32);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  animation: reaction-picker-in 180ms cubic-bezier(0.34, 1.56, 0.64, 1);
+  touch-action: none;
+}
+
+.reaction-picker__emoji {
+  border: 0;
+  background: transparent;
+  font-size: 1.55rem;
+  line-height: 1;
+  width: 44px;
+  height: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  border-radius: 999px;
+  transition: transform 120ms ease, background 120ms ease;
+  padding: 0;
+}
+
+.reaction-picker__emoji:hover,
+.reaction-picker__emoji:focus-visible {
+  transform: translateY(-3px) scale(1.18);
+  background: rgba(255, 255, 255, 0.08);
+  outline: none;
+}
+
+.reaction-picker__emoji:active {
+  transform: scale(0.96);
+}
+
+@keyframes reaction-picker-in {
+  0%   { opacity: 0; transform: translateY(8px) scale(0.92); }
+  100% { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+/* Fly-up emoji animation overlay */
+.reaction-fly-layer {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 9999;
+}
+
+.reaction-fly-emoji {
+  position: absolute;
+  font-size: 2.6rem;
+  line-height: 1;
+  transform: translate(-50%, -50%);
+  animation-name: reaction-fly-up;
+  animation-timing-function: cubic-bezier(0.22, 0.78, 0.36, 1);
+  animation-fill-mode: forwards;
+  pointer-events: none;
+  text-shadow: 0 4px 18px rgba(0, 0, 0, 0.3);
+  will-change: transform, opacity;
+}
+
+@keyframes reaction-fly-up {
+  0%   { transform: translate(-50%, -50%) scale(0.6); opacity: 0; }
+  18%  { transform: translate(-50%, -70%) scale(1.4); opacity: 1; }
+  60%  { transform: translate(-50%, -180%) scale(1.7); opacity: 1; }
+  100% { transform: translate(-50%, -320%) scale(2.0); opacity: 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .reaction-fly-emoji {
+    animation: reaction-fly-up-simple 600ms ease-out forwards;
+  }
+}
+
+@keyframes reaction-fly-up-simple {
+  0%   { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+  100% { opacity: 0; transform: translate(-50%, -160%) scale(1.2); }
+}
+
