@@ -431,7 +431,7 @@ export function AdminPage({
   const [defaultPoints, setDefaultPoints] = useState(20);
   const [defaultFolder, setDefaultFolder] = useState(KNOT_FOLDERS[0].id);
   const [importMessage, setImportMessage] = useState('');
-  const [activeAdminTask, setActiveAdminTask] = useState('knots');
+  const [activeAdminTask, setActiveAdminTask] = useState('overview');
   const [reviewFeedback, setReviewFeedback] = useState('');
   const [selectedBanUserId, setSelectedBanUserId] = useState('');
   const [selectedBanType, setSelectedBanType] = useState(BAN_TYPE_OPTIONS[0].value);
