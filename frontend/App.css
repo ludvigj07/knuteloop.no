@@ -12870,3 +12870,84 @@ textarea.text-input:focus {
   }
 }
 
+/* ── Comment emoji reactions ─────────────────────────────────────────────── */
+
+.comment-reaction-picker {
+  position: fixed;
+  z-index: 1200;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 8px;
+  background: var(--surface, #fff);
+  border: 1px solid var(--surface-border, rgba(0, 0, 0, 0.1));
+  border-radius: 999px;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.18), 0 2px 6px rgba(0, 0, 0, 0.1);
+  animation: comment-reaction-picker-pop 160ms cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.comment-reaction-picker__emoji {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  border: none;
+  background: transparent;
+  font-size: 22px;
+  line-height: 1;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 120ms ease, background-color 120ms ease;
+}
+
+.comment-reaction-picker__emoji:hover,
+.comment-reaction-picker__emoji:active {
+  transform: scale(1.18);
+  background: rgba(0, 0, 0, 0.05);
+}
+
+@keyframes comment-reaction-picker-pop {
+  0% { transform: translateY(8px) scale(0.9); opacity: 0; }
+  100% { transform: translateY(0) scale(1); opacity: 1; }
+}
+
+.comment-reaction-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 4px;
+}
+
+.comment-reaction-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.06);
+  border: 1px solid transparent;
+  cursor: pointer;
+  font-size: 12px;
+  line-height: 1.4;
+  color: var(--text-strong, #111);
+  transition: transform 100ms ease, background-color 120ms ease, border-color 120ms ease;
+}
+
+.comment-reaction-pill:hover { background: rgba(0, 0, 0, 0.09); }
+.comment-reaction-pill:active { transform: scale(0.96); }
+
+.comment-reaction-pill.is-mine {
+  background: color-mix(in srgb, var(--accent, #4a90ff) 18%, transparent);
+  border-color: color-mix(in srgb, var(--accent, #4a90ff) 55%, transparent);
+}
+
+.comment-reaction-pill__emoji { font-size: 13px; }
+.comment-reaction-pill__count { font-weight: 600; }
+
+@media (prefers-reduced-motion: reduce) {
+  .comment-reaction-picker { animation: none; }
+  .comment-reaction-picker__emoji { transition: none; }
+  .comment-reaction-pill { transition: none; }
+}
+

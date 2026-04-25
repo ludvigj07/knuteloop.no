@@ -2,13 +2,10 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { MobileVideo } from '../components/MobileVideo.jsx';
 import { PostActionsMenu } from '../components/PostActionsMenu.jsx';
-import {
-  ReactionPicker,
-  ReactionFlyOverlay,
-  REACTION_FLY_DURATION_MS,
-} from '../components/ReactionPicker.jsx';
 import { PhotoZoomViewer } from '../components/PhotoZoomViewer.jsx';
 import { playTick } from '../lib/sounds.js';
+import { useCommentReactions } from '../lib/commentReactions.js';
+import { CommentReactionRow, CommentReactionPicker } from '../components/CommentReactionPicker.jsx';
 import anonymousFeedJoker from '../assets/anonymous-feed-joker.jpg';
 import anonymousFeedMask from '../assets/anonymous-feed-mask.png';
 import anonymousFeedWolf from '../assets/anonymous-feed-wolf.png';
@@ -648,6 +645,7 @@ function FeedCommentPreview({ comments, onOpenComments, commentCount, isDisabled
 
 function CommentItem({
   comment,
+  currentUserId = null,
   replyingToId,
   replyDraft,
   isSubmittingReply,
@@ -669,6 +667,7 @@ function CommentItem({
   onConfirmReport,
   onReportReasonChange,
   isDisabled,
+  onLongPressReact,
 }) {
   const isReplying = replyingToId === comment.id;
   const isLiking = pendingLikeIds.has(comment.id);
@@ -678,6 +677,12 @@ function CommentItem({
 
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const menuWrapRef = useRef(null);
+
+  const { reactions, toggleReaction } = useCommentReactions(comment.id, currentUserId);
+  const longPress = useLongPressReaction((x, y) => {
+    if (comment.deleted) return;
+    onLongPressReact?.(comment.id, x, y);
+  });
 
   useEffect(() => {
     if (!isMenuOpen) return undefined;
@@ -709,6 +714,10 @@ function CommentItem({
   return (
     <article
       className={`feed-sheet__comment ${comment.deleted ? 'is-deleted' : ''} ${isFlagged ? 'is-flagged-flash' : ''}`}
+      onPointerDown={longPress.onPointerDown}
+      onPointerMove={longPress.onPointerMove}
+      onPointerUp={longPress.onPointerUp}
+      onPointerCancel={longPress.onPointerCancel}
     >
       <div className="feed-comment__header">
         <CommentAvatar comment={comment} size="small" />
@@ -768,6 +777,10 @@ function CommentItem({
       <p className={`feed-comment__text ${comment.deleted ? 'feed-comment__text--deleted' : ''}`}>
         {comment.text}
       </p>
+
+      {!comment.deleted && reactions.length > 0 ? (
+        <CommentReactionRow reactions={reactions} onToggle={toggleReaction} />
+      ) : null}
 
       {!comment.deleted ? (
         <div className="feed-comment__actions">
@@ -934,6 +947,7 @@ function CommentItem({
 function FeedCommentSheet({
   entry,
   comments,
+  currentUserId = null,
   flaggedCommentId = null,
   canModerate = false,
   onDismissFlag,
@@ -945,6 +959,14 @@ function FeedCommentSheet({
   isDisabled = false,
   disabledReason = '',
 }) {
+  const [reactionPicker, setReactionPicker] = useState(null);
+
+  function openReactionPickerForComment(commentId, x, y) {
+    setReactionPicker({ commentId, x, y });
+  }
+  function closeReactionPicker() {
+    setReactionPicker(null);
+  }
   const commentListRef = useRef(null);
   const swipeTimeoutRef = useRef(null);
   const textareaRef = useRef(null);
@@ -1149,6 +1171,7 @@ function FeedCommentSheet({
               <CommentItem
                 key={comment.id}
                 comment={comment}
+                currentUserId={currentUserId}
                 replyingToId={replyingToId}
                 replyDraft={replyDraft}
                 isSubmittingReply={isSubmittingReply}
@@ -1170,6 +1193,7 @@ function FeedCommentSheet({
                 onConfirmReport={handleConfirmReport}
                 onReportReasonChange={setReportReason}
                 isDisabled={isDisabled}
+                onLongPressReact={openReactionPickerForComment}
               />
             ))
           ) : (
@@ -1210,6 +1234,40 @@ function FeedCommentSheet({
           {submitError ? <p className="feed-sheet__error">{submitError}</p> : null}
         </div>
       </section>
+      {reactionPicker ? (
+        <CommentReactionPicker
+          x={reactionPicker.x}
+          y={reactionPicker.y}
+          onClose={closeReactionPicker}
+          onSelect={(emoji) => {
+            try {
+              const userKey = currentUserId === null || currentUserId === undefined ? 'anon' : String(currentUserId);
+              const storeKey = `comment_reactions:${reactionPicker.commentId}`;
+              const raw = window.localStorage.getItem(storeKey);
+              const list = raw ? JSON.parse(raw) : [];
+              const existingIndex = Array.isArray(list)
+                ? list.findIndex((it) => it.emoji === emoji && String(it.userId) === userKey)
+                : -1;
+              const next = existingIndex >= 0
+                ? list.filter((_, idx) => idx !== existingIndex)
+                : [...(Array.isArray(list) ? list : []), { emoji, userId: userKey }];
+              if (!next.length) {
+                window.localStorage.removeItem(storeKey);
+              } else {
+                window.localStorage.setItem(storeKey, JSON.stringify(next));
+              }
+              window.dispatchEvent(
+                new CustomEvent('comment-reactions-changed', {
+                  detail: { commentId: reactionPicker.commentId },
+                }),
+              );
+            } catch {
+              // ignore — mock store
+            }
+            closeReactionPicker();
+          }}
+        />
+      ) : null}
     </div>,
     document.body,
   );
@@ -1300,11 +1358,7 @@ function FeedCardMobile({
   feedInteractionsDisabled,
   feedInteractionMessage,
   registerCardRef,
-  onLongPressReaction,
 }) {
-  const longPress = useLongPressReaction((x, y) => {
-    onLongPressReaction?.(x, y);
-  });
   const isLightScene = entry.mediaType === 'none';
   const noteText =
     entry.note && entry.note.trim() && entry.note.trim() !== entry.knotTitle
@@ -1319,10 +1373,6 @@ function FeedCardMobile({
         isLightScene ? 'feed-reel-card--light-scene' : 'feed-reel-card--media-scene'
       } ${isRemoving ? 'is-removing' : ''}`}
       data-feed-index={index}
-      onPointerDown={longPress.onPointerDown}
-      onPointerMove={longPress.onPointerMove}
-      onPointerUp={longPress.onPointerUp}
-      onPointerCancel={longPress.onPointerCancel}
     >
       <FeedMedia entry={entry} variant="mobile" isActive={isActive} />
 
@@ -1469,20 +1519,12 @@ function FeedCardDesktop({
   comments,
   feedInteractionsDisabled,
   feedInteractionMessage,
-  onLongPressReaction,
 }) {
   const isTextOnly = entry.mediaType === 'none';
-  const longPress = useLongPressReaction((x, y) => {
-    onLongPressReaction?.(x, y);
-  });
 
   return (
     <article
       className={`feed-card-desktop ${isRemoving ? 'is-removing' : ''}`}
-      onPointerDown={longPress.onPointerDown}
-      onPointerMove={longPress.onPointerMove}
-      onPointerUp={longPress.onPointerUp}
-      onPointerCancel={longPress.onPointerCancel}
     >
       <FeedPostActions
         canManage={canManage}
@@ -1587,26 +1629,6 @@ export function FeedPage({
   const [flaggedCommentId, setFlaggedCommentId] = useState(null);
   const [pullDistance, setPullDistance] = useState(0);
   const [isRefreshing, setIsRefreshing] = useState(false);
-  const [reactionPicker, setReactionPicker] = useState(null);
-  const [flyingReactions, setFlyingReactions] = useState([]);
-
-  const handleOpenReactionPicker = useCallback((x, y) => {
-    setReactionPicker({ x, y });
-  }, []);
-  const handleCloseReactionPicker = useCallback(() => setReactionPicker(null), []);
-  const handleSelectReaction = useCallback((emoji) => {
-    setReactionPicker((current) => {
-      if (!current) return null;
-      const id = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
-      const x = current.x;
-      const y = current.y;
-      setFlyingReactions((prev) => [...prev, { id, emoji, x, y }]);
-      window.setTimeout(() => {
-        setFlyingReactions((prev) => prev.filter((item) => item.id !== id));
-      }, REACTION_FLY_DURATION_MS + 50);
-      return null;
-    });
-  }, []);
   const isDesktop = useDesktopFeed();
   const mobileReelRef = useRef(null);
   const cardRefMap = useRef(new Map());
@@ -2195,7 +2217,6 @@ export function FeedPage({
               comments={commentsBySubmission[String(entry.submissionId)] ?? []}
               feedInteractionsDisabled={Boolean(activeFeedBan)}
               feedInteractionMessage={feedInteractionMessage}
-              onLongPressReaction={handleOpenReactionPicker}
             />
           ))}
         </div>
@@ -2269,21 +2290,10 @@ export function FeedPage({
               feedInteractionsDisabled={Boolean(activeFeedBan)}
               feedInteractionMessage={feedInteractionMessage}
               registerCardRef={registerCardRef}
-              onLongPressReaction={handleOpenReactionPicker}
             />
           ))}
         </div>
       )}
-
-      {reactionPicker ? (
-        <ReactionPicker
-          x={reactionPicker.x}
-          y={reactionPicker.y}
-          onClose={handleCloseReactionPicker}
-          onSelect={handleSelectReaction}
-        />
-      ) : null}
-      <ReactionFlyOverlay items={flyingReactions} />
 
       {commentSheetEntry ? (
         <FeedCommentSheet
