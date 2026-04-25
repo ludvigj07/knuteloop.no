@@ -3584,19 +3584,23 @@
 }
 
 .bottom-swipe-nav__grid {
-  display: grid;
+  display: flex;
   align-items: center;
-  justify-items: center;
-  gap: 6px;
+  justify-content: center;
+  gap: 4px;
+  width: 100%;
 }
 
 .bottom-swipe-nav__button {
   position: relative;
-  display: grid;
-  place-items: center;
-  inline-size: min(100%, 52px);
-  block-size: 52px;
-  min-height: 52px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  flex: 0 0 46px;
+  width: 46px;
+  height: 46px;
   padding: 0;
   border: 0;
   border-radius: 999px;
@@ -3605,11 +3609,13 @@
   font: inherit;
   font-weight: 700;
   cursor: pointer;
-  justify-self: center;
   opacity: 1;
   overflow: hidden;
   transition:
     transform 0.18s ease,
+    flex 0.22s ease,
+    width 0.22s ease,
+    height 0.18s ease,
     background-color 0.18s ease,
     color 0.18s ease,
     box-shadow 0.18s ease,
@@ -3637,6 +3643,11 @@
 }
 
 .bottom-swipe-nav__button.is-active {
+  flex: 1 1 auto;
+  min-width: 58px;
+  max-width: 97px;
+  height: 46px;
+  padding-inline: 8px;
   background: transparent !important;
   color: var(--primary) !important;
   opacity: 1;
@@ -3658,6 +3669,17 @@
   place-items: center;
   font-size: 1.18rem;
   line-height: 1;
+}
+
+.bottom-swipe-nav__label {
+  position: relative;
+  z-index: 1;
+  font-size: 0.6rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  line-height: 1;
+  white-space: nowrap;
 }
 
 .bottom-swipe-nav__label {
@@ -7283,16 +7305,21 @@ textarea.text-input:focus {
 
 .knot-submission-form .evidence-picker__actions {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 8px;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.knot-submission-form .evidence-picker__actions .evidence-picker__action {
+  justify-self: center;
+  width: 100%;
 }
 
 .knot-submission-form .evidence-picker__action {
-  min-height: 40px;
-  padding: 0 8px;
-  border-radius: 10px;
+  min-height: 52px;
+  padding: 0 16px;
+  border-radius: 14px;
   cursor: pointer;
-  font-size: 0.78rem;
+  font-size: 0.92rem;
   justify-content: center;
   text-align: center;
   white-space: nowrap;
