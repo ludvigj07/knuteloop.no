@@ -7,6 +7,7 @@ import { AchievementCelebration } from './components/AchievementCelebration.jsx'
 import { ConfettiBurst } from './components/ConfettiBurst.jsx';
 import { LiveOnboarding } from './components/LiveOnboarding.jsx';
 import { LoadingSplash } from './components/LoadingSplash.jsx';
+import { PwaInstallPrompt } from './components/PwaInstallPrompt.jsx';
 import { RankUpToast } from './components/RankUpToast.jsx';
 import { SettingsModal } from './components/SettingsModal.jsx';
 import { SwipeTabsShell } from './components/SwipeTabsShell.jsx';
@@ -1518,6 +1519,7 @@ function App() {
           data={pendingRankUp}
           onClose={() => setPendingRankUp(null)}
         />
+        <PwaInstallPrompt />
       </div>
     </div>
   );
