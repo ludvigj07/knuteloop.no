@@ -1643,9 +1643,7 @@ export function KnotsPage({
 
         <div className="knots-page__points sticker">
           <small>Dine poeng</small>
-          <span>
-            <AnimatedNumber value={currentUserPoints} />p
-          </span>
+          <AnimatedNumber value={currentUserPoints} format={(n) => `${n}p`} />
         </div>
 
         {streakCount > 0 ? (
