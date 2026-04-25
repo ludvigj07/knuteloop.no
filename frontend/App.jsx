@@ -6,6 +6,7 @@ import './styles/blaruss-refresh.css';
 import './styles/admin-mobile.css';
 import './styles/mobile-polish.css';
 import './styles/admin-density.css';
+import { AchievementCelebration } from './components/AchievementCelebration.jsx';
 import { ConfettiBurst } from './components/ConfettiBurst.jsx';
 import { LiveOnboarding } from './components/LiveOnboarding.jsx';
 import { SettingsModal } from './components/SettingsModal.jsx';
@@ -174,6 +175,7 @@ function App() {
     return Number.isFinite(parsed) ? parsed : 0;
   });
   const [confettiTrigger, setConfettiTrigger] = useState(0);
+  const [pendingAchievementCelebration, setPendingAchievementCelebration] = useState(null);
   const skipNextPageTopResetRef = useRef(false);
   const previousApprovedSubmissionIdsRef = useRef(null);
 
@@ -202,6 +204,70 @@ function App() {
     : null;
   const achievements = appData?.achievements ?? EMPTY_ARRAY;
   const profiles = appData?.profiles ?? EMPTY_ARRAY;
+
+  const achievementSeenStorageKey = currentUser
+    ? `seen_achievement_ids:${currentUser.leaderId ?? currentUser.id ?? 'self'}`
+    : null;
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    if (!achievementSeenStorageKey) return;
+    if (!Array.isArray(achievements) || achievements.length === 0) return;
+
+    let seenIds = [];
+    try {
+      const raw = window.localStorage.getItem(achievementSeenStorageKey);
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed)) seenIds = parsed.filter((id) => typeof id === 'string');
+      }
+    } catch {
+      seenIds = [];
+    }
+
+    const buildKey = (achievement) =>
+      `${achievement.id}:${achievement.currentTierIndex}`;
+
+    const unlockedNow = achievements.filter(
+      (achievement) => achievement.isUnlocked && achievement.currentTierIndex >= 0,
+    );
+
+    const isFirstLoad = seenIds.length === 0;
+    if (isFirstLoad) {
+      const initialKeys = unlockedNow.map(buildKey);
+      try {
+        window.localStorage.setItem(
+          achievementSeenStorageKey,
+          JSON.stringify(initialKeys),
+        );
+      } catch {
+        // ignore quota
+      }
+      return;
+    }
+
+    const newOnes = unlockedNow.filter(
+      (achievement) => !seenIds.includes(buildKey(achievement)),
+    );
+
+    if (newOnes.length === 0) return;
+
+    const nextSeen = Array.from(
+      new Set([...seenIds, ...unlockedNow.map(buildKey)]),
+    );
+    try {
+      window.localStorage.setItem(
+        achievementSeenStorageKey,
+        JSON.stringify(nextSeen),
+      );
+    } catch {
+      // ignore
+    }
+
+    if (!pendingAchievementCelebration) {
+      setPendingAchievementCelebration(newOnes[0]);
+    }
+  }, [achievements, achievementSeenStorageKey, pendingAchievementCelebration]);
+
   const currentProfile = currentUser
     ? profiles.find((profile) => profile.id === currentUser.leaderId) ?? profiles[0]
     : null;
@@ -1293,6 +1359,10 @@ function App() {
           />
         ) : null}
         <ConfettiBurst triggerKey={confettiTrigger} />
+        <AchievementCelebration
+          achievement={pendingAchievementCelebration}
+          onClose={() => setPendingAchievementCelebration(null)}
+        />
       </div>
     </div>
   );
