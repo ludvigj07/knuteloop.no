@@ -1008,6 +1008,17 @@ export function KnotsPage({
         : 'Send til godkjenning';
   const streakCount = currentUserStreak?.current ?? 0;
 
+  // Track previous streak count so we can celebrate when it goes UP.
+  const previousStreakRef = useRef(streakCount);
+  const [streakCelebrateKey, setStreakCelebrateKey] = useState(0);
+  useEffect(() => {
+    const previous = previousStreakRef.current;
+    if (typeof previous === 'number' && streakCount > previous && previous >= 0) {
+      setStreakCelebrateKey((k) => k + 1);
+    }
+    previousStreakRef.current = streakCount;
+  }, [streakCount]);
+
   // ── Effects ──────────────────────────────────────────────────────────────
 
   useEffect(() => {
@@ -1648,7 +1659,21 @@ export function KnotsPage({
 
         {streakCount > 0 ? (
           <div className="knots-page__hero-streak sticker">
-            <span aria-hidden="true">🔥</span>
+            <span
+              key={`flame-${streakCelebrateKey}`}
+              className={`streak-flame-wrap${streakCelebrateKey > 0 ? ' is-celebrating' : ''}`}
+              aria-hidden="true"
+            >
+              {streakCelebrateKey > 0 ? (
+                <span className="streak-flame-glow" key={`glow-${streakCelebrateKey}`} />
+              ) : null}
+              <span className="streak-flame-icon">🔥</span>
+              {streakCelebrateKey > 0 ? (
+                <span className="streak-flame-plus" key={`plus-${streakCelebrateKey}`}>
+                  +1
+                </span>
+              ) : null}
+            </span>
             <span>{streakCount} streak</span>
           </div>
         ) : null}
