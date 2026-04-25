@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+﻿import { useEffect, useMemo, useState } from 'react';
 import { MobileVideo } from '../components/MobileVideo.jsx';
 import { SectionCard } from '../components/SectionCard.jsx';
 import { StatCard } from '../components/StatCard.jsx';
@@ -219,7 +219,10 @@ function formatAdminTimestamp(isoValue) {
 }
 
 function buildOpenReportQueue(reports) {
-  const openReports = (reports ?? []).filter((report) => report.status === 'open');
+  const openReports = (reports ?? []).filter(
+    (report) =>
+      report.status === 'open' && report.type !== 'comment' && !report.commentId,
+  );
   const groupedBySubmission = openReports.reduce((accumulator, report) => {
     const currentGroup = accumulator[report.submissionId] ?? {
       submissionId: report.submissionId,
@@ -250,6 +253,51 @@ function buildOpenReportQueue(reports) {
   }, {});
 
   return Object.values(groupedBySubmission)
+    .map((group) => ({
+      ...group,
+      reasons: Array.from(group.reasons),
+      latestAtLabel: formatAdminTimestamp(group.createdAt),
+      primaryReportId: group.reportIds[0],
+    }))
+    .sort((left, right) => Date.parse(right.createdAt) - Date.parse(left.createdAt));
+}
+
+function buildOpenCommentReportQueue(reports) {
+  const openReports = (reports ?? []).filter(
+    (report) =>
+      report.status === 'open' && (report.type === 'comment' || report.commentId),
+  );
+  const groupedByComment = openReports.reduce((accumulator, report) => {
+    const key = report.commentId;
+    const currentGroup = accumulator[key] ?? {
+      commentId: report.commentId,
+      commentText: report.commentText,
+      commentAuthorName: report.commentAuthorName,
+      knotTitle: report.knotTitle,
+      reportIds: [],
+      count: 0,
+      createdAt: report.createdAt,
+      reasons: new Set(),
+      notes: [],
+    };
+
+    currentGroup.reportIds.push(report.id);
+    currentGroup.count += 1;
+    currentGroup.reasons.add(report.reason);
+
+    if (report.note) {
+      currentGroup.notes.push(report.note);
+    }
+
+    if (Date.parse(report.createdAt) > Date.parse(currentGroup.createdAt)) {
+      currentGroup.createdAt = report.createdAt;
+    }
+
+    accumulator[key] = currentGroup;
+    return accumulator;
+  }, {});
+
+  return Object.values(groupedByComment)
     .map((group) => ({
       ...group,
       reasons: Array.from(group.reasons),
@@ -463,11 +511,12 @@ export function AdminPage({
   const resolvedDuelCount = resolvedDuels.length;
   const totalKnotCount = knots.length;
   const reportQueue = buildOpenReportQueue(reports);
+  const commentReportQueue = buildOpenCommentReportQueue(reports);
   const reportedSubmissionIdSet = useMemo(
     () => new Set(reportQueue.map((report) => toSubmissionKey(report.submissionId))),
     [reportQueue],
   );
-  const openReportCount = reportQueue.length;
+  const openReportCount = reportQueue.length + commentReportQueue.length;
   const activeBans = (bans ?? []).filter((ban) => ban.active);
   const activeBanCount = activeBans.length;
   const customFeedbackLineCount = FEEDBACK_FIELD_CONFIG.reduce(
@@ -877,10 +926,12 @@ export function AdminPage({
       await onReviewReport(reportId, action);
       setReviewFeedback(
         action === 'keep'
-          ? 'Rapport er lukket uten endring i posten.'
-          : action === 'remove-feed'
-            ? 'Posten er fjernet fra feeden, og rapportene er håndtert.'
-            : 'Posten er reversert og rapportene er håndtert.',
+          ? 'Rapport er lukket uten endring.'
+          : action === 'delete-comment'
+            ? 'Kommentaren er slettet og rapportene er håndtert.'
+            : action === 'remove-feed'
+              ? 'Posten er fjernet fra feeden, og rapportene er håndtert.'
+              : 'Posten er reversert og rapportene er håndtert.',
       );
     } catch (error) {
       setReviewFeedback(
@@ -1329,7 +1380,7 @@ export function AdminPage({
           <div className="admin-task-panel">
             <div className="admin-subsection">
               <div className="section-card__header">
-                <h3>Åpne saker</h3>
+                <h3>Rapporterte feed-poster</h3>
                 <p>Én rad per post med samlet rapportmengde.</p>
               </div>
 
@@ -1348,7 +1399,7 @@ export function AdminPage({
                           Grunnlag: {reportGroup.reasons.join(', ')}
                         </p>
                         {reportGroup.notes[0] ? (
-                          <p className="submission-note">“{reportGroup.notes[0]}”</p>
+                          <p className="submission-note">"{reportGroup.notes[0]}"</p>
                         ) : null}
                       </div>
 
@@ -1385,7 +1436,63 @@ export function AdminPage({
                     </article>
                   ))
                 ) : (
-                  <p className="folder-empty">Ingen åpne rapporter akkurat nå.</p>
+                  <p className="folder-empty">Ingen rapporterte poster akkurat nå.</p>
+                )}
+              </div>
+            </div>
+
+            <div className="admin-subsection">
+              <div className="section-card__header">
+                <h3>Rapporterte kommentarer</h3>
+                <p>Én rad per kommentar med samlet rapportmengde.</p>
+              </div>
+
+              <div className="config-list">
+                {commentReportQueue.length > 0 ? (
+                  commentReportQueue.map((reportGroup) => (
+                    <article key={reportGroup.commentId} className="config-row">
+                      <div className="config-row__content">
+                        <h3>{reportGroup.knotTitle}</h3>
+                        <p>
+                          {reportGroup.commentAuthorName ?? 'Ukjent'} · {reportGroup.count} rapport(er) ·
+                          {' '}
+                          {reportGroup.latestAtLabel}
+                        </p>
+                        {reportGroup.commentText ? (
+                          <p className="submission-note">"{reportGroup.commentText}"</p>
+                        ) : null}
+                        <p>
+                          Grunnlag: {reportGroup.reasons.join(', ')}
+                        </p>
+                        {reportGroup.notes[0] ? (
+                          <p className="submission-note">Admin-notat: "{reportGroup.notes[0]}"</p>
+                        ) : null}
+                      </div>
+
+                      <div className="config-row__actions">
+                        <button
+                          type="button"
+                          className="action-button action-button--ghost"
+                          disabled={processingReportId === reportGroup.primaryReportId}
+                          onClick={() => handleReportAction(reportGroup.primaryReportId, 'keep')}
+                        >
+                          Behold kommentar
+                        </button>
+                        <button
+                          type="button"
+                          className="action-button action-button--danger"
+                          disabled={processingReportId === reportGroup.primaryReportId}
+                          onClick={() =>
+                            handleReportAction(reportGroup.primaryReportId, 'delete-comment')
+                          }
+                        >
+                          Slett kommentar
+                        </button>
+                      </div>
+                    </article>
+                  ))
+                ) : (
+                  <p className="folder-empty">Ingen rapporterte kommentarer akkurat nå.</p>
                 )}
               </div>
             </div>
