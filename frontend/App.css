@@ -10999,3 +10999,146 @@ textarea.text-input:focus {
   }
 }
 
+
+
+/* ===========================================================
+   Admin mobile cleanup — reduserer kognitiv last på små skjermer
+   =========================================================== */
+
+@media (max-width: 640px) {
+  /* Task-nav blir horisontal chip-rad i stedet for stable kort */
+  .admin-task-nav {
+    grid-template-columns: none;
+    display: flex;
+    overflow-x: auto;
+    gap: 8px;
+    padding-bottom: 6px;
+    scroll-snap-type: x proximity;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+
+  .admin-task-nav::-webkit-scrollbar {
+    display: none;
+  }
+
+  .admin-task-button {
+    flex: 0 0 auto;
+    padding: 8px 14px;
+    border-radius: 999px;
+    gap: 6px;
+    scroll-snap-align: start;
+    background: var(--card);
+  }
+
+  .admin-task-button__content strong {
+    font-size: 0.85rem;
+    font-weight: 700;
+  }
+
+  .admin-task-button__content span {
+    display: none; /* skjul sub-tekst (Ventende osv.) — mindre støy */
+  }
+
+  .admin-task-button__badge {
+    font-size: 0.72rem;
+    padding: 1px 6px;
+    min-width: 18px;
+  }
+
+  /* Section toolbar stacker vertikalt, knapper full bredde */
+  .admin-section-toolbar {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+  }
+
+  .admin-section-toolbar__actions {
+    flex-direction: column;
+    width: 100%;
+    gap: 8px;
+  }
+
+  .admin-section-toolbar__actions .action-button {
+    width: 100%;
+  }
+
+  /* Quick-grid: 2 kolonner i stedet for 1 — fyller skjermen bedre */
+  .admin-quick-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+  }
+
+  .admin-quick-card {
+    padding: 14px 12px;
+    gap: 6px;
+  }
+
+  .admin-quick-card strong {
+    font-size: 0.92rem;
+  }
+
+  .admin-quick-card p {
+    font-size: 0.78rem;
+  }
+
+  /* Stat-grid 2 kolonner på små skjermer */
+  .stats-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+  }
+
+  /* Admin-setup felt og knapper full bredde, stacket */
+  .admin-setup__actions,
+  .admin-setup__single {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+  }
+
+  .admin-setup__actions > *,
+  .admin-setup__single > * {
+    width: 100%;
+  }
+
+  /* Submission- og config-rows tettere padding, action-knapper deler bredden */
+  .submission-row,
+  .config-row {
+    padding: 12px;
+    gap: 10px;
+  }
+
+  .submission-row__actions,
+  .config-row__actions {
+    flex-direction: row;
+    flex-wrap: wrap;
+    gap: 6px;
+    width: 100%;
+  }
+
+  .submission-row__actions .action-button,
+  .config-row__actions .action-button {
+    flex: 1 1 calc(50% - 3px);
+    min-width: 0;
+    padding-inline: 10px;
+  }
+
+  /* Duel-evidence panel mindre tett */
+  .duel-evidence-grid {
+    gap: 10px;
+  }
+
+  /* Admin-subsection padding på mobil */
+  .admin-subsection {
+    gap: 10px;
+  }
+}
+
+@media (max-width: 380px) {
+  /* På veldig små skjermer: quick-grid og stats tilbake til 1 kolonne */
+  .admin-quick-grid,
+  .stats-grid {
+    grid-template-columns: 1fr;
+  }
+}
+

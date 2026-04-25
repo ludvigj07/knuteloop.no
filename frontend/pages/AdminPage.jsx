@@ -466,7 +466,7 @@ export function AdminPage({
   const [defaultPoints, setDefaultPoints] = useState(20);
   const [defaultFolder, setDefaultFolder] = useState(KNOT_FOLDERS[0].id);
   const [importMessage, setImportMessage] = useState('');
-  const [activeAdminTask, setActiveAdminTask] = useState('submissions');
+  const [activeAdminTask, setActiveAdminTask] = useState('overview');
   const [activeReviewFilter, setActiveReviewFilter] = useState(
     REVIEW_FILTER.APPROVAL_ONLY,
   );
