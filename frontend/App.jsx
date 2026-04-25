@@ -136,6 +136,7 @@ function App() {
   const [isLoadingApp, setIsLoadingApp] = useState(true);
   const [isLoggingIn, setIsLoggingIn] = useState(false);
   const [knuterSettledToken, setKnuterSettledToken] = useState(0);
+  const [profileEditRequest, setProfileEditRequest] = useState(0);
   const skipNextPageTopResetRef = useRef(false);
 
   const currentUser = appData?.currentUser ?? null;
@@ -567,6 +568,16 @@ function App() {
     }
   }
 
+  function handleSettingsOpenProfileEditor() {
+    setIsSettingsOpen(false);
+    if (currentUser?.leaderId) {
+      handleOpenProfile(currentUser.leaderId);
+    } else {
+      handleChangePage('profiler');
+    }
+    setProfileEditRequest((token) => token + 1);
+  }
+
   async function handleImportKnots(rawText, defaultPoints, defaultFolder, description) {
     const result = await importKnots(sessionToken, {
       rawText,
@@ -966,6 +977,7 @@ function App() {
           onBackToOverview={handleBackToProfileOverview}
           onSetKnotVisibility={handleSetKnotVisibility}
           profileViewMode={profileViewMode}
+          editRequest={profileEditRequest}
         />
       );
     } else if (page.id === 'status') {
@@ -1060,6 +1072,7 @@ function App() {
           onNavigateToFeed={handleSettingsOpenFeed}
           onNavigateToKnots={handleSettingsOpenKnots}
           onNavigateToProfile={handleSettingsOpenProfile}
+          onOpenProfileEditor={handleSettingsOpenProfileEditor}
           onSubmitPasswordChange={handleChangeOwnPassword}
           passwordError={passwordError}
           passwordForm={passwordForm}
