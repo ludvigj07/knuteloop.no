@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 export function SettingsModal({
   appVersion,
   currentUser,
+  isDark,
   isChangingPassword,
   isOpen,
   onChangePasswordField,
@@ -13,6 +14,7 @@ export function SettingsModal({
   onNavigateToProfile,
   onOpenProfileEditor,
   onSubmitPasswordChange,
+  onToggleDark,
   passwordError,
   passwordForm,
 }) {
@@ -161,6 +163,19 @@ export function SettingsModal({
               Du styrer deling per innsending i Knuter, og synlighet per godkjent knute inne på
               Profil.
             </p>
+          </section>
+
+          <section className="settings-section">
+            <div className="settings-section__header">
+              <h4>Utseende</h4>
+            </div>
+            <button
+              type="button"
+              className="action-button action-button--ghost"
+              onClick={onToggleDark}
+            >
+              {isDark ? '☀ Lys modus' : '☾ Mørk modus'}
+            </button>
           </section>
 
           <section className="settings-section">
