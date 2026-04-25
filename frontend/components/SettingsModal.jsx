@@ -18,8 +18,10 @@ export function SettingsModal({
   onOpenProfileEditor,
   onRestartTour,
   onSubmitPasswordChange,
+  onToggleSounds,
   passwordError,
   passwordForm,
+  soundsMuted = false,
 }) {
   const [isTermsOpen, setIsTermsOpen] = useState(false);
   const [isConfirmingDelete, setIsConfirmingDelete] = useState(false);
@@ -174,6 +176,25 @@ export function SettingsModal({
                   </button>
                 </div>
               </section>
+
+              {typeof onToggleSounds === 'function' ? (
+                <section className="settings-section">
+                  <div className="settings-section__header">
+                    <h4>Utseende</h4>
+                  </div>
+                  <div className="settings-shortcuts">
+                    <button
+                      type="button"
+                      className="action-button action-button--ghost"
+                      onClick={onToggleSounds}
+                      aria-pressed={!soundsMuted}
+                    >
+                      {soundsMuted ? '🔇 Lyd-effekter: av' : '🔊 Lyd-effekter: på'}
+                    </button>
+                  </div>
+                </section>
+              ) : null}
+
 
               <section className="settings-section settings-section--danger">
                 <div className="settings-section__header">
