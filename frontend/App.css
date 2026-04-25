@@ -9599,3 +9599,66 @@ textarea.text-input:focus {
   }
 }
 
+/* Toast / snackbar — bekreftelse etter handlinger */
+.toast {
+  position: fixed;
+  left: 50%;
+  bottom: calc(96px + env(safe-area-inset-bottom, 0px));
+  transform: translateX(-50%) translateY(20px);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 18px;
+  border-radius: 999px;
+  background: var(--text-strong, #0f172a);
+  color: #ffffff;
+  font-weight: 600;
+  font-size: 0.92rem;
+  box-shadow: 0 12px 32px rgba(15, 23, 42, 0.28);
+  opacity: 0;
+  pointer-events: none;
+  transition: transform 0.22s ease, opacity 0.22s ease;
+  max-width: calc(100vw - 32px);
+  z-index: 60;
+}
+
+.toast.is-visible {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}
+
+.toast--success {
+  background: #16a34a;
+}
+
+.toast--error {
+  background: #dc2626;
+}
+
+.toast--info {
+  background: var(--text-strong, #0f172a);
+}
+
+.toast__icon {
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.18);
+  font-weight: 800;
+  font-size: 0.85rem;
+}
+
+.toast__message {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+@media (min-width: 901px) {
+  .toast {
+    bottom: 32px;
+  }
+}
+

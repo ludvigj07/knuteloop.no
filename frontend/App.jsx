@@ -3,6 +3,7 @@ import './App.css';
 import './styles/blaruss-refresh.css';
 import { SettingsModal } from './components/SettingsModal.jsx';
 import { SwipeTabsShell } from './components/SwipeTabsShell.jsx';
+import { Toast } from './components/Toast.jsx';
 import {
   assertVideoWithinLimits,
   changeOwnPassword,
@@ -136,7 +137,12 @@ function App() {
   const [isLoadingApp, setIsLoadingApp] = useState(true);
   const [isLoggingIn, setIsLoggingIn] = useState(false);
   const [knuterSettledToken, setKnuterSettledToken] = useState(0);
+  const [toast, setToast] = useState(null);
   const skipNextPageTopResetRef = useRef(false);
+
+  function showToast(message, type = 'success') {
+    setToast({ message, type, key: Date.now() });
+  }
 
   const currentUser = appData?.currentUser ?? null;
   const knots = appData?.knots ?? EMPTY_ARRAY;
@@ -655,6 +661,21 @@ function App() {
     });
 
     setAppData(nextAppData);
+
+    // Bekreftelse til bruker — annen tekst avhengig av om posten gikk
+    // direkte til feeden eller til admin-godkjenning.
+    if (shouldSendSubmissionMode) {
+      if (normalizedSubmissionMode === 'feed') {
+        showToast('Knuten er lagt ut i feeden!');
+      } else if (normalizedSubmissionMode === 'anonymous-feed') {
+        showToast('Knuten er lagt ut anonymt i feeden!');
+      } else {
+        showToast('Knuten er sendt inn for godkjenning.');
+      }
+    } else {
+      showToast('Knuten er oppdatert.');
+    }
+
     return nextAppData;
   }
 
@@ -1064,6 +1085,14 @@ function App() {
           passwordError={passwordError}
           passwordForm={passwordForm}
         />
+        {toast ? (
+          <Toast
+            key={toast.key}
+            message={toast.message}
+            type={toast.type}
+            onClose={() => setToast(null)}
+          />
+        ) : null}
       </div>
     </div>
   );
