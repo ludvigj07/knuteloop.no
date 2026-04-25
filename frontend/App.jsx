@@ -13,6 +13,7 @@ import { SettingsModal } from './components/SettingsModal.jsx';
 import { SwipeTabsShell } from './components/SwipeTabsShell.jsx';
 import { Toast } from './components/Toast.jsx';
 import { playDing, playSwoosh, isSoundsMuted, setSoundsMuted } from './lib/sounds.js';
+import { useIdleAnimation } from './lib/useIdleAnimation.js';
 import {
   buildActivityLog,
   buildClassLeaderboard,
@@ -174,6 +175,21 @@ function App() {
       return next;
     });
   }, []);
+
+  // Idle easter egg: wobble the Knuter tab icon after 30s of no input.
+  useIdleAnimation(() => {
+    if (typeof document === 'undefined') return;
+    const button = document.querySelector('[data-tour-id="tab-knuter"]');
+    if (!button) return;
+    const iconWrapper = button.querySelector('.bottom-swipe-nav__icon') ?? button;
+    iconWrapper.classList.remove('is-knot-wobble');
+    // force reflow so we can re-trigger
+    void iconWrapper.offsetWidth;
+    iconWrapper.classList.add('is-knot-wobble');
+    window.setTimeout(() => {
+      iconWrapper.classList.remove('is-knot-wobble');
+    }, 1300);
+  }, { timeout: 30000 });
   const [passwordForm, setPasswordForm] = useState(DEFAULT_PASSWORD_FORM);
   const [passwordError, setPasswordError] = useState('');
   const [isChangingPassword, setIsChangingPassword] = useState(false);
