@@ -6,6 +6,7 @@ const MOBILE_PAGE_PEEK = 0;
 const SWIPE_THRESHOLD_RATIO = 0.18;
 const SWIPE_VELOCITY_THRESHOLD = 0.45;
 const EDGE_RESISTANCE = 0.32;
+const SETTLE_TRANSITION = 'transform 0.22s cubic-bezier(0.25, 0.46, 0.45, 0.94)';
 
 function createIdlePointerState() {
   return {
@@ -81,12 +82,6 @@ function scrollAppToTop(viewportElement) {
   });
 }
 
-function clearPointerInteraction(pointerStateRef, setDragOffset, setIsDragging) {
-  pointerStateRef.current = createIdlePointerState();
-  setDragOffset(0);
-  setIsDragging(false);
-}
-
 export function SwipeTabsShell({
   pages,
   activePageId,
@@ -98,21 +93,28 @@ export function SwipeTabsShell({
 }) {
   const shellRef = useRef(null);
   const viewportRef = useRef(null);
+  const trackRef = useRef(null);
   const pageRefs = useRef(new Map());
   const suppressNextClickRef = useRef(false);
   const pointerStateRef = useRef(createIdlePointerState());
+  const isDraggingRef = useRef(false);
+
+  // Refs so event handlers always see current values without stale closures
+  const activeIndexRef = useRef(0);
+  const pageAdvanceRef = useRef(0);
+  const pageLengthRef = useRef(pages.length);
+  // Keep latest props/handlers accessible inside native event listeners
+  const onChangePageRef = useRef(onChangePage);
+  const pagesRef = useRef(pages);
+  onChangePageRef.current = onChangePage;
+  pagesRef.current = pages;
 
   const [viewportWidth, setViewportWidth] = useState(() => getViewportWidth(null));
   const [activePageHeight, setActivePageHeight] = useState(0);
   const [isMobileViewport, setIsMobileViewport] = useState(() => {
-    if (typeof window === 'undefined') {
-      return true;
-    }
-
+    if (typeof window === 'undefined') return true;
     return window.innerWidth <= MOBILE_BREAKPOINT;
   });
-  const [dragOffset, setDragOffset] = useState(0);
-  const [isDragging, setIsDragging] = useState(false);
 
   const pageIndexById = useMemo(
     () =>
@@ -127,6 +129,19 @@ export function SwipeTabsShell({
   const pageWidth = Math.max(viewportWidth - MOBILE_PAGE_GAP - MOBILE_PAGE_PEEK, 0);
   const pageAdvance = pageWidth + MOBILE_PAGE_GAP;
 
+  // Keep refs in sync with derived values
+  activeIndexRef.current = activeIndex;
+  pageAdvanceRef.current = pageAdvance;
+  pageLengthRef.current = pages.length;
+
+  // Apply track transform directly to DOM — no React state involved
+  function applyTrackTransform(dragOffset = 0, animated = false) {
+    if (!trackRef.current) return;
+    const translate = -activeIndexRef.current * pageAdvanceRef.current + dragOffset;
+    trackRef.current.style.transition = animated ? SETTLE_TRANSITION : 'none';
+    trackRef.current.style.transform = `translate3d(${translate}px, 0, 0)`;
+  }
+
   function syncViewportWidth() {
     setViewportWidth(getViewportWidth(viewportRef.current ?? shellRef.current));
   }
@@ -139,20 +154,22 @@ export function SwipeTabsShell({
 
     handleResize();
     window.addEventListener('resize', handleResize);
-
-    return () => {
-      window.removeEventListener('resize', handleResize);
-    };
+    return () => window.removeEventListener('resize', handleResize);
   }, []);
 
   useEffect(() => {
     syncViewportWidth();
   }, [pages.length, isMobileViewport]);
 
+  // Snap track to active page whenever index or width changes
   useLayoutEffect(() => {
-    if (!useSwipeNav) {
-      return undefined;
-    }
+    if (!useSwipeNav || isDraggingRef.current) return;
+    applyTrackTransform(0, false);
+  }, [activeIndex, pageAdvance, useSwipeNav]);
+
+  // Measure active page height (ResizeObserver only — no polling interval)
+  useLayoutEffect(() => {
+    if (!useSwipeNav) return undefined;
 
     const measureActivePage = () => {
       const element = pageRefs.current.get(activePageId);
@@ -165,69 +182,77 @@ export function SwipeTabsShell({
             ),
           )
         : 0;
-      setActivePageHeight((currentHeight) =>
-        currentHeight !== nextHeight ? nextHeight : currentHeight,
-      );
+      setActivePageHeight((h) => (h !== nextHeight ? nextHeight : h));
     };
 
     measureActivePage();
-    const initialFrame = requestAnimationFrame(measureActivePage);
-    const delayedFrame = requestAnimationFrame(() => {
-      requestAnimationFrame(measureActivePage);
-    });
+    const frame = requestAnimationFrame(measureActivePage);
     window.addEventListener('resize', measureActivePage);
 
     let observer;
     if (typeof ResizeObserver !== 'undefined') {
       observer = new ResizeObserver(measureActivePage);
       const activeElement = pageRefs.current.get(activePageId);
-      if (activeElement) {
-        observer.observe(activeElement);
-      }
+      if (activeElement) observer.observe(activeElement);
     }
 
-    const intervalId = window.setInterval(measureActivePage, 350);
-
     return () => {
-      cancelAnimationFrame(initialFrame);
-      cancelAnimationFrame(delayedFrame);
-      window.clearInterval(intervalId);
+      cancelAnimationFrame(frame);
       window.removeEventListener('resize', measureActivePage);
       observer?.disconnect();
     };
   }, [activePageId, pages.length, useSwipeNav]);
 
   useEffect(() => {
-    if (!useSwipeNav) {
-      return undefined;
-    }
-
+    if (!useSwipeNav) return undefined;
     const handleWindowBlur = () => {
-      clearPointerInteraction(pointerStateRef, setDragOffset, setIsDragging);
+      pointerStateRef.current = createIdlePointerState();
+      isDraggingRef.current = false;
+      applyTrackTransform(0, true);
     };
-
     window.addEventListener('blur', handleWindowBlur);
+    return () => window.removeEventListener('blur', handleWindowBlur);
+  }, [useSwipeNav]);
+
+  // Attach pointer events as native listeners so we can use { passive: true }.
+  // With touch-action: pan-y on the viewport, the browser handles vertical scroll
+  // on the compositor thread without waiting for JS — eliminating frame stalls.
+  useEffect(() => {
+    if (!useSwipeNav) return undefined;
+    const el = viewportRef.current;
+    if (!el) return undefined;
+
+    const onDown = (e) => handlePointerDown(e);
+    const onMove = (e) => handlePointerMove(e);
+    const onEnd = (e) => handlePointerEnd(e);
+    const onClick = (e) => handleViewportClickCapture(e);
+
+    el.addEventListener('pointerdown', onDown, { passive: true });
+    el.addEventListener('pointermove', onMove, { passive: true });
+    el.addEventListener('pointerup', onEnd, { passive: true });
+    el.addEventListener('pointercancel', onEnd, { passive: true });
+    el.addEventListener('click', onClick, { capture: true });
 
     return () => {
-      window.removeEventListener('blur', handleWindowBlur);
+      el.removeEventListener('pointerdown', onDown);
+      el.removeEventListener('pointermove', onMove);
+      el.removeEventListener('pointerup', onEnd);
+      el.removeEventListener('pointercancel', onEnd);
+      el.removeEventListener('click', onClick, { capture: true });
     };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [useSwipeNav]);
 
   useEffect(() => {
-    if (typeof onPageSettled !== 'function') {
-      return undefined;
-    }
-
+    if (typeof onPageSettled !== 'function') return undefined;
     const settleDelay = useSwipeNav ? 220 : 0;
-    const timer = window.setTimeout(() => {
-      onPageSettled(activePageId);
-    }, settleDelay);
-
+    const timer = window.setTimeout(() => onPageSettled(activePageId), settleDelay);
     return () => window.clearTimeout(timer);
   }, [activePageId, onPageSettled, useSwipeNav]);
 
   function goToPage(pageId) {
-    resetPointerState();
+    pointerStateRef.current = createIdlePointerState();
+    isDraggingRef.current = false;
 
     if (pageId === activePageId) {
       pulseHaptics(8);
@@ -239,25 +264,10 @@ export function SwipeTabsShell({
     scrollAppToTop(viewportRef.current);
   }
 
-  function resetPointerState() {
-    clearPointerInteraction(pointerStateRef, setDragOffset, setIsDragging);
-  }
-
   function handlePointerDown(event) {
-    if (!useSwipeNav || event.pointerType === 'mouse') {
-      return;
-    }
+    if (!useSwipeNav || event.pointerType === 'mouse') return;
+    if (shouldIgnoreSwipeStart(event.target)) return;
 
-    // Keep swipe disabled over true text/form controls so typing, selecting
-    // and file picking are never hijacked. Buttons and links are allowed:
-    // once horizontal intent is confirmed we suppress the click in capture,
-    // which restores the "swipe anywhere" feel on mobile-heavy screens.
-    if (shouldIgnoreSwipeStart(event.target)) {
-      return;
-    }
-
-    // Don't capture the pointer yet — wait for confirmed horizontal intent.
-    // This lets taps on buttons work normally while still detecting swipes.
     suppressNextClickRef.current = false;
     pointerStateRef.current = {
       active: true,
@@ -273,50 +283,32 @@ export function SwipeTabsShell({
 
   function handlePointerMove(event) {
     const pointerState = pointerStateRef.current;
-
-    if (!useSwipeNav || !pointerState.active || pointerState.pointerId !== event.pointerId) {
-      return;
-    }
+    if (!useSwipeNav || !pointerState.active || pointerState.pointerId !== event.pointerId) return;
 
     const deltaX = event.clientX - pointerState.startX;
     const deltaY = event.clientY - pointerState.startY;
 
     if (pointerState.mode === 'pending') {
-      if (Math.abs(deltaX) < 10 && Math.abs(deltaY) < 10) {
-        return;
-      }
+      if (Math.abs(deltaX) < 10 && Math.abs(deltaY) < 10) return;
 
       if (Math.abs(deltaX) <= Math.abs(deltaY)) {
-        pointerStateRef.current = {
-          ...pointerState,
-          active: false,
-          mode: 'vertical',
-        };
+        pointerStateRef.current = { ...pointerState, active: false, mode: 'vertical' };
         return;
       }
 
-      // Confirmed horizontal swipe intent — lock the pointer NOW so the drag
-      // tracks smoothly even when the finger moves over buttons or other
-      // interactive children. Any pending tap is cancelled via
-      // suppressNextClickRef + the capture-phase click handler below.
-      if (event.currentTarget?.setPointerCapture) {
+      if (viewportRef.current?.setPointerCapture) {
         try {
-          event.currentTarget.setPointerCapture(event.pointerId);
-        } catch {
-          // Ignore pointer capture failures on unsupported browsers/devices.
-        }
+          viewportRef.current.setPointerCapture(event.pointerId);
+        } catch { /* ignore */ }
       }
 
       pointerState.mode = 'horizontal';
       suppressNextClickRef.current = true;
-      setIsDragging(true);
+      isDraggingRef.current = true;
+      if (trackRef.current) trackRef.current.classList.add('is-dragging');
     }
 
-    if (pointerState.mode !== 'horizontal') {
-      return;
-    }
-
-    event.preventDefault();
+    if (pointerState.mode !== 'horizontal') return;
 
     const now = performance.now();
     const elapsed = Math.max(now - pointerState.lastTime, 1);
@@ -324,91 +316,85 @@ export function SwipeTabsShell({
     pointerState.lastX = event.clientX;
     pointerState.lastTime = now;
 
+    const ai = activeIndexRef.current;
+    const pl = pageLengthRef.current;
     let nextOffset = deltaX;
-
-    if ((activeIndex === 0 && deltaX > 0) || (activeIndex === pages.length - 1 && deltaX < 0)) {
+    if ((ai === 0 && deltaX > 0) || (ai === pl - 1 && deltaX < 0)) {
       nextOffset *= EDGE_RESISTANCE;
     }
 
-    setDragOffset(nextOffset);
+    // Direct DOM update — zero React re-renders during drag
+    applyTrackTransform(nextOffset, false);
   }
 
   function handlePointerEnd(event) {
     const pointerState = pointerStateRef.current;
-    const releaseX =
-      typeof event.clientX === 'number' ? event.clientX : pointerState.lastX;
+    const releaseX = typeof event.clientX === 'number' ? event.clientX : pointerState.lastX;
 
-    if (event.currentTarget?.hasPointerCapture?.(event.pointerId)) {
+    if (viewportRef.current?.hasPointerCapture?.(event.pointerId)) {
       try {
-        event.currentTarget.releasePointerCapture(event.pointerId);
-      } catch {
-        // Ignore release failures.
-      }
+        viewportRef.current.releasePointerCapture(event.pointerId);
+      } catch { /* ignore */ }
     }
 
-    if (!useSwipeNav || pointerState.pointerId !== event.pointerId) {
-      return;
-    }
+    if (!useSwipeNav || pointerState.pointerId !== event.pointerId) return;
 
     if (pointerState.mode !== 'horizontal') {
-      resetPointerState();
+      pointerStateRef.current = createIdlePointerState();
+      isDraggingRef.current = false;
       return;
     }
 
     const deltaX = releaseX - pointerState.startX;
     const absDeltaX = Math.abs(deltaX);
-    const threshold = Math.max(pageAdvance * SWIPE_THRESHOLD_RATIO, 48);
+    const pa = pageAdvanceRef.current;
+    const ai = activeIndexRef.current;
+    const pl = pageLengthRef.current;
+    const threshold = Math.max(pa * SWIPE_THRESHOLD_RATIO, 48);
+
     const nextIndexByDistance =
-      absDeltaX > threshold
-        ? deltaX < 0
-          ? activeIndex + 1
-          : activeIndex - 1
-        : activeIndex;
+      absDeltaX > threshold ? (deltaX < 0 ? ai + 1 : ai - 1) : ai;
     const nextIndexByVelocity =
       Math.abs(pointerState.velocityX) > SWIPE_VELOCITY_THRESHOLD
-        ? pointerState.velocityX < 0
-          ? activeIndex + 1
-          : activeIndex - 1
-        : activeIndex;
-    const desiredIndex =
-      nextIndexByVelocity !== activeIndex ? nextIndexByVelocity : nextIndexByDistance;
-    const clampedIndex = clamp(desiredIndex, 0, pages.length - 1);
+        ? pointerState.velocityX < 0 ? ai + 1 : ai - 1
+        : ai;
+    const desiredIndex = nextIndexByVelocity !== ai ? nextIndexByVelocity : nextIndexByDistance;
+    const clampedIndex = clamp(desiredIndex, 0, pl - 1);
 
-    if (clampedIndex !== activeIndex) {
+    pointerStateRef.current = createIdlePointerState();
+    isDraggingRef.current = false;
+    if (trackRef.current) trackRef.current.classList.remove('is-dragging');
+
+    if (clampedIndex !== ai) {
+      // Animate to new page position before React updates activeIndex
+      const newTranslate = -clampedIndex * pa;
+      if (trackRef.current) {
+        trackRef.current.style.transition = SETTLE_TRANSITION;
+        trackRef.current.style.transform = `translate3d(${newTranslate}px, 0, 0)`;
+      }
       pulseHaptics(12);
-      onChangePage(pages[clampedIndex].id);
+      onChangePageRef.current(pagesRef.current[clampedIndex].id);
       scrollAppToTop(viewportRef.current);
+    } else {
+      // Snap back to current page with animation
+      applyTrackTransform(0, true);
     }
-
-    resetPointerState();
   }
 
   function handleViewportClickCapture(event) {
-    if (!suppressNextClickRef.current) {
-      return;
-    }
-
+    if (!suppressNextClickRef.current) return;
     suppressNextClickRef.current = false;
     event.preventDefault();
     event.stopPropagation();
   }
 
-  const effectiveDragOffset = isDragging ? dragOffset : 0;
-  const trackTranslate = useSwipeNav
-    ? -activeIndex * pageAdvance + effectiveDragOffset
-    : 0;
   const mobileViewportStyle =
     useSwipeNav && activePageHeight > 0
-      ? {
-          height: `${activePageHeight}px`,
-          transition: isDragging ? 'none' : 'height 0.22s ease',
-        }
+      ? { height: `${activePageHeight}px`, transition: 'height 0.22s ease' }
       : undefined;
+
   const mobilePageStyle = useSwipeNav
-    ? {
-        width: `${pageWidth}px`,
-        flexBasis: `${pageWidth}px`,
-      }
+    ? { width: `${pageWidth}px`, flexBasis: `${pageWidth}px` }
     : undefined;
 
   return (
@@ -422,40 +408,39 @@ export function SwipeTabsShell({
             ref={viewportRef}
             className="swipe-tabs-shell__viewport"
             style={mobileViewportStyle}
-            onClickCapture={handleViewportClickCapture}
-            onPointerDownCapture={handlePointerDown}
-            onPointerMoveCapture={handlePointerMove}
-            onPointerUpCapture={handlePointerEnd}
-            onPointerCancelCapture={handlePointerEnd}
           >
             <div
-              className={`swipe-tabs-shell__track ${
-                isDragging ? 'is-dragging' : 'is-animating'
-              }`}
+              ref={trackRef}
+              className="swipe-tabs-shell__track is-animating"
               style={{
-                transform: `translate3d(${trackTranslate}px, 0, 0)`,
+                transform: `translate3d(${-activeIndex * pageAdvance}px, 0, 0)`,
                 gap: `${MOBILE_PAGE_GAP}px`,
+                willChange: 'transform',
               }}
             >
-              {pages.map((page) => (
-                <section
-                  key={page.id}
-                  ref={(element) => {
-                    if (element) {
-                      pageRefs.current.set(page.id, element);
-                    } else {
-                      pageRefs.current.delete(page.id);
-                    }
-                  }}
-                  className={`swipe-tabs-shell__page ${
-                    page.id === 'feed' ? 'swipe-tabs-shell__page--feed' : ''
-                  } ${activePageId === page.id ? 'is-active' : ''}`}
-                  style={mobilePageStyle}
-                  aria-hidden={activePageId !== page.id}
-                >
-                  {renderPage(page)}
-                </section>
-              ))}
+              {pages.map((page, index) => {
+                const isActive = page.id === activePageId;
+                const isAdjacent = Math.abs(index - activeIndex) <= 1;
+                return (
+                  <section
+                    key={page.id}
+                    ref={(element) => {
+                      if (element) pageRefs.current.set(page.id, element);
+                      else pageRefs.current.delete(page.id);
+                    }}
+                    className={`swipe-tabs-shell__page ${
+                      page.id === 'feed' ? 'swipe-tabs-shell__page--feed' : ''
+                    } ${isActive ? 'is-active' : ''}`}
+                    style={{
+                      ...mobilePageStyle,
+                      contentVisibility: isAdjacent ? 'visible' : 'auto',
+                    }}
+                    aria-hidden={!isActive}
+                  >
+                    {renderPage(page)}
+                  </section>
+                );
+              })}
             </div>
           </div>
 
@@ -463,13 +448,10 @@ export function SwipeTabsShell({
             <nav className="bottom-swipe-nav" aria-label="Hovednavigasjon">
               <div
                 className="bottom-swipe-nav__grid"
-                style={{
-                  gridTemplateColumns: `repeat(${pages.length}, minmax(0, 1fr))`,
-                }}
+                style={{ gridTemplateColumns: `repeat(${pages.length}, minmax(0, 1fr))` }}
               >
                 {pages.map((page) => {
                   const isActive = page.id === activePageId;
-
                   return (
                     <button
                       key={page.id}
