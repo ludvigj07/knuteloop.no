@@ -453,17 +453,7 @@ function SubmissionFormContent({
 
           <div className="evidence-picker__actions" role="group" aria-label="Velg bevis">
             <label className="action-button action-button--ghost evidence-picker__action evidence-picker__action--image">
-              Ta bilde
-              <input
-                type="file"
-                accept="image/*"
-                capture="environment"
-                className="evidence-picker__input"
-                onChange={handleImageInputChange}
-              />
-            </label>
-            <label className="action-button action-button--ghost evidence-picker__action evidence-picker__action--image">
-              Velg bilde
+              Bilde
               <input
                 type="file"
                 accept="image/*"
@@ -472,17 +462,7 @@ function SubmissionFormContent({
               />
             </label>
             <label className="action-button action-button--ghost evidence-picker__action evidence-picker__action--video">
-              Ta video
-              <input
-                type="file"
-                accept="video/*"
-                capture="environment"
-                className="evidence-picker__input"
-                onChange={handleVideoInputChange}
-              />
-            </label>
-            <label className="action-button action-button--ghost evidence-picker__action evidence-picker__action--video">
-              Velg video
+              Video
               <input
                 type="file"
                 accept="video/*"
