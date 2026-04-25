@@ -562,6 +562,7 @@ function KnotRow({
   isHighlighted,
   isFormOpen,
   isMobile,
+  isTourTarget = false,
   canSubmit,
   buttonLabel,
   draft,
@@ -603,6 +604,7 @@ function KnotRow({
       ref={focusedRef}
       className={`knot-row${isCompletedKnot ? ' is-completed' : ''}${isHighlighted ? ' is-highlighted' : ''}${isDetailOpen ? ' is-detail-open' : ''}${isFormOpen ? ' is-form-open' : ''}`}
       data-status={getStatusKey(knot.status)}
+      data-tour-id={isTourTarget ? 'first-knot' : undefined}
     >
       <div className="knot-row__header">
         <div className="knot-row__info">
@@ -1755,7 +1757,7 @@ export function KnotsPage({
       {/* Knot list */}
       {visibleKnots.length > 0 ? (
         <div ref={knotResultsRef} className="knot-list">
-          {visibleKnots.map((knot) => {
+          {visibleKnots.map((knot, knotIndex) => {
             const canSubmit =
               knot.status === 'Tilgjengelig' ||
               knot.status === 'Sendt inn' ||
@@ -1776,6 +1778,7 @@ export function KnotsPage({
                 isHighlighted={highlightedKnotId === knot.id}
                 isFormOpen={openFormId === knot.id}
                 isMobile={isMobileViewport}
+                isTourTarget={knotIndex === 0}
                 canSubmit={canSubmit}
                 buttonLabel={buttonLabel}
                 draft={draft}
