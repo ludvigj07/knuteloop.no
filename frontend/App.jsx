@@ -12,6 +12,7 @@ import { RankUpToast } from './components/RankUpToast.jsx';
 import { SettingsModal } from './components/SettingsModal.jsx';
 import { SwipeTabsShell } from './components/SwipeTabsShell.jsx';
 import { Toast } from './components/Toast.jsx';
+import { playDing, playSwoosh, isSoundsMuted, setSoundsMuted } from './lib/sounds.js';
 import {
   buildActivityLog,
   buildClassLeaderboard,
@@ -165,6 +166,14 @@ function App() {
     if (stored) return stored === 'dark';
     return window.matchMedia?.('(prefers-color-scheme: dark)').matches ?? false;
   });
+  const [soundsMuted, setSoundsMutedState] = useState(() => isSoundsMuted());
+  const handleToggleSounds = useCallback(() => {
+    setSoundsMutedState((current) => {
+      const next = !current;
+      setSoundsMuted(next);
+      return next;
+    });
+  }, []);
   const [passwordForm, setPasswordForm] = useState(DEFAULT_PASSWORD_FORM);
   const [passwordError, setPasswordError] = useState('');
   const [isChangingPassword, setIsChangingPassword] = useState(false);
@@ -697,6 +706,7 @@ function App() {
     if (foundNewApproved) {
       setConfettiTrigger((current) => current + 1);
       showToast('Knuten din er godkjent! 🎉');
+      playDing();
     }
   }, [submissions, currentUser]);
 
@@ -1043,6 +1053,7 @@ function App() {
       } else {
         showToast('Knuten er sendt inn for godkjenning.');
       }
+      playSwoosh();
     } else {
       showToast('Knuten er oppdatert.');
     }
@@ -1498,8 +1509,10 @@ function App() {
           onRestartTour={handleRestartTour}
           onSubmitPasswordChange={handleChangeOwnPassword}
           onToggleDark={() => setIsDark((prev) => !prev)}
+          onToggleSounds={handleToggleSounds}
           passwordError={passwordError}
           passwordForm={passwordForm}
+          soundsMuted={soundsMuted}
         />
         {toast ? (
           <Toast
