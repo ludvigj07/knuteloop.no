@@ -12126,3 +12126,58 @@ textarea.text-input:focus {
   }
 }
 
+
+/* ----------------------------------------------------------------------- */
+/* Pull-to-refresh indikator pa mobilfeed                                  */
+/* ----------------------------------------------------------------------- */
+
+.feed-pull-refresh {
+  width: 100%;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  pointer-events: none;
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  transition: height 0.18s ease, opacity 0.18s ease;
+  color: rgba(255, 255, 255, 0.85);
+}
+
+.feed-pull-refresh__indicator {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.35);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  margin-bottom: 10px;
+}
+
+.feed-pull-refresh__icon {
+  transition: transform 0.08s linear;
+  display: block;
+}
+
+.feed-pull-refresh.is-ready .feed-pull-refresh__icon {
+  color: #06d6a0;
+}
+
+.feed-pull-refresh.is-refreshing .feed-pull-refresh__icon {
+  animation: feed-pull-spin 0.9s linear infinite;
+}
+
+@keyframes feed-pull-spin {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .feed-pull-refresh__icon {
+    animation: none !important;
+  }
+}
+

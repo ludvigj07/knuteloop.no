@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { MobileVideo } from '../components/MobileVideo.jsx';
 import { PostActionsMenu } from '../components/PostActionsMenu.jsx';
@@ -1449,6 +1449,7 @@ export function FeedPage({
   onOpenProfile,
   onReportSubmission,
   onRateSubmission,
+  onRefresh,
 }) {
   const [pendingBySubmission, setPendingBySubmission] = useState({});
   const [deletingBySubmission, setDeletingBySubmission] = useState({});
@@ -1467,10 +1468,18 @@ export function FeedPage({
   const [activeMobileIndex, setActiveMobileIndex] = useState(0);
   const [commentSheetEntry, setCommentSheetEntry] = useState(null);
   const [flaggedCommentId, setFlaggedCommentId] = useState(null);
+  const [pullDistance, setPullDistance] = useState(0);
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const isDesktop = useDesktopFeed();
   const mobileReelRef = useRef(null);
   const cardRefMap = useRef(new Map());
   const deleteToastTimeoutRef = useRef(null);
+  const pullStateRef = useRef({
+    active: false,
+    startY: 0,
+    startX: 0,
+    direction: 'unknown',
+  });
 
   const activeFeedBan =
     currentUserActiveBans.find((ban) => ban.type === 'feed') ?? null;
@@ -1543,6 +1552,119 @@ export function FeedPage({
       if (openSheetTimer) window.clearTimeout(openSheetTimer);
     };
   }, [focusScrollRequest, focusedSubmissionId, focusedCommentId, feedEntries]);
+
+  // Pull-to-refresh på mobilfeeden. Drag ned 80px for å trigge refresh.
+  // For å ikke kollidere med horisontal swipe-tab navigasjon (i SwipeTabsShell)
+  // og normal vertikal scroll, krever vi at scrollTop er 0 OG at draget tydelig
+  // er vertikalt. Reagerer på touch-events for å være billig og presist.
+  const PULL_THRESHOLD_PX = 80;
+  const triggerRefresh = useCallback(async () => {
+    if (isRefreshing) return;
+    setIsRefreshing(true);
+    try {
+      if (typeof onRefresh === 'function') {
+        await onRefresh();
+      } else {
+        // Fallback: bare en kort "respons" så det føles som det skjer noe.
+        await new Promise((resolve) => window.setTimeout(resolve, 600));
+      }
+    } catch {
+      // Stille feil — vi vil uansett dempe ned indikatoren.
+    } finally {
+      window.setTimeout(() => {
+        setIsRefreshing(false);
+        setPullDistance(0);
+      }, 250);
+    }
+  }, [isRefreshing, onRefresh]);
+
+  useEffect(() => {
+    if (isDesktop) {
+      return undefined;
+    }
+
+    const container = mobileReelRef.current;
+    if (!container) return undefined;
+
+    function handleTouchStart(event) {
+      if (event.touches.length !== 1) return;
+      if (commentSheetEntry) return;
+      // Bare aktiver pull når vi er helt øverst i feeden.
+      if (container.scrollTop > 0) return;
+
+      pullStateRef.current = {
+        active: true,
+        startY: event.touches[0].clientY,
+        startX: event.touches[0].clientX,
+        direction: 'unknown',
+      };
+    }
+
+    function handleTouchMove(event) {
+      const state = pullStateRef.current;
+      if (!state.active) return;
+      if (event.touches.length !== 1) return;
+
+      const touch = event.touches[0];
+      const dy = touch.clientY - state.startY;
+      const dx = touch.clientX - state.startX;
+
+      // Bestem retning ved første merkbare bevegelse.
+      if (state.direction === 'unknown') {
+        if (Math.abs(dy) < 6 && Math.abs(dx) < 6) return;
+        if (Math.abs(dx) > Math.abs(dy)) {
+          // Horisontal — la SwipeTabsShell håndtere det.
+          state.direction = 'horizontal';
+          state.active = false;
+          return;
+        }
+        state.direction = 'vertical';
+      }
+
+      if (state.direction !== 'vertical') return;
+      if (dy <= 0) {
+        // Bruker drar oppover — bare en vanlig scroll.
+        if (pullDistance !== 0) setPullDistance(0);
+        return;
+      }
+
+      // Litt rubber-band: dragger blir tyngre over terskelen.
+      const eased = dy < PULL_THRESHOLD_PX
+        ? dy
+        : PULL_THRESHOLD_PX + (dy - PULL_THRESHOLD_PX) * 0.4;
+      setPullDistance(eased);
+    }
+
+    function handleTouchEnd() {
+      const state = pullStateRef.current;
+      const direction = state.direction;
+      pullStateRef.current = {
+        active: false,
+        startY: 0,
+        startX: 0,
+        direction: 'unknown',
+      };
+      if (direction !== 'vertical') return;
+
+      if (pullDistance >= PULL_THRESHOLD_PX) {
+        triggerRefresh();
+      } else if (pullDistance !== 0) {
+        setPullDistance(0);
+      }
+    }
+
+    container.addEventListener('touchstart', handleTouchStart, { passive: true });
+    container.addEventListener('touchmove', handleTouchMove, { passive: true });
+    container.addEventListener('touchend', handleTouchEnd, { passive: true });
+    container.addEventListener('touchcancel', handleTouchEnd, { passive: true });
+
+    return () => {
+      container.removeEventListener('touchstart', handleTouchStart);
+      container.removeEventListener('touchmove', handleTouchMove);
+      container.removeEventListener('touchend', handleTouchEnd);
+      container.removeEventListener('touchcancel', handleTouchEnd);
+    };
+  }, [isDesktop, commentSheetEntry, pullDistance, triggerRefresh]);
 
   useEffect(() => {
     if (isDesktop) {
@@ -1950,7 +2072,50 @@ export function FeedPage({
           ))}
         </div>
       ) : (
-        <div ref={mobileReelRef} className={`feed-reel-mobile${commentSheetEntry ? ' feed-reel-mobile--locked' : ''}`}>
+        <div
+          ref={mobileReelRef}
+          className={`feed-reel-mobile${commentSheetEntry ? ' feed-reel-mobile--locked' : ''}`}
+        >
+          {(pullDistance > 0 || isRefreshing) ? (
+            <div
+              className={`feed-pull-refresh${
+                isRefreshing
+                  ? ' is-refreshing'
+                  : pullDistance >= PULL_THRESHOLD_PX
+                    ? ' is-ready'
+                    : ''
+              }`}
+              style={{
+                height: isRefreshing
+                  ? `${PULL_THRESHOLD_PX}px`
+                  : `${Math.min(pullDistance, PULL_THRESHOLD_PX + 20)}px`,
+                opacity: Math.min(pullDistance / 40, 1),
+              }}
+              aria-hidden="true"
+            >
+              <div className="feed-pull-refresh__indicator">
+                <svg
+                  className="feed-pull-refresh__icon"
+                  viewBox="0 0 24 24"
+                  width="22"
+                  height="22"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  style={{
+                    transform: `rotate(${
+                      isRefreshing ? 0 : Math.min((pullDistance / PULL_THRESHOLD_PX) * 360, 360)
+                    }deg)`,
+                  }}
+                >
+                  <polyline points="23 4 23 10 17 10" />
+                  <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10" />
+                </svg>
+              </div>
+            </div>
+          ) : null}
           {feedEntries.map((entry, index) => (
             <FeedCardMobile
               key={entry.id}
