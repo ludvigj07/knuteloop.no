@@ -3,6 +3,7 @@ import { Activity, Home, Play, Shield, Trophy, User } from 'lucide-react';
 import { KnotIcon } from './components/KnotIcon.jsx';
 import './App.css';
 import './styles/blaruss-refresh.css';
+import { AchievementCelebration } from './components/AchievementCelebration.jsx';
 import { ConfettiBurst } from './components/ConfettiBurst.jsx';
 import { LiveOnboarding } from './components/LiveOnboarding.jsx';
 import { LoadingSplash } from './components/LoadingSplash.jsx';
@@ -182,6 +183,9 @@ function App() {
   const [focusedFeedScrollRequest, setFocusedFeedScrollRequest] = useState(0);
   const [toast, setToast] = useState(null);
   const [confettiTrigger, setConfettiTrigger] = useState(0);
+  const [pendingAchievementCelebration, setPendingAchievementCelebration] = useState(null);
+  const [pendingRankUp, setPendingRankUp] = useState(null);
+  const previousRankRef = useRef(null);
   const [lastVisitedFeedAt, setLastVisitedFeedAt] = useState(() => {
     if (typeof window === 'undefined') return 0;
     const stored = window.localStorage.getItem('lastVisitedFeedAt');
@@ -234,6 +238,79 @@ function App() {
     () => buildAchievements(knots, currentLeader),
     [currentLeader, knots],
   );
+
+  // Watch achievements for newly unlocked items and show a celebration.
+  // Storage key er per bruker så vi ikke blander achievements på tvers.
+  const achievementSeenStorageKey = currentUser
+    ? `seen_achievement_ids:${currentUser.leaderId ?? currentUser.id ?? 'self'}`
+    : null;
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    if (!achievementSeenStorageKey) return;
+    if (!Array.isArray(achievements) || achievements.length === 0) return;
+
+    let seenIds = [];
+    try {
+      const raw = window.localStorage.getItem(achievementSeenStorageKey);
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed)) seenIds = parsed.filter((id) => typeof id === 'string');
+      }
+    } catch {
+      seenIds = [];
+    }
+
+    // Vi tier-er per achievement, så vi sporer "id:tierIndex" for å fange
+    // når man rykker opp en tier også, ikke bare første gang.
+    const buildKey = (achievement) =>
+      `${achievement.id}:${achievement.currentTierIndex}`;
+
+    const unlockedNow = achievements.filter(
+      (achievement) => achievement.isUnlocked && achievement.currentTierIndex >= 0,
+    );
+
+    // Første gang brukeren laster appen: marker alle eksisterende som sett,
+    // men ikke vis celebration.
+    const isFirstLoad = seenIds.length === 0;
+    if (isFirstLoad) {
+      const initialKeys = unlockedNow.map(buildKey);
+      try {
+        window.localStorage.setItem(
+          achievementSeenStorageKey,
+          JSON.stringify(initialKeys),
+        );
+      } catch {
+        // ignore quota
+      }
+      return;
+    }
+
+    const newOnes = unlockedNow.filter(
+      (achievement) => !seenIds.includes(buildKey(achievement)),
+    );
+
+    if (newOnes.length === 0) return;
+
+    // Marker alle som sett umiddelbart for å unngå dobbel-firing.
+    const nextSeen = Array.from(
+      new Set([...seenIds, ...unlockedNow.map(buildKey)]),
+    );
+    try {
+      window.localStorage.setItem(
+        achievementSeenStorageKey,
+        JSON.stringify(nextSeen),
+      );
+    } catch {
+      // ignore
+    }
+
+    // Vis celebration for første nye — om flere er låst opp samtidig viser
+    // vi bare den øverste, det holder.
+    if (!pendingAchievementCelebration) {
+      setPendingAchievementCelebration(newOnes[0]);
+    }
+  }, [achievements, achievementSeenStorageKey, pendingAchievementCelebration]);
+
   const profiles = useMemo(
     () =>
       currentUser
@@ -1387,6 +1464,10 @@ function App() {
           />
         ) : null}
         <ConfettiBurst triggerKey={confettiTrigger} />
+        <AchievementCelebration
+          achievement={pendingAchievementCelebration}
+          onClose={() => setPendingAchievementCelebration(null)}
+        />
       </div>
     </div>
   );
