@@ -11,7 +11,8 @@
       "Bash(node -e \"import\\('./backend/src/auth/db.mjs'\\).then\\(m => { const db = m.openAuthDb\\(\\); const rows = db.prepare\\('SELECT * FROM login_attempts ORDER BY created_at DESC LIMIT 20'\\).all\\(\\); console.log\\('attempts:', rows.length\\); rows.forEach\\(r => console.log\\(new Date\\(r.created_at\\).toISOString\\(\\), r.key\\)\\); }\\)\")",
       "Bash(findstr \":3001 :5173\")",
       "Bash(grep -n \"submissions\\\\|db\\\\\\\\.submissions\\\\|db\\\\\\\\.knots\" /c/development/repo/knuteloop.no/index.mjs)",
-      "PowerShell(Stop-Process *)"
+      "PowerShell(Stop-Process *)",
+      "Bash(grep -n \":root\\\\|--color\\\\|--bg\\\\|--text\\\\|--border\\\\|--surface\\\\|--primary\\\\|--secondary\\\\|#[0-9a-fA-F]\\\\{3,6\\\\}\\\\|rgb\\\\|hsl\" C:/development/repo/knuteloop.no/frontend/index.css)"
     ]
   }
 }

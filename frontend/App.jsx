@@ -1,4 +1,6 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+﻿import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Activity, Home, Play, Shield, Trophy, User } from 'lucide-react';
+import { KnotIcon } from './components/KnotIcon.jsx';
 import './App.css';
 import './styles/blaruss-refresh.css';
 import { OnboardingModal } from './components/OnboardingModal.jsx';
@@ -68,7 +70,7 @@ const PAGE_CONFIG = {
     id: 'dashboard',
     label: 'Hjem',
     shortLabel: 'Hjem',
-    icon: '\u2302',
+    icon: <Home size={22} strokeWidth={1.8} />,
     title: 'Hjem',
     description: 'En rolig oversikt over dagens knuter og aktivitet i kullet.',
   },
@@ -76,7 +78,7 @@ const PAGE_CONFIG = {
     id: 'knuter',
     label: 'Knuter',
     shortLabel: 'Knuter',
-    icon: '\u{1FAA2}',
+    icon: <KnotIcon size={22} strokeWidth={1.8} />,
     title: 'Knuter',
     description: 'Velg knuter i eget tempo, og del det du har gjort.',
   },
@@ -84,7 +86,7 @@ const PAGE_CONFIG = {
     id: 'leaderboard',
     label: 'Toppliste',
     shortLabel: 'Topp',
-    icon: '\u{1F3C6}',
+    icon: <Trophy size={22} strokeWidth={1.8} />,
     title: 'Topplisten',
     description: 'Se deltakelse i kullet på en vennlig og lavterskel måte.',
   },
@@ -92,7 +94,7 @@ const PAGE_CONFIG = {
     id: 'profiler',
     label: 'Profil',
     shortLabel: 'Profil',
-    icon: '\u263A',
+    icon: <User size={22} strokeWidth={1.8} />,
     title: 'Profil',
     description: 'Profiler, merker og det som gjør hver person unik.',
   },
@@ -100,7 +102,7 @@ const PAGE_CONFIG = {
     id: 'feed',
     label: 'Feed',
     shortLabel: 'Feed',
-    icon: '\u25B6',
+    icon: <Play size={22} strokeWidth={1.8} />,
     title: 'Feed',
     description: 'Delte øyeblikk fra godkjente knuter i en rolig kortfeed.',
   },
@@ -108,7 +110,7 @@ const PAGE_CONFIG = {
     id: 'status',
     label: 'Status',
     shortLabel: 'Status',
-    icon: '\u2726',
+    icon: <Activity size={22} strokeWidth={1.8} />,
     title: 'Status',
     description: 'Badges, feed og knute-off samlet i en enkel oversikt.',
   },
@@ -116,7 +118,7 @@ const PAGE_CONFIG = {
     id: 'admin',
     label: 'Admin',
     shortLabel: 'Admin',
-    icon: '\u26E8',
+    icon: <Shield size={22} strokeWidth={1.8} />,
     title: 'Admin',
     description: 'Innsendinger, knuter og adminoppgaver i én arbeidsflate.',
   },
@@ -151,6 +153,11 @@ function App() {
   const [appError, setAppError] = useState('');
   const [isOnboardingOpen, setIsOnboardingOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [isDark, setIsDark] = useState(() => {
+    const stored = window.localStorage.getItem('theme');
+    if (stored) return stored === 'dark';
+    return window.matchMedia?.('(prefers-color-scheme: dark)').matches ?? false;
+  });
   const [passwordForm, setPasswordForm] = useState(DEFAULT_PASSWORD_FORM);
   const [passwordError, setPasswordError] = useState('');
   const [isChangingPassword, setIsChangingPassword] = useState(false);
@@ -377,6 +384,11 @@ function App() {
   const pageOrder = currentUser?.role === 'admin' ? ADMIN_PAGE_ORDER : USER_PAGE_ORDER;
   const visiblePages = pageOrder.map((pageId) => PAGE_CONFIG[pageId]);
   const currentPage = visiblePages.find((page) => page.id === activePage) ?? visiblePages[0];
+
+  useEffect(() => {
+    document.documentElement.setAttribute('data-theme', isDark ? 'dark' : 'light');
+    window.localStorage.setItem('theme', isDark ? 'dark' : 'light');
+  }, [isDark]);
 
   useEffect(() => {
     fetchPilotUsers()
@@ -1179,6 +1191,7 @@ function App() {
         <SettingsModal
           appVersion={APP_VERSION}
           currentUser={currentUser}
+          isDark={isDark}
           isChangingPassword={isChangingPassword}
           isOpen={isSettingsOpen}
           onChangePasswordField={handleChangePasswordField}
@@ -1188,6 +1201,7 @@ function App() {
           onNavigateToKnots={handleSettingsOpenKnots}
           onNavigateToProfile={handleSettingsOpenProfile}
           onSubmitPasswordChange={handleChangeOwnPassword}
+          onToggleDark={() => setIsDark((prev) => !prev)}
           passwordError={passwordError}
           passwordForm={passwordForm}
         />
