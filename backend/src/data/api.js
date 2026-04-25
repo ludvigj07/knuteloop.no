@@ -445,3 +445,33 @@ export function resolveDuel(token, duelId) {
     token,
   });
 }
+
+export function createComment(token, submissionId, text, parentId = null) {
+  return apiRequest(`/submissions/${submissionId}/comments`, {
+    method: 'POST',
+    token,
+    body: { text, parentId },
+  });
+}
+
+export function deleteComment(token, commentId) {
+  return apiRequest(`/comments/${commentId}`, {
+    method: 'DELETE',
+    token,
+  });
+}
+
+export function likeComment(token, commentId) {
+  return apiRequest(`/comments/${commentId}/like`, {
+    method: 'POST',
+    token,
+  });
+}
+
+export function reportComment(token, commentId, reason, note = '') {
+  return apiRequest(`/comments/${commentId}/report`, {
+    method: 'POST',
+    token,
+    body: { reason, note },
+  });
+}

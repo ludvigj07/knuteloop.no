@@ -10,8 +10,12 @@ import {
   changeOwnPassword,
   completeDuel,
   createBan,
+  createComment,
+  deleteComment,
   deleteKnot,
   deleteSubmission,
+  likeComment,
+  reportComment,
   setKnotVisibility,
   fetchBootstrap,
   fetchPilotUsers,
@@ -844,6 +848,26 @@ function App() {
     setAppData(nextAppData);
   }
 
+  async function handleCreateComment(submissionId, text, parentId = null) {
+    const nextAppData = await createComment(sessionToken, submissionId, text, parentId);
+    setAppData(nextAppData);
+  }
+
+  async function handleDeleteComment(commentId) {
+    const nextAppData = await deleteComment(sessionToken, commentId);
+    setAppData(nextAppData);
+  }
+
+  async function handleLikeComment(commentId) {
+    const nextAppData = await likeComment(sessionToken, commentId);
+    setAppData(nextAppData);
+  }
+
+  async function handleReportComment(commentId, reason, note = '') {
+    const nextAppData = await reportComment(sessionToken, commentId, reason, note);
+    setAppData(nextAppData);
+  }
+
   async function handleReviewReport(reportId, action) {
     if (!reportId) {
       return;
@@ -1005,12 +1029,17 @@ function App() {
           activityLog={activityLog}
           currentUserId={currentUser.leaderId}
           currentUserActiveBans={currentUserActiveBans}
+          commentsBySubmission={appData?.commentsBySubmission ?? {}}
           onDeleteSubmission={handleDeleteSubmission}
           onExit={() => handleChangePage('dashboard')}
           onOpenProfile={handleOpenProfile}
           onOpenKnots={() => handleChangePage('knuter')}
           onReportSubmission={handleReportSubmission}
           onRateSubmission={handleRateSubmission}
+          onCreateComment={handleCreateComment}
+          onDeleteComment={handleDeleteComment}
+          onLikeComment={handleLikeComment}
+          onReportComment={handleReportComment}
         />
       );
     } else if (page.id === 'profiler') {

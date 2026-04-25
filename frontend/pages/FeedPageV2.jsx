@@ -13,32 +13,11 @@ const ANONYMOUS_FEED_AVATARS = [
   anonymousFeedMask,
   anonymousFeedWolf,
 ];
-const COMMENT_EMOJIS = ['🔥', '👑', '👍', '😂', '💀'];
-const PRESET_TAB_ORDER = ['Heia', 'Tørr'];
-const COMMENT_PRESETS = {
-  Heia: [
-    'Russelegende 2026 👑',
-    'Helt rå... nesten 🔥',
-    'Respekt... for motet 👍',
-    'Nice try kamerat',
-    'Godt forsøk russegutt/russejente',
-  ],
-  Tørr: [
-    'What a save! 😂',
-    'Konge... i sin egen hode 💀',
-    'Dette var jo episk... for en annen skole 😂',
-    '10/10 for innsats, 2/10 for resultat 💀',
-    'Bro... hva var det der? 💀',
-  ],
-};
-const LOCAL_FEED_COMMENTS = new Map();
 const DELETE_FADE_OUT_MS = 200;
 const DELETE_TOAST_MS = 2800;
-const COMMENT_SEND_FEEDBACK_MS = 180;
-const COMMENT_COMPOSER_CLOSE_MS = 155;
-const COMMENT_HIGHLIGHT_MS = 3000;
 const COMMENT_SWIPE_THRESHOLD_PX = 44;
 const COMMENT_SWIPE_CLOSE_OFFSET_PX = 220;
+const COMMENT_REPORT_REASONS = ['Spam', 'Trakassering', 'Upassende', 'Annet'];
 
 function formatRatingAverage(value) {
   const numericValue = Number(value) || 0;
@@ -56,34 +35,9 @@ function getRatingSummaryLabel(average, count) {
   return `Snitt ${formatRatingAverage(average)} av 5 (${safeCount} ${voteLabel})`;
 }
 
-function getLocalCommentsSnapshot() {
-  return Object.fromEntries(LOCAL_FEED_COMMENTS.entries());
-}
-
-function createLocalComment(text, emoji) {
-  const normalizedText = typeof text === 'string' ? text.trim() : '';
-  const normalizedEmoji = COMMENT_EMOJIS.includes(emoji) ? emoji : '';
-  const message = [normalizedEmoji, normalizedText].filter(Boolean).join(' ').trim();
-
-  return {
-    id: `local-comment-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
-    author: 'Du',
-    createdAtLabel: 'Nettopp',
-    emoji: normalizedEmoji,
-    text: message,
-  };
-}
-
 function getCommentsCountLabel(count) {
-  if (!count) {
-    return 'Ingen kommentarer ennå';
-  }
-
-  if (count === 1) {
-    return '1 lokal kommentar';
-  }
-
-  return `${count} lokale kommentarer`;
+  if (!count) return 'Ingen kommentarer ennå';
+  return count === 1 ? '1 kommentar' : `${count} kommentarer`;
 }
 
 function getFeedTextPrimary(entry) {
@@ -617,8 +571,20 @@ function FeedProfileAvatar({ entry }) {
   return <div className="profile-avatar profile-avatar--small">{entry.studentIcon}</div>;
 }
 
+function CommentAvatar({ comment, size = 'small' }) {
+  const cls = `profile-${comment.authorPhotoUrl ? 'photo' : 'avatar'} profile-${comment.authorPhotoUrl ? 'photo' : 'avatar'}--${size}`;
+  if (comment.authorPhotoUrl) {
+    return (
+      <div className={cls}>
+        <img src={comment.authorPhotoUrl} alt={`${comment.authorName} profilbilde`} />
+      </div>
+    );
+  }
+  return <div className={cls}>{comment.authorIcon || comment.authorName?.charAt(0) || '?'}</div>;
+}
+
 function FeedCommentPreview({ comments, onOpenComments, commentCount, isDisabled = false }) {
-  const previewComments = comments.slice(0, 2);
+  const previewComments = comments.filter((c) => !c.deleted).slice(0, 2);
 
   return (
     <div className="feed-comment-preview feed-comment-preview--desktop">
@@ -637,41 +603,258 @@ function FeedCommentPreview({ comments, onOpenComments, commentCount, isDisabled
         <div className="feed-comment-preview__list">
           {previewComments.map((comment) => (
             <p key={comment.id} className="feed-comment-preview__item">
-              <strong>{comment.author}</strong> {comment.text}
+              <strong>{comment.authorName}</strong> {comment.text}
             </p>
           ))}
         </div>
       ) : (
         <p className="feed-comment-preview__empty">
-          Apne kommentarene og trykk i skrivefeltet for a sende en lokal reaksjon.
+          Ingen kommentarer ennå. Vær den første!
         </p>
       )}
     </div>
   );
 }
 
+function CommentItem({
+  comment,
+  replyingToId,
+  replyDraft,
+  isSubmittingReply,
+  replyError,
+  pendingLikeIds,
+  pendingDeleteId,
+  confirmReportId,
+  reportReason,
+  onReply,
+  onReplyDraftChange,
+  onSubmitReply,
+  onLike,
+  onDelete,
+  onStartReport,
+  onCancelReport,
+  onConfirmReport,
+  onReportReasonChange,
+  isDisabled,
+}) {
+  const isReplying = replyingToId === comment.id;
+  const isLiking = pendingLikeIds.has(comment.id);
+  const isDeleting = pendingDeleteId === comment.id;
+  const isConfirmingReport = confirmReportId === comment.id;
+  const visibleReplies = comment.replies?.filter((reply) => !reply.deleted) ?? [];
+
+  return (
+    <article className={`feed-sheet__comment ${comment.deleted ? 'is-deleted' : ''}`}>
+      <div className="feed-comment__header">
+        <CommentAvatar comment={comment} size="small" />
+        <div className="feed-comment__author-info">
+          <strong className="feed-comment__author-name">{comment.authorName}</strong>
+        </div>
+        {!comment.deleted && !isDisabled && !comment.isOwn ? (
+          <button
+            type="button"
+            className="feed-comment__report-btn"
+            title="Rapporter kommentar"
+            aria-label="Rapporter kommentar"
+            onClick={() => onStartReport(comment.id)}
+          >
+            ⚑
+          </button>
+        ) : null}
+        {!comment.deleted && comment.isOwn ? (
+          <button
+            type="button"
+            className={`feed-comment__delete-btn ${isDeleting ? 'is-pending' : ''}`}
+            title="Slett kommentar"
+            aria-label="Slett kommentar"
+            onClick={() => onDelete(comment.id)}
+            disabled={isDeleting}
+          >
+            ✕
+          </button>
+        ) : null}
+      </div>
+
+      <p className={`feed-comment__text ${comment.deleted ? 'feed-comment__text--deleted' : ''}`}>
+        {comment.text}
+      </p>
+
+      {!comment.deleted ? (
+        <div className="feed-comment__actions">
+          <span className="feed-comment__time">{comment.createdAtLabel}</span>
+          <button
+            type="button"
+            className={`feed-comment__like-btn ${comment.myLiked ? 'is-liked' : ''} ${isLiking ? 'is-pending' : ''}`}
+            onClick={() => onLike(comment.id)}
+            disabled={isLiking || isDisabled}
+          >
+            <span aria-hidden="true">{'♥'}</span>
+            {comment.likeCount > 0 ? <span>{comment.likeCount}</span> : null}
+          </button>
+          {!isDisabled ? (
+            <button
+              type="button"
+              className="feed-comment__reply-btn"
+              onClick={() => onReply(isReplying ? null : comment.id)}
+            >
+              {isReplying ? 'Avbryt' : 'Svar'}
+            </button>
+          ) : null}
+        </div>
+      ) : null}
+
+      {isConfirmingReport ? (
+        <div className="feed-comment__report-form">
+          <select
+            className="text-input text-input--sm"
+            value={reportReason}
+            onChange={(e) => onReportReasonChange(e.target.value)}
+          >
+            {COMMENT_REPORT_REASONS.map((r) => (
+              <option key={r} value={r}>{r}</option>
+            ))}
+          </select>
+          <div className="feed-comment__report-actions">
+            <button type="button" className="btn btn--sm btn--danger" onClick={() => onConfirmReport(comment.id)}>
+              Send rapport
+            </button>
+            <button type="button" className="btn btn--sm btn--ghost" onClick={onCancelReport}>
+              Avbryt
+            </button>
+          </div>
+        </div>
+      ) : null}
+
+      {isReplying ? (
+        <div className="feed-comment__reply-form">
+          <textarea
+            className="feed-sheet__composer-input"
+            placeholder={`Svar til ${comment.authorName}…`}
+            value={replyDraft}
+            onChange={(e) => onReplyDraftChange(e.target.value)}
+            rows={2}
+            maxLength={500}
+            autoFocus
+          />
+          <div className="feed-comment__reply-send-row">
+            {replyError ? <span className="feed-sheet__error">{replyError}</span> : null}
+            <button
+              type="button"
+              className="feed-sheet__send-btn"
+              onClick={() => onSubmitReply(comment.id)}
+              disabled={isSubmittingReply || !replyDraft.trim()}
+            >
+              {isSubmittingReply ? '…' : 'Send'}
+            </button>
+          </div>
+        </div>
+      ) : null}
+
+      {visibleReplies.length > 0 ? (
+        <div className="feed-comment__replies">
+          {visibleReplies.map((reply) => (
+            <article key={reply.id} className="feed-sheet__comment feed-sheet__comment--reply">
+              <div className="feed-comment__header">
+                <CommentAvatar comment={reply} size="xsmall" />
+                <div className="feed-comment__author-info">
+                  <strong className="feed-comment__author-name">{reply.authorName}</strong>
+                </div>
+                {!reply.deleted && !isDisabled && !reply.isOwn ? (
+                  <button
+                    type="button"
+                    className="feed-comment__report-btn"
+                    title="Rapporter"
+                    aria-label="Rapporter svar"
+                    onClick={() => onStartReport(reply.id)}
+                  >
+                    ⚑
+                  </button>
+                ) : null}
+                {!reply.deleted && reply.isOwn ? (
+                  <button
+                    type="button"
+                    className={`feed-comment__delete-btn ${pendingDeleteId === reply.id ? 'is-pending' : ''}`}
+                    title="Slett"
+                    aria-label="Slett svar"
+                    onClick={() => onDelete(reply.id)}
+                    disabled={pendingDeleteId === reply.id}
+                  >
+                    {'✕'}
+                  </button>
+                ) : null}
+              </div>
+              <p className={`feed-comment__text ${reply.deleted ? 'feed-comment__text--deleted' : ''}`}>
+                {reply.text}
+              </p>
+              {!reply.deleted ? (
+                <div className="feed-comment__actions">
+                  <span className="feed-comment__time">{reply.createdAtLabel}</span>
+                  <button
+                    type="button"
+                    className={`feed-comment__like-btn ${reply.myLiked ? 'is-liked' : ''} ${pendingLikeIds.has(reply.id) ? 'is-pending' : ''}`}
+                    onClick={() => onLike(reply.id)}
+                    disabled={pendingLikeIds.has(reply.id) || isDisabled}
+                  >
+                    <span aria-hidden="true">{'♥'}</span>
+                    {reply.likeCount > 0 ? <span>{reply.likeCount}</span> : null}
+                  </button>
+                </div>
+              ) : null}
+              {confirmReportId === reply.id ? (
+                <div className="feed-comment__report-form">
+                  <select
+                    className="text-input text-input--sm"
+                    value={reportReason}
+                    onChange={(e) => onReportReasonChange(e.target.value)}
+                  >
+                    {COMMENT_REPORT_REASONS.map((r) => (
+                      <option key={r} value={r}>{r}</option>
+                    ))}
+                  </select>
+                  <div className="feed-comment__report-actions">
+                    <button type="button" className="btn btn--sm btn--danger" onClick={() => onConfirmReport(reply.id)}>
+                      Send rapport
+                    </button>
+                    <button type="button" className="btn btn--sm btn--ghost" onClick={onCancelReport}>
+                      Avbryt
+                    </button>
+                  </div>
+                </div>
+              ) : null}
+            </article>
+          ))}
+        </div>
+      ) : null}
+    </article>
+  );
+}
+
 function FeedCommentSheet({
   entry,
   comments,
-  selectedTab,
-  composerState,
-  pendingSendFeedback,
-  latestSubmittedCommentId,
   onClose,
-  onOpenComposer,
-  onCloseComposer,
-  onSelectPresetTab,
-  onSubmitEmoji,
-  onSubmitPreset,
+  onSubmitComment,
+  onDeleteComment,
+  onLikeComment,
+  onReportComment,
   isDisabled = false,
   disabledReason = '',
 }) {
   const commentListRef = useRef(null);
   const swipeTimeoutRef = useRef(null);
-  const isComposerVisible = composerState !== 'closed';
-  const isComposerClosing = composerState === 'closing';
-  const isComposerOpen = composerState === 'open';
-  const isComposerBusy = Boolean(pendingSendFeedback) || isComposerClosing;
+  const textareaRef = useRef(null);
+
+  const [draftText, setDraftText] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState('');
+  const [replyingToId, setReplyingToId] = useState(null);
+  const [replyDraft, setReplyDraft] = useState('');
+  const [isSubmittingReply, setIsSubmittingReply] = useState(false);
+  const [replyError, setReplyError] = useState('');
+  const [pendingLikeIds, setPendingLikeIds] = useState(new Set());
+  const [pendingDeleteId, setPendingDeleteId] = useState(null);
+  const [confirmReportId, setConfirmReportId] = useState(null);
+  const [reportReason, setReportReason] = useState(COMMENT_REPORT_REASONS[0]);
   const [swipeGesture, setSwipeGesture] = useState({
     zone: null,
     pointerId: null,
@@ -680,58 +863,20 @@ function FeedCommentSheet({
     settling: null,
   });
   const isSwipeSettling = swipeGesture.settling !== null;
-  const isSwipeLocked = isComposerBusy || isSwipeSettling;
   const isSheetDragging = swipeGesture.zone === 'sheet';
-  const isComposerDragging = swipeGesture.zone === 'composer';
   const sheetDragOffset =
     isSheetDragging || swipeGesture.settling === 'close-sheet'
       ? Math.max(0, swipeGesture.offset)
       : 0;
-  const composerDragOffset =
-    isComposerDragging && swipeGesture.offset > 0 ? swipeGesture.offset : 0;
   const sheetStyle = {
     transform: sheetDragOffset ? `translateY(${sheetDragOffset}px)` : undefined,
   };
-  const composerShellStyle = {
-    transform: composerDragOffset ? `translateY(${composerDragOffset}px)` : undefined,
-  };
 
   useEffect(() => {
-    if (typeof document === 'undefined') {
-      return undefined;
-    }
-
-    const previousOverflow = document.body.style.overflow;
-    document.body.style.overflow = 'hidden';
-
-    return () => {
-      document.body.style.overflow = previousOverflow;
-    };
-  }, []);
-
-  useEffect(() => {
-    const onKey = (event) => {
-      if (event.key === 'Escape') {
-        onClose();
-      }
-    };
-
+    const onKey = (event) => { if (event.key === 'Escape') onClose(); };
     document.addEventListener('keydown', onKey);
     return () => document.removeEventListener('keydown', onKey);
   }, [onClose]);
-
-  useEffect(() => {
-    const listNode = commentListRef.current;
-
-    if (!listNode || !latestSubmittedCommentId || listNode.scrollTop <= 24) {
-      return;
-    }
-
-    listNode.scrollTo({
-      top: 0,
-      behavior: 'smooth',
-    });
-  }, [latestSubmittedCommentId]);
 
   useEffect(
     () => () => {
@@ -739,126 +884,135 @@ function FeedCommentSheet({
         clearTimeout(swipeTimeoutRef.current);
         swipeTimeoutRef.current = null;
       }
+      // Blur any focused input so iOS resets the zoomed viewport after sheet closes
+      if (typeof document !== 'undefined' && document.activeElement instanceof HTMLElement) {
+        document.activeElement.blur();
+      }
     },
     [],
   );
 
-  useEffect(() => {
-    setSwipeGesture({
-      zone: null,
-      pointerId: null,
-      startY: 0,
-      offset: 0,
-      settling: null,
-    });
-  }, [composerState]);
-
   function resetSwipeGesture() {
-    setSwipeGesture({
-      zone: null,
-      pointerId: null,
-      startY: 0,
-      offset: 0,
-      settling: null,
-    });
+    setSwipeGesture({ zone: null, pointerId: null, startY: 0, offset: 0, settling: null });
   }
 
   function startSwipe(zone, event) {
-    if (isSwipeLocked) {
-      return;
-    }
-
-    if (event.pointerType === 'mouse' && event.button !== 0) {
-      return;
-    }
-
+    if (isSwipeSettling) return;
+    if (event.pointerType === 'mouse' && event.button !== 0) return;
     event.currentTarget.setPointerCapture?.(event.pointerId);
-    setSwipeGesture({
-      zone,
-      pointerId: event.pointerId,
-      startY: event.clientY,
-      offset: 0,
-      settling: null,
-    });
+    setSwipeGesture({ zone, pointerId: event.pointerId, startY: event.clientY, offset: 0, settling: null });
   }
 
   function updateSwipe(event) {
-    if (swipeGesture.pointerId !== event.pointerId) {
-      return;
-    }
-
+    if (swipeGesture.pointerId !== event.pointerId) return;
     const deltaY = event.clientY - swipeGesture.startY;
-
     if (deltaY <= 0) {
-      if (swipeGesture.offset !== 0) {
-        setSwipeGesture((current) => ({ ...current, offset: 0 }));
-      }
+      if (swipeGesture.offset !== 0) setSwipeGesture((c) => ({ ...c, offset: 0 }));
       return;
     }
-
     event.preventDefault();
-    setSwipeGesture((current) => ({
-      ...current,
+    setSwipeGesture((c) => ({
+      ...c,
       offset: Math.min(deltaY, COMMENT_SWIPE_CLOSE_OFFSET_PX),
     }));
   }
 
-  function completeComposerSheetClose(fromOffset = COMMENT_SWIPE_THRESHOLD_PX) {
-    setSwipeGesture({
-      zone: 'sheet',
-      pointerId: null,
-      startY: 0,
-      offset: Math.max(fromOffset, COMMENT_SWIPE_CLOSE_OFFSET_PX),
-      settling: 'close-sheet',
-    });
-
-    if (swipeTimeoutRef.current) {
-      clearTimeout(swipeTimeoutRef.current);
-    }
-
-    swipeTimeoutRef.current = window.setTimeout(() => {
-      swipeTimeoutRef.current = null;
-      onClose();
-    }, COMMENT_COMPOSER_CLOSE_MS);
-  }
-
   function endSwipe(event) {
-    if (swipeGesture.pointerId !== event.pointerId) {
-      return;
-    }
-
+    if (swipeGesture.pointerId !== event.pointerId) return;
     event.currentTarget.releasePointerCapture?.(event.pointerId);
-
     if (swipeGesture.zone === 'sheet' && swipeGesture.offset >= COMMENT_SWIPE_THRESHOLD_PX) {
-      completeComposerSheetClose(swipeGesture.offset);
+      const fromOffset = swipeGesture.offset;
+      setSwipeGesture({
+        zone: 'sheet', pointerId: null, startY: 0,
+        offset: Math.max(fromOffset, COMMENT_SWIPE_CLOSE_OFFSET_PX),
+        settling: 'close-sheet',
+      });
+      swipeTimeoutRef.current = window.setTimeout(() => {
+        swipeTimeoutRef.current = null;
+        onClose();
+      }, 155);
       return;
     }
-
-    if (swipeGesture.zone === 'composer' && swipeGesture.offset >= COMMENT_SWIPE_THRESHOLD_PX) {
-      if (!isDisabled && isComposerVisible) {
-        onCloseComposer();
-      }
-      resetSwipeGesture();
-      return;
-    }
-
     resetSwipeGesture();
   }
+
+  async function handleSubmit() {
+    const text = draftText.trim();
+    if (!text || isSubmitting) return;
+    setIsSubmitting(true);
+    setSubmitError('');
+    try {
+      await onSubmitComment(text, null);
+      setDraftText('');
+      if (commentListRef.current) commentListRef.current.scrollTo({ top: 0, behavior: 'smooth' });
+    } catch (err) {
+      setSubmitError(err?.message ?? 'Kunne ikke sende kommentar.');
+    } finally {
+      setIsSubmitting(false);
+    }
+  }
+
+  async function handleSubmitReply(parentId) {
+    const text = replyDraft.trim();
+    if (!text || isSubmittingReply) return;
+    setIsSubmittingReply(true);
+    setReplyError('');
+    try {
+      await onSubmitComment(text, parentId);
+      setReplyDraft('');
+      setReplyingToId(null);
+    } catch (err) {
+      setReplyError(err?.message ?? 'Kunne ikke sende svar.');
+    } finally {
+      setIsSubmittingReply(false);
+    }
+  }
+
+  async function handleLike(commentId) {
+    if (pendingLikeIds.has(commentId)) return;
+    setPendingLikeIds((prev) => new Set([...prev, commentId]));
+    try {
+      await onLikeComment(commentId);
+    } finally {
+      setPendingLikeIds((prev) => { const next = new Set(prev); next.delete(commentId); return next; });
+    }
+  }
+
+  async function handleDelete(commentId) {
+    if (pendingDeleteId) return;
+    setPendingDeleteId(commentId);
+    try {
+      await onDeleteComment(commentId);
+    } finally {
+      setPendingDeleteId(null);
+    }
+  }
+
+  async function handleConfirmReport(commentId) {
+    try {
+      await onReportComment(commentId, reportReason);
+      setConfirmReportId(null);
+    } catch {
+      setConfirmReportId(null);
+    }
+  }
+
+  const visibleComments = comments.filter((comment) => !comment.deleted);
+  const totalCount =
+    visibleComments.length +
+    visibleComments.reduce(
+      (sum, c) => sum + (c.replies?.filter((reply) => !reply.deleted).length ?? 0),
+      0,
+    );
 
   return createPortal(
     <div
       className="feed-sheet-backdrop"
       role="presentation"
-      onClick={(event) => {
-        if (event.target === event.currentTarget) {
-          onClose();
-        }
-      }}
+      onClick={(event) => { if (event.target === event.currentTarget) onClose(); }}
     >
       <section
-        className={`feed-sheet ${isComposerVisible ? 'is-composer-open' : ''} ${
-          isSwipeSettling ? 'is-swipe-settling' : ''
-        }`}
+        className={`feed-sheet ${isSwipeSettling ? 'is-swipe-settling' : ''}`}
         role="dialog"
         aria-modal="true"
         aria-labelledby="feed-comment-sheet-title"
@@ -876,7 +1030,7 @@ function FeedCommentSheet({
             <div>
               <p className="eyebrow">Kommentarer</p>
               <h3 id="feed-comment-sheet-title">{entry.knotTitle}</h3>
-              <p className="feed-sheet__subtitle">{getCommentsCountLabel(comments.length)}</p>
+              <p className="feed-sheet__subtitle">{getCommentsCountLabel(totalCount)}</p>
             </div>
             <button type="button" className="feed-sheet__close" onClick={onClose}>
               {'\u00D7'}
@@ -885,137 +1039,67 @@ function FeedCommentSheet({
         </div>
 
         <div ref={commentListRef} className="feed-sheet__comment-list">
-          {comments.length ? (
-            comments.map((comment) => (
-              <article
+          {visibleComments.length ? (
+            visibleComments.map((comment) => (
+              <CommentItem
                 key={comment.id}
-                className={`feed-sheet__comment ${
-                  latestSubmittedCommentId === comment.id ? 'is-highlighted' : ''
-                }`}
-              >
-                <div className="feed-sheet__comment-top">
-                  <div className="feed-sheet__comment-top-copy">
-                    <strong>{comment.author}</strong>
-                    {latestSubmittedCommentId === comment.id ? (
-                      <span className="feed-sheet__comment-badge">Din kommentar</span>
-                    ) : null}
-                  </div>
-                  <span>{comment.createdAtLabel}</span>
-                </div>
-                <p>{comment.text}</p>
-              </article>
+                comment={comment}
+                replyingToId={replyingToId}
+                replyDraft={replyDraft}
+                isSubmittingReply={isSubmittingReply}
+                replyError={replyError}
+                pendingLikeIds={pendingLikeIds}
+                pendingDeleteId={pendingDeleteId}
+                confirmReportId={confirmReportId}
+                reportReason={reportReason}
+                onReply={setReplyingToId}
+                onReplyDraftChange={setReplyDraft}
+                onSubmitReply={handleSubmitReply}
+                onLike={handleLike}
+                onDelete={handleDelete}
+                onStartReport={(id) => { setConfirmReportId(id); setReportReason(COMMENT_REPORT_REASONS[0]); }}
+                onCancelReport={() => setConfirmReportId(null)}
+                onConfirmReport={handleConfirmReport}
+                onReportReasonChange={setReportReason}
+                isDisabled={isDisabled}
+              />
             ))
           ) : (
             <div className="feed-sheet__empty">
-              <strong>Ingen lokale kommentarer ennå</strong>
-              <p>Det du sender her vises med en gang i denne økten, men lagres ikke i backend.</p>
+              <strong>Ingen kommentarer ennå</strong>
+              <p>{'Vær den første til å kommentere!'}</p>
             </div>
           )}
         </div>
 
-        <div
-          className={`feed-sheet__composer-shell ${isComposerDragging ? 'is-dragging' : ''}`}
-          style={composerShellStyle}
-          onPointerDownCapture={(event) => startSwipe('composer', event)}
-          onPointerMoveCapture={updateSwipe}
-          onPointerUpCapture={endSwipe}
-          onPointerCancelCapture={resetSwipeGesture}
-        >
-          <div className="feed-sheet__composer-controls">
-            <div className="feed-sheet__composer-gesture-zone">
+        <div className="feed-sheet__composer-shell">
+          {disabledReason ? <p className="feed-sheet__disabled-note">{disabledReason}</p> : null}
+          {!isDisabled ? (
+            <div className="feed-sheet__composer-form">
+              <textarea
+                ref={textareaRef}
+                className="feed-sheet__composer-input"
+                placeholder="Skriv en kommentar..."
+                value={draftText}
+                onChange={(e) => setDraftText(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSubmit(); }
+                }}
+                rows={2}
+                disabled={isSubmitting}
+                aria-label="Skriv en kommentar"
+              />
               <button
                 type="button"
-                className={`feed-sheet__composer-trigger ${isComposerOpen ? 'is-open' : ''}`}
-                onClick={onOpenComposer}
-                disabled={isDisabled || isComposerBusy || isSwipeSettling}
-                aria-expanded={isComposerVisible}
+                className="feed-sheet__send-btn"
+                onClick={handleSubmit}
+                disabled={isSubmitting || !draftText.trim()}
               >
-                <span className="feed-sheet__composer-placeholder">Skriv en kommentar</span>
-                {!isComposerVisible ? (
-                  <span className="feed-sheet__composer-trigger-icon" aria-hidden="true">
-                    +
-                  </span>
-                ) : null}
+                {isSubmitting ? '...' : 'Send'}
               </button>
-
-              {isComposerVisible ? (
-                <button
-                  type="button"
-                  className={`feed-sheet__composer-close ${isComposerClosing ? 'is-closing' : ''}`}
-                  onClick={onCloseComposer}
-                  disabled={isDisabled || isComposerBusy || isSwipeSettling}
-                  aria-label="Lukk skrivefelt"
-                  title="Lukk skrivefelt"
-                >
-                  {'\u2212'}
-                </button>
-              ) : null}
             </div>
-          </div>
-
-          {disabledReason ? <p className="feed-sheet__disabled-note">{disabledReason}</p> : null}
-
-          <div
-            className={`feed-sheet__composer-stage ${
-              isComposerVisible ? 'is-open' : 'is-collapsed'
-            } ${isComposerClosing ? 'is-closing' : ''}`}
-            aria-hidden={!isComposerVisible}
-          >
-            {isComposerVisible ? (
-              <div className={`feed-sheet__composer ${isComposerClosing ? 'is-closing' : ''}`}>
-                <div className="feed-sheet__emoji-row">
-                  {COMMENT_EMOJIS.map((emoji) => (
-                    <button
-                      key={emoji}
-                      type="button"
-                      className={`feed-emoji-button ${
-                        pendingSendFeedback?.kind === 'emoji' && pendingSendFeedback.value === emoji
-                          ? 'is-pending'
-                          : ''
-                      }`}
-                      onClick={() => onSubmitEmoji(emoji)}
-                      disabled={isDisabled || isComposerBusy}
-                    >
-                      {emoji}
-                    </button>
-                  ))}
-                </div>
-
-                <div className="feed-sheet__tabs">
-                  {PRESET_TAB_ORDER.map((tab) => (
-                    <button
-                      key={tab}
-                      type="button"
-                      className={`feed-sheet__tab ${selectedTab === tab ? 'is-active' : ''}`}
-                      onClick={() => onSelectPresetTab(tab)}
-                      disabled={isDisabled || isComposerBusy}
-                    >
-                      {tab}
-                    </button>
-                  ))}
-                </div>
-
-                <div className="feed-sheet__preset-grid">
-                  {COMMENT_PRESETS[selectedTab].map((preset) => (
-                    <button
-                      key={preset}
-                      type="button"
-                      className={`feed-preset-button ${
-                        pendingSendFeedback?.kind === 'preset' &&
-                        pendingSendFeedback.value === preset
-                          ? 'is-pending'
-                          : ''
-                      }`}
-                      onClick={() => onSubmitPreset(preset)}
-                      disabled={isDisabled || isComposerBusy}
-                    >
-                      {preset}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            ) : null}
-          </div>
+          ) : null}
+          {submitError ? <p className="feed-sheet__error">{submitError}</p> : null}
         </div>
       </section>
     </div>,
@@ -1159,6 +1243,33 @@ function FeedCardMobile({
   );
 }
 
+function getNearestCardIndex(container, entries, cardRefMap) {
+  if (!container || !entries.length) {
+    return 0;
+  }
+
+  const containerTop = container.scrollTop;
+  let bestIndex = 0;
+  let bestDistance = Number.POSITIVE_INFINITY;
+
+  entries.forEach((entry, index) => {
+    const element = cardRefMap.current.get(String(entry.submissionId));
+
+    if (!element) {
+      return;
+    }
+
+    const distance = Math.abs(element.offsetTop - containerTop);
+
+    if (distance < bestDistance) {
+      bestDistance = distance;
+      bestIndex = index;
+    }
+  });
+
+  return bestIndex;
+}
+
 function FeedCardDesktop({
   canManage,
   entry,
@@ -1245,37 +1356,15 @@ function FeedCardDesktop({
   );
 }
 
-function getNearestCardIndex(container, entries, cardRefMap) {
-  if (!container || !entries.length) {
-    return 0;
-  }
-
-  const containerTop = container.scrollTop;
-  let bestIndex = 0;
-  let bestDistance = Number.POSITIVE_INFINITY;
-
-  entries.forEach((entry, index) => {
-    const element = cardRefMap.current.get(String(entry.submissionId));
-
-    if (!element) {
-      return;
-    }
-
-    const distance = Math.abs(element.offsetTop - containerTop);
-
-    if (distance < bestDistance) {
-      bestDistance = distance;
-      bestIndex = index;
-    }
-  });
-
-  return bestIndex;
-}
-
 export function FeedPage({
   activityLog,
+  commentsBySubmission = {},
   currentUserId = null,
   currentUserActiveBans = [],
+  onCreateComment,
+  onDeleteComment,
+  onLikeComment,
+  onReportComment,
   onDeleteSubmission,
   onExit,
   onOpenKnots,
@@ -1299,19 +1388,10 @@ export function FeedPage({
   const [deleteToast, setDeleteToast] = useState('');
   const [activeMobileIndex, setActiveMobileIndex] = useState(0);
   const [commentSheetEntry, setCommentSheetEntry] = useState(null);
-  const [localCommentsBySubmission, setLocalCommentsBySubmission] = useState(
-    () => getLocalCommentsSnapshot(),
-  );
-  const [commentTabBySubmission, setCommentTabBySubmission] = useState({});
-  const [commentComposerStateBySubmission, setCommentComposerStateBySubmission] = useState({});
-  const [commentSendFeedbackBySubmission, setCommentSendFeedbackBySubmission] = useState({});
-  const [latestSubmittedCommentIdBySubmission, setLatestSubmittedCommentIdBySubmission] =
-    useState({});
   const isDesktop = useDesktopFeed();
   const mobileReelRef = useRef(null);
   const cardRefMap = useRef(new Map());
   const deleteToastTimeoutRef = useRef(null);
-  const commentTimerRef = useRef(new Map());
 
   const activeFeedBan =
     currentUserActiveBans.find((ban) => ban.type === 'feed') ?? null;
@@ -1348,35 +1428,9 @@ export function FeedPage({
         clearTimeout(deleteToastTimeoutRef.current);
         deleteToastTimeoutRef.current = null;
       }
-
-      commentTimerRef.current.forEach((timers) => {
-        Object.values(timers).forEach((timerId) => {
-          if (timerId) {
-            clearTimeout(timerId);
-          }
-        });
-      });
-      commentTimerRef.current.clear();
     },
     [],
   );
-
-  useEffect(() => {
-    setLocalCommentsBySubmission((current) => {
-      const next = { ...current };
-      let changed = false;
-
-      feedEntries.forEach((entry) => {
-        const key = String(entry.submissionId);
-        if (!(key in next) && LOCAL_FEED_COMMENTS.has(key)) {
-          next[key] = LOCAL_FEED_COMMENTS.get(key);
-          changed = true;
-        }
-      });
-
-      return changed ? next : current;
-    });
-  }, [feedEntries]);
 
   useEffect(() => {
     if (isDesktop) {
@@ -1467,6 +1521,13 @@ export function FeedPage({
       }
     };
   }, [feedEntries, isDesktop]);
+
+  useEffect(() => {
+    const maxIndex = Math.max(feedEntries.length - 1, 0);
+    if (activeMobileIndex > maxIndex) {
+      setActiveMobileIndex(maxIndex);
+    }
+  }, [activeMobileIndex, feedEntries.length]);
 
   function registerCardRef(submissionId, node) {
     const key = String(submissionId);
@@ -1663,187 +1724,20 @@ export function FeedPage({
     }
   }
 
-  function clearCommentTimer(submissionId, timerKey) {
-    const timers = commentTimerRef.current.get(submissionId);
-
-    if (!timers?.[timerKey]) {
-      return;
-    }
-
-    clearTimeout(timers[timerKey]);
-    delete timers[timerKey];
-
-    if (!Object.keys(timers).length) {
-      commentTimerRef.current.delete(submissionId);
-    }
-  }
-
-  function scheduleCommentTimer(submissionId, timerKey, callback, delayMs) {
-    clearCommentTimer(submissionId, timerKey);
-
-    const timers = commentTimerRef.current.get(submissionId) ?? {};
-    timers[timerKey] = window.setTimeout(() => {
-      const activeTimers = commentTimerRef.current.get(submissionId);
-
-      if (activeTimers) {
-        delete activeTimers[timerKey];
-        if (!Object.keys(activeTimers).length) {
-          commentTimerRef.current.delete(submissionId);
-        } else {
-          commentTimerRef.current.set(submissionId, activeTimers);
-        }
-      }
-
-      callback();
-    }, delayMs);
-
-    commentTimerRef.current.set(submissionId, timers);
-  }
-
-  function clearCommentSendFeedback(submissionId) {
-    setCommentSendFeedbackBySubmission((current) => {
-      if (!current[submissionId]) {
-        return current;
-      }
-
-      const next = { ...current };
-      delete next[submissionId];
-      return next;
-    });
-  }
-
-  function setCommentComposerState(submissionId, nextState) {
-    setCommentComposerStateBySubmission((current) => ({
-      ...current,
-      [submissionId]: nextState,
-    }));
-  }
-
   function openCommentSheet(entry) {
     setCommentSheetEntry(entry);
-    if (entry?.submissionId) {
-      const submissionId = String(entry.submissionId);
-      clearCommentSendFeedback(submissionId);
-      clearCommentTimer(submissionId, 'sendFeedback');
-      clearCommentTimer(submissionId, 'closeComposer');
-      setCommentComposerState(submissionId, 'closed');
-    }
   }
 
   function closeCommentSheet() {
-    if (commentSheetEntry?.submissionId) {
-      const submissionId = String(commentSheetEntry.submissionId);
-      clearCommentSendFeedback(submissionId);
-      clearCommentTimer(submissionId, 'sendFeedback');
-      clearCommentTimer(submissionId, 'closeComposer');
-    }
     setCommentSheetEntry(null);
-  }
-
-  function handleOpenCommentComposer(submissionId) {
-    clearCommentTimer(submissionId, 'closeComposer');
-    setCommentComposerState(submissionId, 'open');
-  }
-
-  function handleCloseCommentComposer(submissionId) {
-    clearCommentSendFeedback(submissionId);
-    clearCommentTimer(submissionId, 'closeComposer');
-    setCommentComposerState(submissionId, 'closing');
-    scheduleCommentTimer(
-      submissionId,
-      'closeComposer',
-      () => setCommentComposerState(submissionId, 'closed'),
-      COMMENT_COMPOSER_CLOSE_MS,
-    );
-  }
-
-  function handleSelectCommentTab(submissionId, tab) {
-    setCommentTabBySubmission((current) => ({
-      ...current,
-      [submissionId]: tab,
-    }));
-  }
-
-  function handleSubmitLocalComment(entry, presetText = '', emojiOverride = '') {
-    if (!entry?.submissionId || activeFeedBan) {
-      return;
-    }
-
-    const submissionId = String(entry.submissionId);
-    const composerState = commentComposerStateBySubmission[submissionId] ?? 'closed';
-    if (commentSendFeedbackBySubmission[submissionId] || composerState === 'closing') {
-      return;
-    }
-
-    const draftText = typeof presetText === 'string' ? presetText : '';
-    const selectedEmoji = COMMENT_EMOJIS.includes(emojiOverride) ? emojiOverride : '';
-    const nextComment = createLocalComment(draftText, selectedEmoji);
-
-    if (!nextComment.text) {
-      return;
-    }
-
-    const nextFeedback =
-      selectedEmoji && !draftText
-        ? { kind: 'emoji', value: selectedEmoji }
-        : { kind: 'preset', value: draftText };
-
-    clearCommentTimer(submissionId, 'highlight');
-    clearCommentTimer(submissionId, 'sendFeedback');
-    clearCommentTimer(submissionId, 'closeComposer');
-
-    setCommentSendFeedbackBySubmission((current) => ({
-      ...current,
-      [submissionId]: nextFeedback,
-    }));
-
-    scheduleCommentTimer(
-      submissionId,
-      'sendFeedback',
-      () => {
-        setLocalCommentsBySubmission((current) => {
-          const nextComments = [nextComment, ...(current[submissionId] ?? [])];
-          const nextState = {
-            ...current,
-            [submissionId]: nextComments,
-          };
-
-          LOCAL_FEED_COMMENTS.set(submissionId, nextComments);
-          return nextState;
-        });
-        setLatestSubmittedCommentIdBySubmission((current) => ({
-          ...current,
-          [submissionId]: nextComment.id,
-        }));
-        setCommentComposerState(submissionId, 'closing');
-
-        scheduleCommentTimer(
-          submissionId,
-          'closeComposer',
-          () => {
-            clearCommentSendFeedback(submissionId);
-            setCommentComposerState(submissionId, 'closed');
-          },
-          COMMENT_COMPOSER_CLOSE_MS,
-        );
-        scheduleCommentTimer(
-          submissionId,
-          'highlight',
-          () =>
-            setLatestSubmittedCommentIdBySubmission((current) => {
-              if (current[submissionId] !== nextComment.id) {
-                return current;
-              }
-
-              const next = { ...current };
-              delete next[submissionId];
-              return next;
-            }),
-          COMMENT_HIGHLIGHT_MS,
-        );
-      },
-      COMMENT_SEND_FEEDBACK_MS,
-    );
+    window.setTimeout(() => {
+      const container = mobileReelRef.current;
+      if (!container) return;
+      const activeEntry = feedEntries[activeMobileIndex];
+      if (!activeEntry) return;
+      const el = cardRefMap.current.get(String(activeEntry.submissionId));
+      if (el) container.scrollTo({ top: el.offsetTop, behavior: 'instant' });
+    }, 0);
   }
 
   if (!feedEntries.length) {
@@ -1877,17 +1771,8 @@ export function FeedPage({
     );
   }
 
-  const activeCommentSubmissionId = String(commentSheetEntry?.submissionId ?? '');
-  const activeCommentTab =
-    commentTabBySubmission[activeCommentSubmissionId] ?? PRESET_TAB_ORDER[0];
-  const activeCommentComposerState =
-    commentComposerStateBySubmission[activeCommentSubmissionId] ?? 'closed';
-  const activeCommentSendFeedback =
-    commentSendFeedbackBySubmission[activeCommentSubmissionId] ?? null;
-  const activeLatestSubmittedCommentId =
-    latestSubmittedCommentIdBySubmission[activeCommentSubmissionId] ?? '';
   const activeComments = commentSheetEntry?.submissionId
-    ? localCommentsBySubmission[String(commentSheetEntry.submissionId)] ?? []
+    ? (commentsBySubmission[String(commentSheetEntry.submissionId)] ?? [])
     : [];
 
   return (
@@ -1945,14 +1830,14 @@ export function FeedPage({
               onOpenProfile={onOpenProfile}
               onReport={openReportModal}
               onRate={handleRate}
-              comments={localCommentsBySubmission[String(entry.submissionId)] ?? []}
+              comments={commentsBySubmission[String(entry.submissionId)] ?? []}
               feedInteractionsDisabled={Boolean(activeFeedBan)}
               feedInteractionMessage={feedInteractionMessage}
             />
           ))}
         </div>
       ) : (
-        <div ref={mobileReelRef} className="feed-reel-mobile">
+        <div ref={mobileReelRef} className={`feed-reel-mobile${commentSheetEntry ? ' feed-reel-mobile--locked' : ''}`}>
           {feedEntries.map((entry, index) => (
             <FeedCardMobile
               key={entry.id}
@@ -1987,18 +1872,14 @@ export function FeedPage({
         <FeedCommentSheet
           entry={commentSheetEntry}
           comments={activeComments}
-          selectedTab={activeCommentTab}
-          composerState={activeCommentComposerState}
-          pendingSendFeedback={activeCommentSendFeedback}
-          latestSubmittedCommentId={activeLatestSubmittedCommentId}
+          currentUserId={currentUserId}
           onClose={closeCommentSheet}
-          onOpenComposer={() => handleOpenCommentComposer(activeCommentSubmissionId)}
-          onCloseComposer={() => handleCloseCommentComposer(activeCommentSubmissionId)}
-          onSelectPresetTab={(tab) =>
-            handleSelectCommentTab(activeCommentSubmissionId, tab)
+          onSubmitComment={(text, parentId) =>
+            onCreateComment?.(commentSheetEntry.submissionId, text, parentId)
           }
-          onSubmitEmoji={(emoji) => handleSubmitLocalComment(commentSheetEntry, '', emoji)}
-          onSubmitPreset={(preset) => handleSubmitLocalComment(commentSheetEntry, preset)}
+          onDeleteComment={onDeleteComment}
+          onLikeComment={onLikeComment}
+          onReportComment={onReportComment}
           isDisabled={Boolean(activeFeedBan)}
           disabledReason={feedInteractionMessage}
         />
