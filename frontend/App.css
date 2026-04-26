@@ -14791,6 +14791,39 @@ button[type="button"]:not(.no-ripple):not(.action-button):not(.bottom-swipe-nav_
   color: var(--text-strong, #111);
 }
 
+.adh-history__toggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  border: 1px solid var(--surface-border, rgba(0, 0, 0, 0.08));
+  background: var(--surface, #fff);
+  color: var(--text-strong, #111);
+  font: inherit;
+  font-size: 0.9rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 120ms ease, border-color 120ms ease;
+}
+
+.adh-history__toggle:hover,
+.adh-history__toggle:focus-visible {
+  background: color-mix(in srgb, var(--primary, #2351a5) 6%, var(--surface, #fff));
+  border-color: color-mix(in srgb, var(--primary, #2351a5) 30%, transparent);
+}
+
+.adh-history__toggle svg {
+  transition: transform 200ms ease;
+  color: var(--text-muted, rgba(0, 0, 0, 0.55));
+}
+
+.adh-history__toggle .is-open {
+  transform: rotate(90deg);
+  color: var(--primary, #2351a5);
+}
+
 .adh-history__list {
   display: flex;
   flex-direction: column;

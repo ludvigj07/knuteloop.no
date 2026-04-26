@@ -689,6 +689,7 @@ export function AdminDuelHub({
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedDuelId, setSelectedDuelId] = useState(null);
   const [feedback, setFeedback] = useState('');
+  const [showHistory, setShowHistory] = useState(false);
   // Tikker hvert minutt for å oppdatere "X min siden"-labels og frist-countdown.
   const [, setTick] = useState(0);
 
@@ -1002,46 +1003,58 @@ export function AdminDuelHub({
 
       {/* RESOLVED HISTORY */}
       <section className="adh-history">
-        <header className="adh-history__head">
-          <h3>Historikk</h3>
-          <span>{resolved.length} avgjorte totalt</span>
-        </header>
-        <div className="adh-history__list">
-          {resolved.slice(0, 12).map((duel) => {
-            const isCancelled = duel.result === 'cancelled';
-            return (
-              <div
-                key={duel.id}
-                className={`adh-history-row${
-                  isCancelled ? ' adh-history-row--cancelled' : ''
-                }`}
-              >
-                <div className="adh-history-row__main">
-                  <strong>
-                    {isCancelled ? 'Slettet' : duel.outcomeTitle}
-                    {duel.knotTitle ? ` · ${duel.knotTitle}` : ''}
-                  </strong>
-                  <span className="adh-history-row__sub">
-                    {duel.challengerName} vs {duel.opponentName} ·{' '}
-                    {duel.resolvedAtLabel}
-                    {duel.lastReviewedByAdminName
-                      ? ` · av ${duel.lastReviewedByAdminName}`
-                      : ''}
-                    {isCancelled && duel.cancelReason
-                      ? ` · "${duel.cancelReason}"`
-                      : ''}
+        <button
+          type="button"
+          className="adh-history__toggle"
+          onClick={() => setShowHistory((value) => !value)}
+          aria-expanded={showHistory}
+        >
+          <span>{showHistory ? 'Skjul historikk' : `Se historikk (${resolved.length})`}</span>
+          <ChevronRight
+            size={16}
+            strokeWidth={2}
+            className={showHistory ? 'is-open' : ''}
+            aria-hidden="true"
+          />
+        </button>
+        {showHistory ? (
+          <div className="adh-history__list">
+            {resolved.slice(0, 12).map((duel) => {
+              const isCancelled = duel.result === 'cancelled';
+              return (
+                <div
+                  key={duel.id}
+                  className={`adh-history-row${
+                    isCancelled ? ' adh-history-row--cancelled' : ''
+                  }`}
+                >
+                  <div className="adh-history-row__main">
+                    <strong>
+                      {isCancelled ? 'Slettet' : duel.outcomeTitle}
+                      {duel.knotTitle ? ` · ${duel.knotTitle}` : ''}
+                    </strong>
+                    <span className="adh-history-row__sub">
+                      {duel.challengerName} vs {duel.opponentName} ·{' '}
+                      {duel.resolvedAtLabel}
+                      {duel.lastReviewedByAdminName
+                        ? ` · av ${duel.lastReviewedByAdminName}`
+                        : ''}
+                      {isCancelled && duel.cancelReason
+                        ? ` · "${duel.cancelReason}"`
+                        : ''}
+                    </span>
+                  </div>
+                  <span className="adh-history-row__pill">
+                    {isCancelled ? 'slettet' : duel.pointLabel}
                   </span>
                 </div>
-                <span className="adh-history-row__pill">
-                  {isCancelled ? 'slettet' : duel.pointLabel}
-                </span>
-              </div>
-            );
-          })}
-          {resolved.length === 0 ? (
-            <p className="adh-empty">Ingen avgjorte knute-offer ennå.</p>
-          ) : null}
-        </div>
+              );
+            })}
+            {resolved.length === 0 ? (
+              <p className="adh-empty">Ingen avgjorte knute-offer ennå.</p>
+            ) : null}
+          </div>
+        ) : null}
       </section>
     </div>
   );
