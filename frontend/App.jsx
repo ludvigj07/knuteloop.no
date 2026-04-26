@@ -278,7 +278,7 @@ function App() {
           document.body.classList.add('force-invite-pulse');
           window.setTimeout(() => {
             document.body.classList.remove('force-invite-pulse');
-          }, 3400);
+          }, 10000);
         }, 320);
         break;
       }
