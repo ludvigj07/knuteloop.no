@@ -231,21 +231,34 @@ export function LeaderboardPage({
     currentUserActiveBans.find((ban) => ban.type === 'feed') ?? null;
   const activeSubmissionBan =
     currentUserActiveBans.find((ban) => ban.type === 'submission') ?? null;
-  const activeDuels = (duelHistory ?? []).filter((duel) => duel.status === 'active');
+  const allActiveDuels = (duelHistory ?? []).filter((duel) => duel.status === 'active');
   const recentDuels = (duelHistory ?? []).filter((duel) => duel.status === 'resolved');
+  // Knute-off er en 1/dag-greie, så vi viser bare brukerens egen
+  // pågående — ikke andre folks dueller. Tar nyeste hvis det skulle
+  // være flere enn én ved en feil.
+  const myActiveDuels = allActiveDuels
+    .filter(
+      (duel) => duel.challengerId === currentUserId || duel.opponentId === currentUserId,
+    )
+    .sort((a, b) => {
+      const aTime = new Date(a.startedAtRaw ?? a.startedAt ?? 0).getTime();
+      const bTime = new Date(b.startedAtRaw ?? b.startedAt ?? 0).getTime();
+      return bTime - aTime;
+    });
+  const myCurrentDuel = myActiveDuels[0] ?? null;
   const myFinishedDuels = recentDuels.filter(
     (duel) => duel.challengerId === currentUserId || duel.opponentId === currentUserId,
   );
   const myWonDuels = myFinishedDuels.filter((duel) => duel.winnerId === currentUserId);
-  const myLostDuels = myFinishedDuels.filter(
-    (duel) => duel.winnerId && duel.winnerId !== currentUserId,
-  );
   const myWinRate = myFinishedDuels.length > 0
     ? Math.round((myWonDuels.length / myFinishedDuels.length) * 100)
     : 0;
-  const myActiveDuelCount = activeDuels.filter(
-    (duel) => duel.challengerId === currentUserId || duel.opponentId === currentUserId,
-  ).length;
+  const myActiveDuelCount = myCurrentDuel ? 1 : 0;
+  // canStartNewDuel — brukeren har "tokens" igjen i dag og er ikke
+  // allerede i en aktiv knute-off. Dette er det eneste vi gater på
+  // frontend-side. (Backend kan i tillegg ha range-regler som blokkerer
+  // — i så fall får brukeren feilmelding via toast når de prøver.)
+  const canStartNewDuel = !myCurrentDuel && (duelSummary?.currentUserRemaining ?? 0) > 0;
   const challengeLeaders = (leaders ?? []).filter((leader) => leader.id !== currentUserId);
   const genderFilterOptions = ['girl', 'boy'];
   const selectedGenderLeaderboard = genderLeaderboards[genderFilter] ?? [];
@@ -707,32 +720,30 @@ export function LeaderboardPage({
             </div>
           ) : null}
 
-          {/* 2. AKTIVE DUELS — VS-kort */}
+          {/* 2. AKTIV DUELL — VS-kort (max 1) */}
           <section className="duel-v2-section">
             <header className="duel-v2-section__head">
               <h3>Pågående</h3>
             </header>
-            {activeDuels.length > 0 ? (
+            {myCurrentDuel ? (
               <div className="duel-v2-active-list">
-                {activeDuels.map((duel) => (
-                  <ActiveDuelVsCard
-                    key={duel.id}
-                    duel={duel}
-                    currentUserId={currentUserId}
-                    canRegister={!activeSubmissionBan}
-                    onRegister={() => setActiveSheetDuelId(duel.id)}
-                    onOpenProfile={onOpenProfile}
-                  />
-                ))}
+                <ActiveDuelVsCard
+                  key={myCurrentDuel.id}
+                  duel={myCurrentDuel}
+                  currentUserId={currentUserId}
+                  canRegister={!activeSubmissionBan}
+                  onRegister={() => setActiveSheetDuelId(myCurrentDuel.id)}
+                  onOpenProfile={onOpenProfile}
+                />
               </div>
             ) : (
               <p className="duel-v2-empty">
-                Ingen aktive knute-off akkurat nå. Velg en motstander under.
+                Ingen aktiv knute-off akkurat nå. Velg en motstander under.
               </p>
             )}
           </section>
 
-          {/* 3. UTFORDRE-LISTE */}
+          {/* 3. UTFORDRE-LISTE — alle uansett rank, gate kun på daglig kvote */}
           <section className="duel-v2-section">
             <header className="duel-v2-section__head">
               <h3>Klar til kamp</h3>
@@ -746,20 +757,24 @@ export function LeaderboardPage({
                 </button>
               ) : null}
             </header>
+            {!canStartNewDuel ? (
+              <p className="duel-v2-meta-hint">
+                {myCurrentDuel
+                  ? 'Du er allerede i en knute-off. Fullfør den før du starter ny.'
+                  : 'Du har brukt opp din knute-off i dag.'}
+              </p>
+            ) : null}
             <div className="duel-v2-challenger-list">
               {(() => {
-                const sorted = [...challengeLeaders].sort((a, b) => {
-                  const aCan = duelAvailability?.byLeaderId?.[a.id]?.canChallenge ? 0 : 1;
-                  const bCan = duelAvailability?.byLeaderId?.[b.id]?.canChallenge ? 0 : 1;
-                  if (aCan !== bCan) return aCan - bCan;
-                  return (a.rank ?? 999) - (b.rank ?? 999);
-                });
+                const sorted = [...challengeLeaders].sort(
+                  (a, b) => (a.rank ?? 999) - (b.rank ?? 999),
+                );
                 const visible = showAllChallengers ? sorted : sorted.slice(0, 5);
                 return visible.map((leader) => (
                   <ChallengerRow
                     key={leader.id}
                     leader={leader}
-                    duelState={duelAvailability?.byLeaderId?.[leader.id]}
+                    canChallenge={canStartNewDuel}
                     onChallenge={() => handleStartDuel(leader.id)}
                     onOpenProfile={onOpenProfile}
                   />
@@ -935,9 +950,7 @@ function ActiveDuelVsCard({ duel, currentUserId, canRegister, onRegister, onOpen
   );
 }
 
-function ChallengerRow({ leader, duelState, onChallenge, onOpenProfile }) {
-  const canChallenge = Boolean(duelState?.canChallenge);
-  const reason = duelState?.reason ?? 'Knute-off er ikke tilgjengelig akkurat nå.';
+function ChallengerRow({ leader, canChallenge, onChallenge, onOpenProfile }) {
   const photo = leader.photoUrl;
   const name = leader.russName ?? leader.name;
 
@@ -969,7 +982,7 @@ function ChallengerRow({ leader, duelState, onChallenge, onOpenProfile }) {
         className="duel-v2-challenger__cta"
         disabled={!canChallenge}
         onClick={onChallenge}
-        title={canChallenge ? 'Utfordre' : reason}
+        title={canChallenge ? 'Utfordre' : 'Du har brukt opp din knute-off i dag'}
       >
         {canChallenge ? (
           <>
@@ -1064,7 +1077,7 @@ function DuelRulesSheet({ duelSummary, onClose }) {
           </li>
           <li>
             <ChevronRight size={16} strokeWidth={1.8} aria-hidden="true" />
-            <span>Du kan utfordre innenfor {duelSummary?.range ?? 5} plasseringer</span>
+            <span>Du kan utfordre hvem som helst i kullet</span>
           </li>
           <li>
             <Award size={16} strokeWidth={1.8} aria-hidden="true" />
