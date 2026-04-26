@@ -373,50 +373,6 @@ export function DashboardPage({
         )}
       </section>
 
-      {/* ══ 4. RIVALER ═══════════════════════════════════════════════════════ */}
-      {/* ══ 5. ANBEFALT KNUTE ════════════════════════════════════════════════ */}
-      {dashboard.recommendedKnot ? (
-        <section className="db-recommend">
-          <div className="db-recommend__header">
-            <h3 className="db-section-heading db-recommend__heading">Anbefalt knute</h3>
-            <span className="db-recommend__pts">
-              {dashboard.recommendedKnot.points}p
-            </span>
-          </div>
-          <div className="db-recommend__card">
-            <div className="db-recommend__main">
-              <strong className="db-recommend__title">{dashboard.recommendedKnot.title}</strong>
-              <button
-                type="button"
-                className="action-button action-button--compact db-recommend__btn"
-                onClick={() => onOpenDailyKnot(dashboard.recommendedKnot.id)}
-                aria-label={`Ta anbefalt knute: ${dashboard.recommendedKnot.title}`}
-              >
-                Ta knute
-              </button>
-            </div>
-            {dashboard.recommendedKnot.description ? (
-              <p className="db-recommend__description">{dashboard.recommendedKnot.description}</p>
-            ) : null}
-          </div>
-        </section>
-      ) : null}
-
-      {/* ══ 6. PÅMINNELSER ═══════════════════════════════════════════════════ */}
-      {dashboard.messages?.length > 0 ? (
-        <section className="db-messages">
-          <h3 className="db-section-heading">Påminnelser</h3>
-          <div className="db-messages__list">
-            {dashboard.messages.map((msg) => (
-              <div key={msg.id} className="db-message">
-                <strong>{msg.title}</strong>
-                <p>{msg.detail}</p>
-              </div>
-            ))}
-          </div>
-        </section>
-      ) : null}
-
     </div>
   );
 }
