@@ -877,6 +877,33 @@
   ],
   "submissions": [
     {
+      "id": "submission-1777224829149",
+      "knotId": "board-13",
+      "knotTitle": "Frys skoen til noen på fest",
+      "knotCategory": "Generelle",
+      "student": "Admin",
+      "leaderId": 6,
+      "submittedAtRaw": "2026-04-26T17:33:49.148Z",
+      "status": "Godkjent",
+      "points": 10,
+      "basePoints": 10,
+      "streakBonusPoints": 0,
+      "streakQualified": false,
+      "streakDay": null,
+      "streakDayKey": null,
+      "note": "Fett bror",
+      "imageName": "",
+      "imagePreviewUrl": "",
+      "videoName": "",
+      "videoPreviewUrl": "",
+      "isAnonymousFeed": false,
+      "submissionMode": "feed",
+      "ratings": {},
+      "reviewedAtRaw": "2026-04-26T17:34:24.809Z",
+      "reviewedBy": 6,
+      "profileHidden": false
+    },
+    {
       "id": "submission-1777197423137",
       "knotId": "board-5",
       "knotTitle": "Popp en snus fra bakken",
@@ -2896,7 +2923,9 @@
       "opponentImageName": "",
       "opponentImagePreviewUrl": "",
       "opponentVideoName": "",
-      "opponentVideoPreviewUrl": ""
+      "opponentVideoPreviewUrl": "",
+      "lockedByAdminId": 6,
+      "lockedAt": "2026-04-26T16:50:41.160Z"
     },
     {
       "id": "duel-1775777139988",
@@ -3689,6 +3718,16 @@
       "likes": [],
       "parentId": null,
       "deletedAt": "2026-04-25T17:45:37.551Z"
+    },
+    {
+      "id": "comment-1777225187225-728c42b4",
+      "submissionId": "submission-1777224829149",
+      "authorId": 6,
+      "text": "Lol",
+      "createdAt": "2026-04-26T17:39:47.228Z",
+      "likes": [],
+      "parentId": null,
+      "deletedAt": null
     }
   ]
 }
