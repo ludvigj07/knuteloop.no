@@ -1639,8 +1639,10 @@
 
 .settings-modal {
   width: min(760px, 100%);
-  max-height: calc(100vh - 40px);
+  max-height: calc(100dvh - 40px);
   overflow: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
   padding: 24px;
   border-radius: 28px;
   border: 1px solid var(--border);
@@ -1695,6 +1697,22 @@
   gap: 12px;
 }
 
+@media (max-width: 480px) {
+  .settings-modal {
+    padding: 16px;
+    border-radius: 20px;
+    max-height: calc(100dvh - 16px);
+  }
+
+  .settings-account-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .settings-section {
+    padding: 14px;
+  }
+}
+
 .settings-password-form {
   display: grid;
   gap: 12px;
@@ -1743,8 +1761,10 @@
 .terms-modal__body {
   display: grid;
   gap: 18px;
-  max-height: 70vh;
+  max-height: 70dvh;
   overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
   padding-right: 4px;
 }
 
