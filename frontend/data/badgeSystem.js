@@ -17,11 +17,23 @@ const TIER_META = [
   { key: 'diamond', label: 'Diamant', tone: 'sky', color: 'diamond' },
 ];
 
-const FOLDER_TIER_TARGETS = [5, 15, 30, 'all'];
+// Per-folder og total-knuter: prosent-ladder så mappestørrelse spiller
+// rolle — 25/50/75/100% av totalen. Tallene regnes ut per mappe i runtime.
+const FOLDER_PERCENT_TIERS = [0.25, 0.5, 0.75, 1.0];
 const VERSATILE_TIER_TARGETS = [1, 2, 3, 4]; // antall mapper du har truffet
 const STREAK_TIER_TARGETS = [3, 7, 14, 30];
 const LEADERBOARD_TIER_TARGETS = [10, 5, 3, 1]; // top-N
 const GOLD_TIER_TARGETS = [5, 10, 25, 50];
+
+function buildPercentTargets(total) {
+  const safeTotal = Math.max(0, Number(total) || 0);
+  if (safeTotal <= 0) {
+    return FOLDER_PERCENT_TIERS.map(() => 1);
+  }
+  return FOLDER_PERCENT_TIERS.map((percent) =>
+    Math.max(1, Math.ceil(percent * safeTotal)),
+  );
+}
 
 const FOLDER_ICONS = {
   Generelle: '🪢',
@@ -114,26 +126,38 @@ function countKnotsByFolder(knots) {
   return counts;
 }
 
-function buildAchievementsFromInputs({ approvedKnots, totalPoints, leaderboardRank, streakDays }) {
+function buildAchievementsFromInputs({
+  approvedKnots,
+  folderTotals,
+  systemTotalKnots,
+  totalPoints,
+  leaderboardRank,
+  streakDays,
+}) {
   const knots = safeArray(approvedKnots);
   const folderCounts = countKnotsByFolder(knots);
   const goldKnotsCount = knots.filter(isGoldKnot).length;
+  const folderTotalsMap = folderTotals instanceof Map ? folderTotals : new Map();
+  const systemTotal = Math.max(0, Number(systemTotalKnots) || 0);
 
   const achievements = [];
 
   // 1) Per-folder mestring — én achievement per stabil mappe.
+  //    Tier-mål regnes ut som 25/50/75/100% av total knuter i mappen,
+  //    så mapper med få knuter får lavere absolutt-tall enn store mapper.
   KNOT_FOLDERS.forEach((folder) => {
     const progress = folderCounts.get(folder.id) ?? 0;
-    const totalKnotsInFolder = Math.max(progress, 30); // graceful fallback for "all"
+    const totalKnotsInFolder = folderTotalsMap.get(folder.id) ?? progress;
+    const targets = buildPercentTargets(totalKnotsInFolder);
     achievements.push(
       buildAchievement({
         id: `folder:${folder.id}`,
         title: `${folder.id}-mester`,
-        description: `Fullfør knuter i mappen ${folder.id}.`,
+        description: `Fullfør 25/50/75/100% av knutene i mappen ${folder.id} (${totalKnotsInFolder} stk).`,
         category: folder.id,
         icon: FOLDER_ICONS[folder.id] ?? '🏷️',
         iconType: 'emoji',
-        targets: FOLDER_TIER_TARGETS,
+        targets,
         progress,
         totalForFolder: totalKnotsInFolder,
       }),
@@ -206,16 +230,18 @@ function buildAchievementsFromInputs({ approvedKnots, totalPoints, leaderboardRa
     }),
   );
 
-  // 6) Knutesamler — total approved knots (et generelt totalpoengmål).
+  // 6) Knutesamler — andel av alle knuter i systemet du har godkjent.
+  //    Skalerer med faktisk knute-mengde i appen, ikke faste tall.
   achievements.push(
     buildAchievement({
       id: 'total-knots',
       title: 'Knutesamler',
-      description: 'Bygg en tung samling med godkjente knuter.',
+      description: `Fullfør 25/50/75/100% av alle knuter i systemet (${systemTotal} stk).`,
       category: 'Total',
       icon: '🪢',
-      targets: [3, 10, 25, 50],
+      targets: buildPercentTargets(systemTotal),
       progress: knots.length,
+      totalForFolder: systemTotal,
     }),
   );
 
@@ -237,14 +263,22 @@ function buildAchievementsFromInputs({ approvedKnots, totalPoints, leaderboardRa
 
 // Public API — keep the existing signatures so App.jsx, StatusPage and
 // ProfilesPage callers keep working untouched.
+//
+// `knots` skal være _alle_ knuter i systemet (uavhengig av status). Vi
+// teller opp totalt-per-mappe og total-i-system fra hele lista, og bruker
+// kun status="Godkjent" som "progress" mot tier-målene.
 export function buildAchievements(knots, currentLeader, meta = {}) {
-  const approvedKnots = safeArray(knots).filter((knot) => knot.status === 'Godkjent');
+  const allKnots = safeArray(knots);
+  const approvedKnots = allKnots.filter((knot) => knot.status === 'Godkjent');
+  const folderTotals = countKnotsByFolder(allKnots);
   const totalPoints = currentLeader?.points ?? 0;
   const leaderboardRank = Number(currentLeader?.rank);
   const streakDays = Number(meta.streakDays ?? meta.streak ?? currentLeader?.streak ?? 0);
 
   return buildAchievementsFromInputs({
     approvedKnots,
+    folderTotals,
+    systemTotalKnots: allKnots.length,
     totalPoints,
     leaderboardRank,
     streakDays,
@@ -253,12 +287,25 @@ export function buildAchievements(knots, currentLeader, meta = {}) {
 
 export function buildProfileAchievements(profile, meta = {}) {
   const profileKnots = safeArray(profile?.knots);
+  // Profilsiden ser bare brukerens egne knuter — bruk meta hvis caller har
+  // det globale knute-bildet, ellers fall tilbake til profilens egne så
+  // achievement-er aldri viser umulige mål.
+  const allKnots = safeArray(meta.allKnots ?? profileKnots);
+  const folderTotals =
+    meta.folderTotals instanceof Map
+      ? meta.folderTotals
+      : countKnotsByFolder(allKnots);
+  const systemTotalKnots = Number.isFinite(meta.systemTotalKnots)
+    ? meta.systemTotalKnots
+    : allKnots.length;
   const totalPoints = profile?.points ?? 0;
   const leaderboardRank = Number(profile?.rank);
   const streakDays = Number(meta.streakDays ?? meta.streak ?? profile?.streak ?? 0);
 
   return buildAchievementsFromInputs({
     approvedKnots: profileKnots,
+    folderTotals,
+    systemTotalKnots,
     totalPoints,
     leaderboardRank,
     streakDays,

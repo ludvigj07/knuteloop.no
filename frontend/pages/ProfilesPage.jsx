@@ -62,6 +62,7 @@ export function ProfilesPage({
   currentUserId,
   currentUserRole,
   editRequest = 0,
+  knots,
   onBackToOverview,
   onDeleteSubmission,
   onSelectProfile,
@@ -72,7 +73,9 @@ export function ProfilesPage({
   selectedProfile,
 }) {
   const unlockedAchievements = getUnlockedAchievements(achievements ?? []);
-  const profileAchievements = buildProfileAchievements(selectedProfile);
+  const profileAchievements = buildProfileAchievements(selectedProfile, {
+    allKnots: knots,
+  });
   const [isEditing, setIsEditing] = useState(false);
   const [isSavingProfile, setIsSavingProfile] = useState(false);
   const [profileEditorError, setProfileEditorError] = useState('');
