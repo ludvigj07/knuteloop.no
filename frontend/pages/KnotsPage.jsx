@@ -4,6 +4,7 @@ import { MobileVideo } from '../components/MobileVideo.jsx';
 import { isGoldKnot } from '../data/badgeSystem.js';
 import { NOTE_MAX_CHARS } from '../data/appHelpers.js';
 import { KNOT_FOLDERS, resolveKnotFolder } from '../data/knotFolders.js';
+import { haptics } from '../utils/haptics.js';
 
 const MOBILE_BREAKPOINT = 900;
 const SHEET_DISMISS_THRESHOLD = 120;
@@ -1442,6 +1443,13 @@ export function KnotsPage({
         }) || fallbackByCategory[feedbackCategory] || fallbackByCategory.standard,
       );
       setIsRareFeedbackActive(feedbackCategory === 'rare');
+      if (feedbackCategory === 'rare') {
+        haptics.heavy();
+      } else if (feedbackCategory === 'streak') {
+        haptics.success();
+      } else {
+        haptics.medium();
+      }
     } catch (error) {
       setFeedbackMessage(
         error instanceof Error && error.message
@@ -1449,6 +1457,7 @@ export function KnotsPage({
           : 'Kunne ikke sende inn knuten akkurat nå.',
       );
       setIsRareFeedbackActive(false);
+      haptics.warning();
     }
   }
 

@@ -5,6 +5,7 @@ import { PostActionsMenu } from '../components/PostActionsMenu.jsx';
 import anonymousFeedJoker from '../assets/anonymous-feed-joker.jpg';
 import anonymousFeedMask from '../assets/anonymous-feed-mask.png';
 import anonymousFeedWolf from '../assets/anonymous-feed-wolf.png';
+import { haptics } from '../utils/haptics.js';
 
 const STAR_VALUES = [1, 2, 3, 4, 5];
 const REPORT_REASONS = ['Spam', 'Upassende', 'Juks/falsk bevis', 'Trakassering', 'Annet'];
@@ -974,6 +975,7 @@ function FeedCommentSheet({
   async function handleLike(commentId) {
     if (pendingLikeIds.has(commentId)) return;
     setPendingLikeIds((prev) => new Set([...prev, commentId]));
+    haptics.light();
     try {
       await onLikeComment(commentId);
     } finally {
