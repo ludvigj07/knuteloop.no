@@ -13976,6 +13976,42 @@ button[type="button"]:not(.no-ripple):not(.action-button):not(.bottom-swipe-nav_
   min-width: 0;
 }
 
+.adh-header {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 0 2px;
+}
+
+.adh-header h2 {
+  margin: 0;
+  font-size: 1.2rem;
+  font-weight: 800;
+  color: var(--text-strong, #111);
+}
+
+.adh-header p {
+  margin: 0;
+  font-size: 0.82rem;
+  color: var(--text-muted, rgba(0, 0, 0, 0.6));
+}
+
+/* Full-bleed admin-duels-shell på mobil — bryter ut av app-shell sin
+   16px sideinset på små skjermer slik at kø og detail-panel får
+   hele skjermbredden. På desktop holder den seg innenfor shell. */
+.admin-duels-shell {
+  display: block;
+  margin-inline: -16px;
+  padding-inline: 12px;
+}
+
+@media (min-width: 720px) {
+  .admin-duels-shell {
+    margin-inline: 0;
+    padding-inline: 0;
+  }
+}
+
 /* Stats-bar */
 .adh-stats {
   display: grid;

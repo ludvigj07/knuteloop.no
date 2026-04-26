@@ -840,6 +840,11 @@ export function AdminDuelHub({
 
   return (
     <div className="adh">
+      <header className="adh-header">
+        <h2>Knute-offs</h2>
+        <p>Triage, gjennomgang og avgjørelse av aktive duells.</p>
+      </header>
+
       {/* HERO STATS */}
       <section className="adh-stats" aria-label="Knute-off-oversikt">
         <HeroStat

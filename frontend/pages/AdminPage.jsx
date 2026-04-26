@@ -1224,10 +1224,7 @@ export function AdminPage({
       ) : null}
 
       {activeAdminTask === 'duels' ? (
-        <SectionCard
-          title="Knute-offs"
-          description="Triage, gjennomgang og avgjørelse av aktive duells."
-        >
+        <div className="admin-duels-shell">
           <AdminDuelHub
             duels={duelHistory ?? []}
             duelSummary={duelSummary}
@@ -1239,7 +1236,7 @@ export function AdminPage({
             onManualResolveDuel={onManualResolveDuel}
             onCancelDuel={onCancelDuel}
           />
-        </SectionCard>
+        </div>
       ) : null}
 
       {activeAdminTask === 'reports' ? (
