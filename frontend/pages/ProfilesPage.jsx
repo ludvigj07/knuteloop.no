@@ -3,9 +3,9 @@ import { createPortal } from 'react-dom';
 import { SectionCard } from '../components/SectionCard.jsx';
 import {
   buildProfileAchievements,
-  getFeaturedAchievements,
   getUnlockedAchievements,
 } from '../data/badgeSystem.js';
+import { BadgeGrid } from '../components/BadgeMedallion.jsx';
 
 function createProfileDraft(profile) {
   return {
@@ -73,7 +73,6 @@ export function ProfilesPage({
 }) {
   const unlockedAchievements = getUnlockedAchievements(achievements ?? []);
   const profileAchievements = buildProfileAchievements(selectedProfile);
-  const featuredAchievements = getFeaturedAchievements(profileAchievements, 3);
   const [isEditing, setIsEditing] = useState(false);
   const [isSavingProfile, setIsSavingProfile] = useState(false);
   const [profileEditorError, setProfileEditorError] = useState('');
@@ -630,37 +629,14 @@ export function ProfilesPage({
           </SectionCard>
 
           <SectionCard
-            title="Utvalgte merker"
+            title="Merker"
             description={
               isOwnProfile
-                ? 'Tre merker som viser hva du har jobbet med så langt.'
-                : `Tre merker fra profilen til ${selectedProfile.russName}.`
+                ? 'Alle merker du jobber mot — tier-system fra bronse til diamant.'
+                : `Merkesamlingen til ${selectedProfile.russName}.`
             }
           >
-            <div className="badge-rail">
-              {featuredAchievements.length > 0 ? (
-                featuredAchievements.map((achievement) => (
-                  <article
-                    key={achievement.id}
-                    className={`badge-token badge-token--${achievement.tone}`}
-                  >
-                    <span className="badge-token__icon">{achievement.icon}</span>
-                    <div>
-                      <strong>{achievement.title}</strong>
-                      <p>{achievement.currentTierLabel}</p>
-                    </div>
-                  </article>
-                ))
-              ) : (
-                <article className="badge-token badge-token--muted">
-                  <span className="badge-token__icon">☆</span>
-                  <div>
-                    <strong>Ingen merker ennå</strong>
-                    <p>Godkjente knuter vil fylle opp hyllen her.</p>
-                  </div>
-                </article>
-              )}
-            </div>
+            <BadgeGrid achievements={profileAchievements} size="md" />
           </SectionCard>
 
           <SectionCard

@@ -262,8 +262,11 @@ function App() {
     ? leaders.find((leader) => leader.id === currentUser.leaderId)
     : null;
   const achievements = useMemo(
-    () => buildAchievements(knots, currentLeader),
-    [currentLeader, knots],
+    () =>
+      buildAchievements(knots, currentLeader, {
+        streakDays: Number(currentUserStreak?.current ?? 0),
+      }),
+    [currentLeader, currentUserStreak, knots],
   );
 
   // Watch achievements for newly unlocked items and show a celebration.

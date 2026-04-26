@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import { SectionCard } from '../components/SectionCard.jsx';
 import { getFeaturedAchievements, getUnlockedAchievements } from '../data/badgeSystem.js';
+import { BadgeGrid, BadgeMedallion } from '../components/BadgeMedallion.jsx';
 
 function ProfileThumb({ person }) {
   if (person?.studentPhotoUrl || person?.photoUrl) {
@@ -164,32 +165,20 @@ export function StatusPage({
         </div>
 
         {expandedSection === 'badges' ? (
-          <div className="badge-rail">
-            {featuredAchievements.length > 0 ? (
-              featuredAchievements.map((achievement) => (
-                <article
-                  key={achievement.id}
-                  className={`badge-token badge-token--${achievement.tone}`}
-                >
-                  <span className="badge-token__icon">{achievement.icon}</span>
-                  <div>
-                    <strong>{achievement.title}</strong>
-                    <p>{achievement.currentTierLabel}</p>
-                  </div>
-                </article>
-              ))
-            ) : (
-              <p className="folder-empty">Ingen merker er åpnet ennå.</p>
-            )}
-          </div>
+          <BadgeGrid achievements={achievements ?? []} size="md" />
         ) : (
           <div className="status-inline-summary">
-            {featuredAchievements.slice(0, 2).map((achievement) => (
-              <article key={achievement.id} className="status-inline-summary__item">
-                <strong>{achievement.title}</strong>
-                <p>{achievement.currentTierLabel}</p>
-              </article>
+            {featuredAchievements.slice(0, 3).map((achievement) => (
+              <BadgeMedallion
+                key={achievement.id}
+                achievement={achievement}
+                size="sm"
+                showLabel
+              />
             ))}
+            {featuredAchievements.length === 0 ? (
+              <p className="folder-empty">Ingen merker åpnet ennå.</p>
+            ) : null}
           </div>
         )}
       </SectionCard>

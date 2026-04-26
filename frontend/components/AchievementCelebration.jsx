@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import confetti from 'canvas-confetti';
 
 const GOLD_COLORS = ['#fbbf24', '#f59e0b', '#fde68a'];
+const DIAMOND_COLORS = ['#74e0ff', '#b48bff', '#ffe27a', '#ff8ad6', '#ffffff'];
 const AUTO_DISMISS_MS = 8000;
 
 // AchievementCelebration — full-screen overlay som vises når brukeren
@@ -11,7 +12,18 @@ export function AchievementCelebration({ achievement, onClose }) {
   useEffect(() => {
     if (!achievement) return undefined;
 
-    // Fyr av gull-confetti.
+    // Fyr av confetti — gull eller diamant-palett basert på tier.
+    const tierKey = achievement.tierKey ?? '';
+    const palette =
+      tierKey === 'diamond'
+        ? DIAMOND_COLORS
+        : tierKey === 'gold' || tierKey === ''
+          ? GOLD_COLORS
+          : tierKey === 'silver'
+            ? ['#cbd5e1', '#9ca3af', '#e5e7eb']
+            : tierKey === 'bronze'
+              ? ['#cd7f32', '#a16207', '#f59e0b']
+              : GOLD_COLORS;
     try {
       if (typeof confetti === 'function') {
         confetti({
@@ -21,7 +33,7 @@ export function AchievementCelebration({ achievement, onClose }) {
           startVelocity: 50,
           gravity: 0.9,
           ticks: 250,
-          colors: GOLD_COLORS,
+          colors: palette,
           zIndex: 100000,
         });
         window.setTimeout(() => {
@@ -29,14 +41,14 @@ export function AchievementCelebration({ achievement, onClose }) {
             particleCount: 70,
             spread: 110,
             origin: { y: 0.5, x: 0.25 },
-            colors: GOLD_COLORS,
+            colors: palette,
             zIndex: 100000,
           });
           confetti({
             particleCount: 70,
             spread: 110,
             origin: { y: 0.5, x: 0.75 },
-            colors: GOLD_COLORS,
+            colors: palette,
             zIndex: 100000,
           });
         }, 220);
