@@ -372,6 +372,32 @@ function DetailPanel({
   const [showManualResolve, setShowManualResolve] = useState(false);
   const [showLog, setShowLog] = useState(false);
   const [busyAction, setBusyAction] = useState('');
+  // På mobil portaler vi panelet til document.body for å unngå at
+  // swipe-shellens transform fanger position:fixed i en ny containing
+  // block (som gjør at panelet ikke dekker hele viewporten ved scroll).
+  // På desktop (≥1024px) blir det værende i flyten som sticky side-panel.
+  const [isDesktop, setIsDesktop] = useState(() => {
+    if (typeof window === 'undefined') return false;
+    return window.matchMedia?.('(min-width: 1024px)').matches ?? false;
+  });
+  useEffect(() => {
+    if (typeof window === 'undefined' || !window.matchMedia) return undefined;
+    const mq = window.matchMedia('(min-width: 1024px)');
+    const handle = (event) => setIsDesktop(event.matches);
+    mq.addEventListener?.('change', handle);
+    return () => mq.removeEventListener?.('change', handle);
+  }, []);
+
+  // Lås body-scroll mens panelet er åpent på mobil — så bakgrunnen
+  // ikke beveger seg når brukeren scroller i panelet.
+  useEffect(() => {
+    if (isDesktop || typeof document === 'undefined') return undefined;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.body.style.overflow = previousOverflow;
+    };
+  }, [isDesktop]);
 
   if (!duel) return null;
 
@@ -393,7 +419,7 @@ function DetailPanel({
     return result;
   }
 
-  return (
+  const panel = (
     <aside className="adh-detail" aria-label="Knute-off detaljer">
       <header className="adh-detail__header">
         <button
@@ -672,6 +698,11 @@ function DetailPanel({
       ) : null}
     </aside>
   );
+
+  if (isDesktop || typeof document === 'undefined') {
+    return panel;
+  }
+  return createPortal(panel, document.body);
 }
 
 export function AdminDuelHub({
