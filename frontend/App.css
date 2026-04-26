@@ -7099,6 +7099,35 @@ textarea.text-input:focus {
   cursor: not-allowed;
 }
 
+/* Subtil "invitasjon"-puls når brukeren åpner detaljene på en knute
+   de kan registrere. Bare transform + box-shadow så vi ikke trigger
+   layout/scroll-jank under swipe. */
+.knot-row__doc-btn.is-inviting {
+  animation: knot-doc-btn-invite 1.6s ease-out 2 both;
+  animation-delay: 120ms;
+}
+
+@keyframes knot-doc-btn-invite {
+  0% {
+    transform: scale(1);
+    box-shadow: 0 0 0 0 color-mix(in srgb, var(--knot-accent, var(--primary)) 55%, transparent);
+  }
+  40% {
+    transform: scale(1.07);
+    box-shadow: 0 0 0 8px color-mix(in srgb, var(--knot-accent, var(--primary)) 0%, transparent);
+  }
+  100% {
+    transform: scale(1);
+    box-shadow: 0 0 0 0 color-mix(in srgb, var(--knot-accent, var(--primary)) 0%, transparent);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .knot-row__doc-btn.is-inviting {
+    animation: none;
+  }
+}
+
 .knot-row__expand-btn {
   position: relative;
   width: var(--tap-min);

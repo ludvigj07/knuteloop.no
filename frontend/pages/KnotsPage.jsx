@@ -646,7 +646,9 @@ function KnotRow({
           {canSubmit ? (
             <button
               type="button"
-              className={`knot-row__doc-btn${isFormOpen ? ' is-active' : ''}`}
+              className={`knot-row__doc-btn${isFormOpen ? ' is-active' : ''}${
+                isDetailOpen && !isFormOpen ? ' is-inviting' : ''
+              }`}
               disabled={Boolean(activeSubmissionBan) && !isFormOpen}
               onClick={onDocumentClick}
               aria-label={isMobile ? 'Registrer' : undefined}
