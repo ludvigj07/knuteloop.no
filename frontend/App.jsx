@@ -4,6 +4,7 @@ import { KnotIcon } from './components/KnotIcon.jsx';
 import './App.css';
 import './styles/blaruss-refresh.css';
 import { LiveOnboarding } from './components/LiveOnboarding.jsx';
+import { LoadingSplash } from './components/LoadingSplash.jsx';
 import { SettingsModal } from './components/SettingsModal.jsx';
 import { SwipeTabsShell } from './components/SwipeTabsShell.jsx';
 import { Toast } from './components/Toast.jsx';
@@ -1135,13 +1136,7 @@ function App() {
   if (isLoadingApp) {
     return (
       <div className="app-theme">
-        <div className="app-shell">
-          <section className="section-card">
-            <p className="eyebrow">Laster</p>
-            <h2>Kobler til lagret data</h2>
-            <p>Henter brukere, knuter, submissions og profiler fra backend.</p>
-          </section>
-        </div>
+        <LoadingSplash message="Henter knuter og kullet…" />
       </div>
     );
   }
