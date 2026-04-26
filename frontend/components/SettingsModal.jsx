@@ -5,7 +5,6 @@ import { TermsModal } from './TermsModal.jsx';
 export function SettingsModal({
   appVersion,
   currentUser,
-  isDark,
   isChangingPassword,
   isDeletingAccount,
   isOpen,
@@ -19,7 +18,6 @@ export function SettingsModal({
   onOpenProfileEditor,
   onRestartTour,
   onSubmitPasswordChange,
-  onToggleDark,
   passwordError,
   passwordForm,
 }) {
@@ -175,19 +173,6 @@ export function SettingsModal({
                     Les brukervilkår
                   </button>
                 </div>
-              </section>
-
-              <section className="settings-section">
-                <div className="settings-section__header">
-                  <h4>Utseende</h4>
-                </div>
-                <button
-                  type="button"
-                  className="action-button action-button--ghost"
-                  onClick={onToggleDark}
-                >
-                  {isDark ? '☀ Lys modus' : '☾ Mørk modus'}
-                </button>
               </section>
 
               <section className="settings-section settings-section--danger">

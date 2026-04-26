@@ -139,11 +139,6 @@ function App() {
   const [appError, setAppError] = useState('');
   const [isOnboardingOpen, setIsOnboardingOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
-  const [isDark, setIsDark] = useState(() => {
-    const stored = window.localStorage.getItem('theme');
-    if (stored) return stored === 'dark';
-    return window.matchMedia?.('(prefers-color-scheme: dark)').matches ?? false;
-  });
   const [passwordForm, setPasswordForm] = useState(DEFAULT_PASSWORD_FORM);
   const [passwordError, setPasswordError] = useState('');
   const [isChangingPassword, setIsChangingPassword] = useState(false);
@@ -314,9 +309,9 @@ function App() {
   const currentPage = visiblePages.find((page) => page.id === activePage) ?? visiblePages[0];
 
   useEffect(() => {
-    document.documentElement.setAttribute('data-theme', isDark ? 'dark' : 'light');
-    window.localStorage.setItem('theme', isDark ? 'dark' : 'light');
-  }, [isDark]);
+    document.documentElement.setAttribute('data-theme', 'light');
+    window.localStorage.removeItem('theme');
+  }, []);
 
   useEffect(() => {
     fetchPilotUsers()
@@ -1174,7 +1169,6 @@ function App() {
         <SettingsModal
           appVersion={APP_VERSION}
           currentUser={currentUser}
-          isDark={isDark}
           isChangingPassword={isChangingPassword}
           isDeletingAccount={isDeletingAccount}
           isOpen={isSettingsOpen}
@@ -1188,7 +1182,6 @@ function App() {
           onOpenProfileEditor={handleSettingsOpenProfileEditor}
           onRestartTour={handleRestartTour}
           onSubmitPasswordChange={handleChangeOwnPassword}
-          onToggleDark={() => setIsDark((prev) => !prev)}
           passwordError={passwordError}
           passwordForm={passwordForm}
         />
