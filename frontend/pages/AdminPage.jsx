@@ -478,6 +478,7 @@ export function AdminPage({
   );
   const [processingReportId, setProcessingReportId] = useState('');
   const [processingBanId, setProcessingBanId] = useState('');
+  const [expandedDuelId, setExpandedDuelId] = useState(null);
   const [activeSubmissionId, setActiveSubmissionId] = useState('');
   const [reviewingSubmissionIds, setReviewingSubmissionIds] = useState({});
   const [feedbackDraft, setFeedbackDraft] = useState(() =>
@@ -1251,7 +1252,7 @@ export function AdminPage({
                   activeDuels.map((duel) => (
                     <article
                       key={duel.id}
-                      className="duel-history-row duel-history-row--active"
+                      className={`duel-history-row duel-history-row--active ${expandedDuelId === duel.id ? 'is-expanded' : ''}`}
                     >
                       <div>
                         <strong>{duel.knotTitle}</strong>
@@ -1262,6 +1263,16 @@ export function AdminPage({
                           Utfordrer: {duel.challengerStatusLabel} | Motstander:{' '}
                           {duel.opponentStatusLabel}
                         </p>
+                        <button
+                          type="button"
+                          className="action-button action-button--ghost"
+                          style={{ padding: '4px 10px', fontSize: '0.74rem', minHeight: 'auto', marginTop: 4 }}
+                          onClick={() =>
+                            setExpandedDuelId(expandedDuelId === duel.id ? null : duel.id)
+                          }
+                        >
+                          {expandedDuelId === duel.id ? 'Skjul bevis' : 'Vis bevis'}
+                        </button>
                         <div className="duel-evidence-grid">
                           <DuelEvidencePanel
                             title={`Bevis fra ${duel.challengerName}`}
