@@ -121,7 +121,7 @@ const PAGE_CONFIG = {
     shortLabel: 'Status',
     icon: <Activity size={22} strokeWidth={1.8} />,
     title: 'Status',
-    description: 'Badges, feed og knute-off samlet i en enkel oversikt.',
+    description: 'Dine tall, merker og knute-off.',
   },
   admin: {
     id: 'admin',
@@ -1493,13 +1493,14 @@ function App() {
       content = (
         <StatusPage
           achievements={achievements}
-          activityLog={activityLog}
+          currentLeader={currentLeader}
           currentUserId={currentUser.leaderId}
+          currentUserStreak={currentUserStreak}
           duelHistory={duelHistory}
           duelSummary={duelSummary}
-          onOpenFeed={() => handleChangePage('feed')}
+          knots={knots}
           onOpenKnots={() => handleChangePage('knuter')}
-          onOpenProfile={handleOpenProfile}
+          onOpenLeaderboard={() => handleChangePage('leaderboard')}
         />
       );
     } else if (page.id === 'admin') {
@@ -1510,7 +1511,7 @@ function App() {
       <div className="main-page-panel">
         <main className="page-layout">
           {page.id === 'dashboard' ? renderHeroPanel() : null}
-          {page.id !== 'dashboard' && page.id !== 'knuter' ? (
+          {page.id !== 'dashboard' && page.id !== 'knuter' && page.id !== 'status' ? (
             <section className="page-intro page-intro--shell">
               <>
                 <p className="eyebrow">Visning</p>

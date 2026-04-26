@@ -1,269 +1,282 @@
 import { useMemo, useState } from 'react';
-import { SectionCard } from '../components/SectionCard.jsx';
-import { getFeaturedAchievements, getUnlockedAchievements } from '../data/badgeSystem.js';
+import { getUnlockedAchievements, isGoldKnot } from '../data/badgeSystem.js';
 import { BadgeGrid, BadgeMedallion } from '../components/BadgeMedallion.jsx';
+import { resolveKnotFolder } from '../data/knotFolders.js';
 
-function ProfileThumb({ person }) {
-  if (person?.studentPhotoUrl || person?.photoUrl) {
-    return (
-      <div className="profile-photo profile-photo--small">
-        <img
-          src={person.studentPhotoUrl ?? person.photoUrl}
-          alt={`${person.studentName ?? person.russName ?? person.name} profilbilde`}
-        />
-      </div>
-    );
-  }
+// StatusPage v2 — visuell "Min stats + Knute-off"-side. Tre soner:
+// hero-stats, merker, knute-off. Mini-stats nederst. Null excel-stil.
+
+function HeroStat({ icon, value, label, tone }) {
+  return (
+    <div className={`status-v2-hero__stat status-v2-hero__stat--${tone}`}>
+      <span className="status-v2-hero__icon" aria-hidden="true">{icon}</span>
+      <strong className="status-v2-hero__value">{value}</strong>
+      <span className="status-v2-hero__label">{label}</span>
+    </div>
+  );
+}
+
+function NextBadgeCard({ achievement }) {
+  if (!achievement) return null;
+  const remaining = Math.max(
+    (achievement.nextTier?.target ?? achievement.progressTarget) -
+      achievement.currentProgress,
+    0,
+  );
+  const percent = achievement.progressPercent ?? 0;
 
   return (
-    <div className="profile-avatar profile-avatar--small">
-      {person?.studentIcon ?? person?.icon ?? '•'}
+    <div className="status-v2-next-badge" aria-label={`Neste merke: ${achievement.title}`}>
+      <div className="status-v2-next-badge__icon" aria-hidden="true">
+        {achievement.icon ?? '★'}
+      </div>
+      <div className="status-v2-next-badge__copy">
+        <strong>{achievement.title}</strong>
+        <span>{remaining} igjen til {achievement.nextTier?.label ?? 'neste'}</span>
+        <div className="status-v2-next-badge__bar" aria-hidden="true">
+          <div
+            className="status-v2-next-badge__fill"
+            style={{ width: `${percent}%` }}
+          />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function MiniStat({ icon, value, label, tone = 'default' }) {
+  return (
+    <div className={`status-v2-mini-stat status-v2-mini-stat--${tone}`}>
+      <span className="status-v2-mini-stat__icon" aria-hidden="true">{icon}</span>
+      <strong className="status-v2-mini-stat__value">{value}</strong>
+      <span className="status-v2-mini-stat__label">{label}</span>
+    </div>
+  );
+}
+
+function ActiveDuelCard({ duel, currentUserId }) {
+  const isChallenger = duel.challengerId === currentUserId;
+  const opponentName = isChallenger ? duel.opponentName : duel.challengerName;
+
+  return (
+    <article className="status-v2-duel-card status-v2-duel-card--active">
+      <div className="status-v2-duel-card__top">
+        <span className="status-v2-duel-card__vs" aria-hidden="true">⚔️</span>
+        <strong className="status-v2-duel-card__title">{duel.knotTitle}</strong>
+      </div>
+      <div className="status-v2-duel-card__mid">
+        <span className="status-v2-duel-card__opponent">vs. {opponentName}</span>
+        <span className="status-v2-duel-card__stake">+{duel.stake}p</span>
+      </div>
+      <div className="status-v2-duel-card__deadline">
+        ⏱ {duel.deadlineLabel}
+      </div>
+    </article>
+  );
+}
+
+function DuelResultRow({ duel, currentUserId }) {
+  const youWon = duel.winnerId === currentUserId;
+  const opponentName =
+    duel.challengerId === currentUserId ? duel.opponentName : duel.challengerName;
+
+  return (
+    <div
+      className={`status-v2-duel-result status-v2-duel-result--${
+        youWon ? 'win' : 'loss'
+      }`}
+    >
+      <span className="status-v2-duel-result__icon" aria-hidden="true">
+        {youWon ? '✅' : '❌'}
+      </span>
+      <span className="status-v2-duel-result__copy">
+        {youWon ? 'Vant mot' : 'Tapte mot'} <strong>{opponentName}</strong>
+      </span>
+      <span className="status-v2-duel-result__stake">
+        {youWon ? '+' : '−'}{duel.stake}p
+      </span>
     </div>
   );
 }
 
 export function StatusPage({
   achievements,
-  activityLog,
+  currentLeader,
   currentUserId,
+  currentUserStreak,
   duelHistory,
   duelSummary,
-  onOpenFeed,
-  onOpenProfile,
+  knots,
   onOpenKnots,
+  onOpenLeaderboard,
 }) {
-  const [expandedSection, setExpandedSection] = useState(null);
+  const [showAllBadges, setShowAllBadges] = useState(false);
 
+  const safeAchievements = achievements ?? [];
   const unlockedAchievements = useMemo(
-    () => getUnlockedAchievements(achievements ?? []),
-    [achievements],
-  );
-  const featuredAchievements = useMemo(
-    () => getFeaturedAchievements(achievements ?? [], 3),
-    [achievements],
+    () => getUnlockedAchievements(safeAchievements),
+    [safeAchievements],
   );
   const nextAchievement = useMemo(
     () =>
-      (achievements ?? [])
-        .filter((achievement) => !achievement.isMaxTier)
-        .sort((left, right) => {
-          const leftRemaining =
-            (left.nextTier?.target ?? left.progressTarget) - left.currentProgress;
-          const rightRemaining =
-            (right.nextTier?.target ?? right.progressTarget) - right.currentProgress;
-
-          return leftRemaining - rightRemaining;
+      safeAchievements
+        .filter((a) => !a.isMaxTier)
+        .sort((l, r) => {
+          const lr = (l.nextTier?.target ?? l.progressTarget) - l.currentProgress;
+          const rr = (r.nextTier?.target ?? r.progressTarget) - r.currentProgress;
+          return lr - rr;
         })[0] ?? null,
-    [achievements],
+    [safeAchievements],
   );
+
+  const safeDuels = duelHistory ?? [];
   const myActiveDuels = useMemo(
     () =>
-      (duelHistory ?? []).filter(
+      safeDuels.filter(
         (duel) =>
           duel.status === 'active' &&
           (duel.challengerId === currentUserId || duel.opponentId === currentUserId),
       ),
-    [currentUserId, duelHistory],
+    [currentUserId, safeDuels],
   );
-  const myRecentDuels = useMemo(
+  const myFinishedDuels = useMemo(
     () =>
-      (duelHistory ?? []).filter(
+      safeDuels.filter(
         (duel) =>
-          duel.challengerId === currentUserId || duel.opponentId === currentUserId,
+          duel.status !== 'active' &&
+          (duel.challengerId === currentUserId || duel.opponentId === currentUserId),
       ),
-    [currentUserId, duelHistory],
+    [currentUserId, safeDuels],
   );
-  const recentActivity = useMemo(() => (activityLog ?? []).slice(0, 5), [activityLog]);
+  const recentResults = myFinishedDuels.slice(0, 3);
+  const duelsWonCount = myFinishedDuels.filter((d) => d.winnerId === currentUserId).length;
 
-  function toggleSection(sectionId) {
-    setExpandedSection((currentSection) =>
-      currentSection === sectionId ? null : sectionId,
-    );
-  }
+  const safeKnots = knots ?? [];
+  const myApprovedKnots = useMemo(
+    () =>
+      safeKnots.filter(
+        (k) => k.status === 'Godkjent' && k.leaderId === currentUserId,
+      ),
+    [safeKnots, currentUserId],
+  );
+  const goldCount = myApprovedKnots.filter(isGoldKnot).length;
+  const folderHits = useMemo(() => {
+    const set = new Set();
+    myApprovedKnots.forEach((k) => set.add(resolveKnotFolder(k)));
+    return set.size;
+  }, [myApprovedKnots]);
+
+  const points = currentLeader?.points ?? 0;
+  const rank = currentLeader?.rank ?? null;
+  const streak = Math.max(0, Number(currentUserStreak?.current ?? 0));
+
+  const stake = duelSummary?.stake ?? 10;
+  const deadlineHours = duelSummary?.deadlineHours ?? 24;
 
   return (
-    <div className="stack-layout">
-      <SectionCard
-        title="Status"
-        description="Merker, knute-off og feed samlet i ett rolig overblikk."
-      >
-        <div className="status-hub-grid">
-          <article className="status-hub-card">
-            <span className="status-hub-card__kicker">Merker</span>
-            <strong>{unlockedAchievements.length}</strong>
-            <p>
-              {nextAchievement
-                ? `${nextAchievement.title}: ${Math.max(
-                    (nextAchievement.nextTier?.target ?? nextAchievement.progressTarget) -
-                      nextAchievement.currentProgress,
-                    0,
-                  )} igjen`
-                : 'Du har åpnet alle merkene.'}
-            </p>
-            <button
-              type="button"
-              className="action-button action-button--ghost action-button--compact"
-              onClick={() => toggleSection('badges')}
-            >
-              {expandedSection === 'badges' ? 'Skjul merker' : 'Se merker'}
-            </button>
-          </article>
+    <div className="status-v2">
+      {/* 1. HERO STATS */}
+      <section className="status-v2-hero" aria-label="Mine tall">
+        <HeroStat icon="🔥" value={streak} label="dager streak" tone="streak" />
+        <HeroStat icon="⭐" value={points} label="poeng" tone="points" />
+        <HeroStat
+          icon="🏆"
+          value={rank ? `#${rank}` : '—'}
+          label="rank"
+          tone="rank"
+        />
+      </section>
 
-          <article className="status-hub-card">
-            <span className="status-hub-card__kicker">Knute-off</span>
-            <strong>{myActiveDuels.length}</strong>
-            <p>
-              {myActiveDuels.length > 0
-                ? `${duelSummary?.stake ?? 10}p innsats, ${duelSummary?.deadlineHours ?? 24}t frist og ${duelSummary?.dailyLimit ?? 1} per dag`
-                : 'Ingen aktive knute-offer akkurat nå'}
-            </p>
-            <button
-              type="button"
-              className="action-button action-button--ghost action-button--compact"
-              onClick={() => toggleSection('duels')}
-            >
-              {expandedSection === 'duels' ? 'Skjul knute-off' : 'Se knute-off'}
-            </button>
-          </article>
-
-          <article className="status-hub-card">
-            <span className="status-hub-card__kicker">Feed</span>
-            <strong>{recentActivity.length}</strong>
-            <p>
-              {recentActivity[0]
-                ? `Siste deling: ${recentActivity[0].studentName} tok ${recentActivity[0].knotTitle}`
-                : 'Ingen ny aktivitet ennå'}
-            </p>
-            <button
-              type="button"
-              className="action-button action-button--ghost action-button--compact"
-              onClick={onOpenFeed}
-            >
-              Åpne feed
-            </button>
-          </article>
-        </div>
-      </SectionCard>
-
-      <SectionCard
-        title="Merkestatus"
-        description="Det viktigste i merkesamlingen akkurat nå."
-      >
-        <div className="status-section-toolbar">
-          <p>
-            {nextAchievement
-              ? `Neste nivå er ${nextAchievement.nextTier?.label ?? 'neste'} i ${nextAchievement.title}.`
-              : 'Alle nivåer i merkesamlingen er åpnet.'}
-          </p>
+      {/* 2. MERKER */}
+      <section className="status-v2-badges" aria-label="Merker">
+        <header className="status-v2-section-head">
+          <h3>Mine merker</h3>
           <button
             type="button"
-            className="action-button action-button--ghost action-button--compact"
-            onClick={onOpenKnots}
+            className="status-v2-link"
+            onClick={() => setShowAllBadges((v) => !v)}
           >
-            Se knuter
+            {showAllBadges ? 'Skjul' : `Se alle (${safeAchievements.length})`}
           </button>
-        </div>
+        </header>
 
-        {expandedSection === 'badges' ? (
-          <BadgeGrid achievements={achievements ?? []} size="md" />
+        {showAllBadges ? (
+          <BadgeGrid achievements={safeAchievements} size="md" />
         ) : (
-          <div className="status-inline-summary">
-            {featuredAchievements.slice(0, 3).map((achievement) => (
-              <BadgeMedallion
-                key={achievement.id}
-                achievement={achievement}
-                size="sm"
-                showLabel
-              />
-            ))}
-            {featuredAchievements.length === 0 ? (
-              <p className="folder-empty">Ingen merker åpnet ennå.</p>
-            ) : null}
+          <div className="status-v2-badges__row">
+            {unlockedAchievements.length === 0 ? (
+              <p className="status-v2-empty">
+                Ingen merker enda — ta din første knute så er du i gang 🪢
+              </p>
+            ) : (
+              unlockedAchievements
+                .slice(0, 8)
+                .map((a) => (
+                  <BadgeMedallion key={a.id} achievement={a} size="sm" showLabel={false} />
+                ))
+            )}
+            {nextAchievement ? <NextBadgeCard achievement={nextAchievement} /> : null}
           </div>
         )}
-      </SectionCard>
+      </section>
 
-      <SectionCard
-        title="Knute-off status"
-        description="Oversikt uten stress."
-      >
-        <div className="status-section-toolbar">
-          <p>
-            {myActiveDuels.length > 0
-              ? `${myActiveDuels.length} aktiv${myActiveDuels.length > 1 ? 'e' : ''} knute-off akkurat nå.`
-              : 'Ingen aktive knute-offer akkurat nå.'}
-          </p>
-          <button
-            type="button"
-            className="action-button action-button--ghost action-button--compact"
-            onClick={() => toggleSection('duels')}
-          >
-            {expandedSection === 'duels' ? 'Vis mindre' : 'Vis detaljer'}
-          </button>
-        </div>
+      {/* 3. KNUTE-OFF */}
+      <section className="status-v2-duels" aria-label="Knute-off">
+        <header className="status-v2-section-head">
+          <h3>Knute-off</h3>
+          <span className="status-v2-section-meta">{stake}p · {deadlineHours}t frist</span>
+        </header>
 
-        <div className="status-compact-list">
-          {(expandedSection === 'duels' ? myRecentDuels : myActiveDuels).slice(0, 3).map((duel) => (
-            <article key={duel.id} className="status-list-row">
-              <div>
-                <strong>{duel.knotTitle}</strong>
-                <p>
-                  {duel.challengerName} vs {duel.opponentName}
-                </p>
-              </div>
-              <span className="pill pill--warning">
-                {duel.status === 'active' ? duel.deadlineLabel : duel.outcomeTitle}
-              </span>
-            </article>
-          ))}
+        <button
+          type="button"
+          className="status-v2-cta"
+          onClick={onOpenLeaderboard}
+        >
+          <span aria-hidden="true">⚔️</span>
+          <span>Start ny knute-off</span>
+        </button>
 
-          {(expandedSection === 'duels' ? myRecentDuels : myActiveDuels).length === 0 ? (
-            <p className="folder-empty">Ingen knute-offer å vise akkurat nå.</p>
-          ) : null}
-        </div>
-      </SectionCard>
+        {myActiveDuels.length > 0 ? (
+          <div className="status-v2-duel-card-list">
+            {myActiveDuels.map((duel) => (
+              <ActiveDuelCard key={duel.id} duel={duel} currentUserId={currentUserId} />
+            ))}
+          </div>
+        ) : (
+          <p className="status-v2-empty">Ingen aktive knute-off akkurat nå.</p>
+        )}
 
-      <SectionCard
-        title="Nylig aktivitet"
-        description="Korte glimt fra det som skjer i kullet."
-      >
-        <div className="status-section-toolbar">
-          <p>Et enkelt overblikk som fungerer godt på mobil.</p>
-          <button
-            type="button"
-            className="action-button action-button--ghost action-button--compact"
-            onClick={onOpenFeed}
-          >
-            Gå til feed
-          </button>
-        </div>
+        {recentResults.length > 0 ? (
+          <div className="status-v2-duel-results">
+            {recentResults.map((duel) => (
+              <DuelResultRow key={duel.id} duel={duel} currentUserId={currentUserId} />
+            ))}
+          </div>
+        ) : null}
+      </section>
 
-        <div className="status-compact-list">
-          {(expandedSection === 'feed' ? recentActivity : recentActivity.slice(0, 3)).map((entry) => (
-            <article key={entry.id} className="status-list-row status-list-row--feed">
-              <div className="status-list-row__person">
-                <ProfileThumb person={entry} />
-                <div>
-                  <strong>{entry.studentName}</strong>
-                  <p>{entry.knotTitle}</p>
-                </div>
-              </div>
-              <button
-                type="button"
-                className="action-button action-button--ghost action-button--compact"
-                onClick={() => onOpenProfile(entry.studentId)}
-              >
-                Profil
-              </button>
-            </article>
-          ))}
-
-          {recentActivity.length === 0 ? (
-            <p className="folder-empty">Ingen aktivitet i feeden ennå.</p>
-          ) : null}
-        </div>
-      </SectionCard>
+      {/* 4. MINI-STATS */}
+      <section className="status-v2-mini-grid" aria-label="Statistikk">
+        <MiniStat icon="🪢" value={myApprovedKnots.length} label="knuter tatt" tone="knot" />
+        <MiniStat icon="💎" value={goldCount} label="gull-knuter" tone="gold" />
+        <MiniStat icon="🎨" value={folderHits} label="mapper truffet" tone="folder" />
+        <MiniStat icon="⚔️" value={duelsWonCount} label="knute-off vunnet" tone="duel" />
+        <MiniStat
+          icon="🏅"
+          value={unlockedAchievements.length}
+          label="merker låst opp"
+          tone="badge"
+        />
+        <button
+          type="button"
+          className="status-v2-mini-stat status-v2-mini-stat--cta"
+          onClick={onOpenKnots}
+        >
+          <span className="status-v2-mini-stat__icon" aria-hidden="true">→</span>
+          <strong className="status-v2-mini-stat__value">Knuter</strong>
+          <span className="status-v2-mini-stat__label">ta flere</span>
+        </button>
+      </section>
     </div>
   );
 }
-
