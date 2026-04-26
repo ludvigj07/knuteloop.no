@@ -13023,3 +13023,45 @@ button[type="button"]:not(.no-ripple):not(.action-button):not(.bottom-swipe-nav_
   }
 }
 
+/* ── Share knute-link toast ─────────────────────────────────────────────── */
+
+.feed-share-toast {
+  position: fixed;
+  left: 50%;
+  bottom: calc(110px + env(safe-area-inset-bottom, 0px));
+  transform: translateX(-50%);
+  z-index: 80;
+  width: min(320px, calc(100% - 24px));
+  padding: 10px 14px;
+  border-radius: 14px;
+  border: 1px solid rgba(15, 23, 42, 0.14);
+  background: rgba(20, 24, 32, 0.92);
+  color: #fff;
+  text-align: center;
+  box-shadow: 0 14px 30px rgba(12, 18, 29, 0.32);
+  animation: feed-share-toast-in 200ms ease-out;
+}
+
+.feed-share-toast p {
+  margin: 0;
+  font-size: 0.92rem;
+  font-weight: 600;
+}
+
+@keyframes feed-share-toast-in {
+  0% { opacity: 0; transform: translate(-50%, 8px); }
+  100% { opacity: 1; transform: translate(-50%, 0); }
+}
+
+@media (min-width: 901px) {
+  .feed-share-toast { bottom: 32px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .feed-share-toast { animation: none; }
+}
+
+.feed-card-share-button {
+  gap: 4px;
+}
+
