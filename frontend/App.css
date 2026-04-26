@@ -10559,7 +10559,7 @@ textarea.text-input:focus {
   align-items: center;
   gap: 12px;
   padding: 12px 18px;
-  border-radius: 999px;
+  border-radius: 18px;
   background: var(--text-strong, #0f172a);
   color: #ffffff;
   font-weight: 600;
@@ -10568,7 +10568,7 @@ textarea.text-input:focus {
   opacity: 0;
   pointer-events: none;
   transition: transform 0.22s ease, opacity 0.22s ease;
-  max-width: calc(100vw - 32px);
+  max-width: min(420px, calc(100vw - 32px));
   z-index: 60;
 }
 
@@ -10601,9 +10601,13 @@ textarea.text-input:focus {
 }
 
 .toast__message {
-  white-space: nowrap;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  line-height: 1.35;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
   overflow: hidden;
-  text-overflow: ellipsis;
 }
 
 @media (min-width: 901px) {
