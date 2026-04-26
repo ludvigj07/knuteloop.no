@@ -254,7 +254,7 @@ function ReviewLog({ entries }) {
     reverse: 'Reverserte',
     resolve: 'Avgjorde',
     'manual-resolve': 'Avgjorde manuelt',
-    cancel: 'Annullerte',
+    cancel: 'Slettet',
   };
   const targetByKey = {
     challenger: 'utfordrer',
@@ -290,13 +290,13 @@ function CancelConfirm({ duel, onClose, onConfirm }) {
   async function handleSubmit() {
     const trimmed = reason.trim();
     if (!trimmed) {
-      setError('Skriv en kort grunn for annulleringen.');
+      setError('Skriv en kort grunn for slettingen.');
       return;
     }
     setSubmitting(true);
     const result = await onConfirm(trimmed);
     if (!result?.ok) {
-      setError(result?.message ?? 'Kunne ikke annullere.');
+      setError(result?.message ?? 'Kunne ikke slette duellen.');
       setSubmitting(false);
     }
   }
@@ -309,9 +309,9 @@ function CancelConfirm({ duel, onClose, onConfirm }) {
       }}
     >
       <div className="adh-confirm" role="dialog" aria-modal="true">
-        <h3>Annuller knute-off</h3>
+        <h3>Slett duell</h3>
         <p>
-          Annullerer duellen mellom <strong>{duel.challengerName}</strong> og{' '}
+          Sletter duellen mellom <strong>{duel.challengerName}</strong> og{' '}
           <strong>{duel.opponentName}</strong>. Ingen poeng tildeles. Tilhørende
           innsendinger blir avslått.
         </p>
@@ -341,7 +341,7 @@ function CancelConfirm({ duel, onClose, onConfirm }) {
             onClick={handleSubmit}
             disabled={submitting}
           >
-            {submitting ? 'Annullerer...' : 'Bekreft annullering'}
+            {submitting ? 'Sletter...' : 'Bekreft sletting'}
           </button>
         </div>
       </div>
@@ -554,7 +554,7 @@ function DetailPanel({
           }
         >
           <Gavel size={16} strokeWidth={1.8} aria-hidden="true" />
-          <span>Avgjør (auto)</span>
+          <span>Auto</span>
         </button>
         <button
           type="button"
@@ -562,7 +562,7 @@ function DetailPanel({
           onClick={() => setShowManualResolve((v) => !v)}
         >
           <Crown size={16} strokeWidth={1.8} aria-hidden="true" />
-          <span>Manuell vinner</span>
+          <span>Velg vinner selv</span>
         </button>
         <button
           type="button"
@@ -570,14 +570,14 @@ function DetailPanel({
           onClick={() => setConfirmingCancel(true)}
         >
           <Trash2 size={16} strokeWidth={1.8} aria-hidden="true" />
-          <span>Annuller</span>
+          <span>Slett duell</span>
         </button>
       </div>
 
       {showManualResolve ? (
         <div className="adh-detail__manual-bar">
           <p className="adh-detail__manual-hint">
-            Sett vinner manuelt — overstyrer auto-utregningen basert på status.
+            Velg utfall manuelt — overstyrer auto-resultatet.
           </p>
           <div className="adh-detail__manual-grid">
             <button
@@ -1016,7 +1016,7 @@ export function AdminDuelHub({
               >
                 <div className="adh-history-row__main">
                   <strong>
-                    {isCancelled ? 'Annullert' : duel.outcomeTitle}
+                    {isCancelled ? 'Slettet' : duel.outcomeTitle}
                     {duel.knotTitle ? ` · ${duel.knotTitle}` : ''}
                   </strong>
                   <span className="adh-history-row__sub">
@@ -1031,7 +1031,7 @@ export function AdminDuelHub({
                   </span>
                 </div>
                 <span className="adh-history-row__pill">
-                  {isCancelled ? 'annullert' : duel.pointLabel}
+                  {isCancelled ? 'slettet' : duel.pointLabel}
                 </span>
               </div>
             );
