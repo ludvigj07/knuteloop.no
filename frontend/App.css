@@ -1585,8 +1585,10 @@
 
 .profile-modal {
   width: min(920px, 100%);
-  max-height: calc(100vh - 40px);
+  max-height: calc(100dvh - 40px);
   overflow: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
   padding: 24px;
   border-radius: 28px;
   border: 1px solid var(--border);
@@ -3438,7 +3440,7 @@
 }
 
 .login-shell {
-  min-height: calc(100vh - 48px);
+  min-height: calc(100dvh - 48px);
   display: grid;
   grid-template-columns: minmax(0, 0.95fr) minmax(0, 1.05fr);
   gap: 20px;
