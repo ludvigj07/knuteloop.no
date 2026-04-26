@@ -228,22 +228,33 @@ export function DashboardPage({
 
       {/* ══ 2. DAGENS KNUTE — kompakt stripe ═════════════════════════════════ */}
       {dailyKnot ? (
-        <section className="db-daily-strip">
-          <span className="db-daily-strip__icon" aria-hidden="true">☀️</span>
-          <div className="db-daily-strip__text">
-            <span className="db-daily-strip__eyebrow">Dagens knute</span>
-            <span className="db-daily-strip__title">{dailyKnot.title}</span>
-          </div>
-          <span className="db-daily-strip__pts">{dailyKnot.points}p</span>
-          <button
-            type="button"
-            className="action-button action-button--compact db-daily-strip__btn"
-            onClick={() => onOpenDailyKnot(dailyKnot.id)}
-            aria-label={`Åpne dagens knute: ${dailyKnot.title}`}
-          >
-            Åpne knute
-          </button>
-        </section>
+        dailyKnot.status && dailyKnot.status !== 'Tilgjengelig' ? (
+          <section className="db-daily-strip db-daily-strip--done" aria-live="polite">
+            <span className="db-daily-strip__icon" aria-hidden="true">✓</span>
+            <div className="db-daily-strip__text">
+              <span className="db-daily-strip__title">
+                Dagens knute er tatt. Kom tilbake i morgen!
+              </span>
+            </div>
+          </section>
+        ) : (
+          <section className="db-daily-strip">
+            <span className="db-daily-strip__icon" aria-hidden="true">☀️</span>
+            <div className="db-daily-strip__text">
+              <span className="db-daily-strip__eyebrow">Dagens knute</span>
+              <span className="db-daily-strip__title">{dailyKnot.title}</span>
+            </div>
+            <span className="db-daily-strip__pts">{dailyKnot.points}p</span>
+            <button
+              type="button"
+              className="action-button action-button--compact db-daily-strip__btn"
+              onClick={() => onOpenDailyKnot(dailyKnot.id)}
+              aria-label={`Ta dagens knute: ${dailyKnot.title}`}
+            >
+              Ta knute
+            </button>
+          </section>
+        )
       ) : null}
 
       {/* ══ 3. TOPP 3 PÅ SKOLEN ══════════════════════════════════════════════ */}

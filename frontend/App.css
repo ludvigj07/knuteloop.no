@@ -8113,6 +8113,25 @@ textarea.text-input:focus {
   white-space: nowrap;
 }
 
+.db-daily-strip--done {
+  background: color-mix(in srgb, var(--surface) 85%, var(--surface-border) 15%);
+  border-color: var(--surface-border);
+  box-shadow: none;
+  padding: var(--space-1) var(--space-3);
+  opacity: 0.85;
+}
+
+.db-daily-strip--done .db-daily-strip__icon {
+  color: var(--text-muted);
+  font-size: 1rem;
+}
+
+.db-daily-strip--done .db-daily-strip__title {
+  color: var(--text-muted);
+  font-weight: 600;
+  white-space: normal;
+}
+
 /* --- Topp 3 --------------------------------------------------------------- */
 
 .db-top3 {
