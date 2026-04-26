@@ -566,20 +566,14 @@ export function AdminPage({
     {
       id: 'users',
       label: 'Brukere',
-      count: leaders?.length ?? 0,
-      note: 'Admin og invites',
+      count: Math.max(leaders.length - 1, 0),
+      note: 'Kontoer',
     },
     {
       id: 'overview',
       label: 'Oversikt',
       count: stats.length,
       note: 'Kort',
-    },
-    {
-      id: 'users',
-      label: 'Brukere',
-      count: Math.max(leaders.length - 1, 0),
-      note: 'Kontoer',
     },
   ];
 
