@@ -52,6 +52,8 @@ export function ActivityLogPage({ activityLog, onSelectProfile }) {
                       <img
                         src={entry.studentPhotoUrl}
                         alt={`${entry.studentName} profilbilde`}
+                        loading="lazy"
+                        decoding="async"
                       />
                     </div>
                   ) : (

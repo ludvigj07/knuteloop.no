@@ -129,6 +129,7 @@ function FeedLightbox({ entry, onClose }) {
             className="feed-lightbox__img"
             src={entry.imagePreviewUrl}
             alt={`${entry.studentName} sitt bildebevis for ${entry.knotTitle}`}
+            decoding="async"
           />
         )}
       </div>
@@ -563,6 +564,8 @@ function FeedProfileAvatar({ entry }) {
         <img
           src={photoUrl}
           alt={entry.isAnonymous ? 'Anonym profilbilde' : `${entry.studentName} profilbilde`}
+          loading="lazy"
+          decoding="async"
         />
       </div>
     );
@@ -576,7 +579,7 @@ function CommentAvatar({ comment, size = 'small' }) {
   if (comment.authorPhotoUrl) {
     return (
       <div className={cls}>
-        <img src={comment.authorPhotoUrl} alt={`${comment.authorName} profilbilde`} />
+        <img src={comment.authorPhotoUrl} alt={`${comment.authorName} profilbilde`} loading="lazy" decoding="async" />
       </div>
     );
   }

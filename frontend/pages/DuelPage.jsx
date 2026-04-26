@@ -180,7 +180,7 @@ function DuelEvidencePreview({ evidence }) {
           {evidence.imagePreviewUrl ? (
             <div className="evidence-card">
               <span>{evidence.imageName || 'Bildebevis'}</span>
-              <img src={evidence.imagePreviewUrl} alt="Duelbevis" />
+              <img src={evidence.imagePreviewUrl} alt="Duelbevis" loading="lazy" decoding="async" />
             </div>
           ) : null}
 

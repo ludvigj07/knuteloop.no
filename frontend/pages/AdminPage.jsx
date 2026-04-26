@@ -42,7 +42,7 @@ function DuelEvidencePanel({ title, evidence }) {
               {evidence.imagePreviewUrl ? (
                 <div className="evidence-card">
                   <span>{evidence.imageName || 'Bildebevis'}</span>
-                  <img src={evidence.imagePreviewUrl} alt={title} />
+                  <img src={evidence.imagePreviewUrl} alt={title} loading="lazy" decoding="async" />
                 </div>
               ) : null}
 
@@ -361,6 +361,8 @@ function SubmissionList({
                     <img
                       src={submission.imagePreviewUrl}
                       alt={submission.knotTitle}
+                      loading="lazy"
+                      decoding="async"
                     />
                   </div>
                 ) : null}

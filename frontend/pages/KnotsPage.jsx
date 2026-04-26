@@ -520,7 +520,7 @@ function SubmissionFormContent({
               {draft.imagePreviewUrl ? (
                 <div className="evidence-card evidence-card--compact">
                   <span>Bildepreview</span>
-                  <img src={draft.imagePreviewUrl} alt="Bevis" />
+                  <img src={draft.imagePreviewUrl} alt="Bevis" decoding="async" />
                 </div>
               ) : null}
               {draft.videoPreviewUrl ? (
