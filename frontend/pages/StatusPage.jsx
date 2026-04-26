@@ -1,15 +1,32 @@
 import { useMemo, useState } from 'react';
+import {
+  ArrowRight,
+  Award,
+  CheckCircle2,
+  Clock,
+  Flame,
+  Gem,
+  Palette,
+  Star,
+  Swords,
+  Trophy,
+  XCircle,
+} from 'lucide-react';
 import { getUnlockedAchievements, isGoldKnot } from '../data/badgeSystem.js';
 import { BadgeGrid, BadgeMedallion } from '../components/BadgeMedallion.jsx';
+import { KnotIcon } from '../components/KnotIcon.jsx';
 import { resolveKnotFolder } from '../data/knotFolders.js';
 
 // StatusPage v2 — visuell "Min stats + Knute-off"-side. Tre soner:
-// hero-stats, merker, knute-off. Mini-stats nederst. Null excel-stil.
+// hero-stats, merker, knute-off. Mini-stats nederst. Lucide-ikoner
+// gjennomgående (badges beholder emoji siden det er deres greie).
 
-function HeroStat({ icon, value, label, tone }) {
+function HeroStat({ Icon, value, label, tone }) {
   return (
     <div className={`status-v2-hero__stat status-v2-hero__stat--${tone}`}>
-      <span className="status-v2-hero__icon" aria-hidden="true">{icon}</span>
+      <span className="status-v2-hero__icon" aria-hidden="true">
+        <Icon size={22} strokeWidth={1.8} />
+      </span>
       <strong className="status-v2-hero__value">{value}</strong>
       <span className="status-v2-hero__label">{label}</span>
     </div>
@@ -44,10 +61,12 @@ function NextBadgeCard({ achievement }) {
   );
 }
 
-function MiniStat({ icon, value, label, tone = 'default' }) {
+function MiniStat({ Icon, value, label, tone = 'default' }) {
   return (
     <div className={`status-v2-mini-stat status-v2-mini-stat--${tone}`}>
-      <span className="status-v2-mini-stat__icon" aria-hidden="true">{icon}</span>
+      <span className="status-v2-mini-stat__icon" aria-hidden="true">
+        <Icon size={18} strokeWidth={1.8} />
+      </span>
       <strong className="status-v2-mini-stat__value">{value}</strong>
       <span className="status-v2-mini-stat__label">{label}</span>
     </div>
@@ -61,7 +80,9 @@ function ActiveDuelCard({ duel, currentUserId }) {
   return (
     <article className="status-v2-duel-card status-v2-duel-card--active">
       <div className="status-v2-duel-card__top">
-        <span className="status-v2-duel-card__vs" aria-hidden="true">⚔️</span>
+        <span className="status-v2-duel-card__vs" aria-hidden="true">
+          <Swords size={18} strokeWidth={1.8} />
+        </span>
         <strong className="status-v2-duel-card__title">{duel.knotTitle}</strong>
       </div>
       <div className="status-v2-duel-card__mid">
@@ -69,7 +90,8 @@ function ActiveDuelCard({ duel, currentUserId }) {
         <span className="status-v2-duel-card__stake">+{duel.stake}p</span>
       </div>
       <div className="status-v2-duel-card__deadline">
-        ⏱ {duel.deadlineLabel}
+        <Clock size={14} strokeWidth={1.8} aria-hidden="true" />
+        <span>{duel.deadlineLabel}</span>
       </div>
     </article>
   );
@@ -79,6 +101,7 @@ function DuelResultRow({ duel, currentUserId }) {
   const youWon = duel.winnerId === currentUserId;
   const opponentName =
     duel.challengerId === currentUserId ? duel.opponentName : duel.challengerName;
+  const ResultIcon = youWon ? CheckCircle2 : XCircle;
 
   return (
     <div
@@ -87,7 +110,7 @@ function DuelResultRow({ duel, currentUserId }) {
       }`}
     >
       <span className="status-v2-duel-result__icon" aria-hidden="true">
-        {youWon ? '✅' : '❌'}
+        <ResultIcon size={18} strokeWidth={1.8} />
       </span>
       <span className="status-v2-duel-result__copy">
         {youWon ? 'Vant mot' : 'Tapte mot'} <strong>{opponentName}</strong>
@@ -177,10 +200,10 @@ export function StatusPage({
     <div className="status-v2">
       {/* 1. HERO STATS */}
       <section className="status-v2-hero" aria-label="Mine tall">
-        <HeroStat icon="🔥" value={streak} label="dager streak" tone="streak" />
-        <HeroStat icon="⭐" value={points} label="poeng" tone="points" />
+        <HeroStat Icon={Flame} value={streak} label="dager streak" tone="streak" />
+        <HeroStat Icon={Star} value={points} label="poeng" tone="points" />
         <HeroStat
-          icon="🏆"
+          Icon={Trophy}
           value={rank ? `#${rank}` : '—'}
           label="rank"
           tone="rank"
@@ -206,7 +229,7 @@ export function StatusPage({
           <div className="status-v2-badges__row">
             {unlockedAchievements.length === 0 ? (
               <p className="status-v2-empty">
-                Ingen merker enda — ta din første knute så er du i gang 🪢
+                Ingen merker enda — ta din første knute så er du i gang.
               </p>
             ) : (
               unlockedAchievements
@@ -232,7 +255,7 @@ export function StatusPage({
           className="status-v2-cta"
           onClick={onOpenLeaderboard}
         >
-          <span aria-hidden="true">⚔️</span>
+          <Swords size={20} strokeWidth={1.8} aria-hidden="true" />
           <span>Start ny knute-off</span>
         </button>
 
@@ -257,14 +280,14 @@ export function StatusPage({
 
       {/* 4. MINI-STATS */}
       <section className="status-v2-mini-grid" aria-label="Statistikk">
-        <MiniStat icon="🪢" value={myApprovedKnots.length} label="knuter tatt" tone="knot" />
-        <MiniStat icon="💎" value={goldCount} label="gull-knuter" tone="gold" />
-        <MiniStat icon="🎨" value={folderHits} label="mapper truffet" tone="folder" />
-        <MiniStat icon="⚔️" value={duelsWonCount} label="knute-off vunnet" tone="duel" />
+        <MiniStat Icon={KnotIcon} value={myApprovedKnots.length} label="knuter tatt" tone="knot" />
+        <MiniStat Icon={Gem} value={goldCount} label="gull-knuter" tone="gold" />
+        <MiniStat Icon={Palette} value={folderHits} label="mapper truffet" tone="folder" />
+        <MiniStat Icon={Swords} value={duelsWonCount} label="knute-off vunnet" tone="duel" />
         <MiniStat
-          icon="🏅"
+          Icon={Award}
           value={unlockedAchievements.length}
-          label="merker låst opp"
+          label="merker"
           tone="badge"
         />
         <button
@@ -272,7 +295,9 @@ export function StatusPage({
           className="status-v2-mini-stat status-v2-mini-stat--cta"
           onClick={onOpenKnots}
         >
-          <span className="status-v2-mini-stat__icon" aria-hidden="true">→</span>
+          <span className="status-v2-mini-stat__icon" aria-hidden="true">
+            <ArrowRight size={18} strokeWidth={1.8} />
+          </span>
           <strong className="status-v2-mini-stat__value">Knuter</strong>
           <span className="status-v2-mini-stat__label">ta flere</span>
         </button>
