@@ -126,6 +126,22 @@
 
 html {
   scroll-behavior: smooth;
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }
 
 body {
@@ -134,6 +150,10 @@ body {
   min-height: 100vh;
   background: var(--bg);
   color: var(--text);
+  /* Forhindre overscroll-bounce paa iOS som ofte ser rart ut i PWA-modus */
+  overscroll-behavior-y: none;
+  /* Forhindre dobbeltap-zoom paa knapper som kan trigge utilsiktede tap */
+  touch-action: manipulation;
 }
 
 button,
