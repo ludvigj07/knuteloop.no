@@ -1,9 +1,98 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import anonymousFeedJoker from '../assets/anonymous-feed-joker.jpg';
 import anonymousFeedMask from '../assets/anonymous-feed-mask.png';
 import anonymousFeedWolf from '../assets/anonymous-feed-wolf.png';
 import streakFlameIcon from '../assets/streak-flame.svg';
 import { MobileVideo } from '../components/MobileVideo.jsx';
+
+// ─── Tidsbaserte meldinger ────────────────────────────────────────────────────
+
+const MORNING_POOL = [
+  'God morgen! Klar for dagens knute?',
+  'En knute før skolen?',
+  'Ny dag, nye sjanser.',
+  'Start dagen med en lett knute.',
+  'Tidlig russ tar knuten først.',
+];
+
+const DAY_POOL = [
+  'Lunsjpause = knutepause?',
+  'Få unna én knute før neste time.',
+  'Halvgått dag — fortsatt tid til en knute.',
+  'En liten knute mellom slagene?',
+];
+
+const EVENING_POOL = [
+  'Marius tar knuter mens du gamer.',
+  'Dolly puster deg i nakken.',
+  'Ikke vær pingle — ta en knute.',
+  'Kvelden er ung, knutene venter.',
+  'Én knute før Netflix?',
+];
+
+const NIGHT_POOL = [
+  'Sov godt — Marius gjør det ikke.',
+  'Knutene venter til i morgen.',
+  'Stille natt, få knuter.',
+  'Drøm om dobbelknuter.',
+];
+
+function getTimeBasedPool(date = new Date()) {
+  const hour = date.getHours();
+  if (hour >= 6 && hour < 11) return MORNING_POOL;
+  if (hour >= 11 && hour < 17) return DAY_POOL;
+  if (hour >= 17 && hour < 22) return EVENING_POOL;
+  return NIGHT_POOL;
+}
+
+function pickRandomMessage(pool) {
+  if (!pool || pool.length === 0) return null;
+  return pool[Math.floor(Math.random() * pool.length)];
+}
+
+// ─── Banner ───────────────────────────────────────────────────────────────────
+
+function DashboardBanner({ messages }) {
+  const [index, setIndex] = useState(0);
+
+  useEffect(() => {
+    if (messages.length <= 1) return undefined;
+    const interval = window.setInterval(() => {
+      setIndex((current) => (current + 1) % messages.length);
+    }, 4000);
+    return () => window.clearInterval(interval);
+  }, [messages.length]);
+
+  useEffect(() => {
+    if (index >= messages.length) {
+      setIndex(0);
+    }
+  }, [index, messages.length]);
+
+  if (messages.length === 0) return null;
+
+  const safeIndex = Math.min(index, messages.length - 1);
+  const current = messages[safeIndex];
+
+  return (
+    <div className="db-banner" role="status" aria-live="polite">
+      <span className="db-banner__icon" aria-hidden="true">
+        {current.icon ?? '✨'}
+      </span>
+      <span className="db-banner__text">{current.text}</span>
+      {messages.length > 1 ? (
+        <span className="db-banner__dots" aria-hidden="true">
+          {messages.map((_, i) => (
+            <span
+              key={i}
+              className={`db-banner__dot${i === safeIndex ? ' is-active' : ''}`}
+            />
+          ))}
+        </span>
+      ) : null}
+    </div>
+  );
+}
 
 const ANONYMOUS_FEED_AVATARS = [
   anonymousFeedJoker,
@@ -154,6 +243,28 @@ export function DashboardPage({
         }`
       : 'Du er øverst';
 
+  const bannerMessages = useMemo(() => {
+    const collected = [];
+
+    (dashboard.messages ?? []).forEach((msg) => {
+      const text = msg?.title ?? msg?.detail ?? '';
+      if (!text) return;
+      const icon = msg.id === 'passed' ? '🚀'
+        : msg.id === 'behind' ? '🎯'
+        : msg.id === 'lead' ? '👑'
+        : msg.id === 'achievement' ? '🏆'
+        : '✨';
+      collected.push({ id: msg.id ?? `msg-${collected.length}`, text, icon });
+    });
+
+    const motivational = pickRandomMessage(getTimeBasedPool());
+    if (motivational) {
+      collected.push({ id: 'tone', text: motivational, icon: '💡' });
+    }
+
+    return collected;
+  }, [dashboard.messages]);
+
   const weeklyTopPost = dashboard.weeklyTopPost ?? null;
   const weeklyPostMinRatings =
     Number.isFinite(Number(dashboard.weeklyPostMinRatings)) &&
@@ -168,6 +279,9 @@ export function DashboardPage({
 
   return (
     <div className="db-layout">
+
+      {/* ══ 0. PÅMINNELSES-BANNER ════════════════════════════════════════════ */}
+      <DashboardBanner messages={bannerMessages} />
 
       {/* ══ 1. KOMPAKT HERO ══════════════════════════════════════════════════ */}
       <section className="db-hero">
