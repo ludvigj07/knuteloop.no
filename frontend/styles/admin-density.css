@@ -1,0 +1,330 @@
+/* ============================================================
+   Admin density overrides
+   ------------------------------------------------------------
+   Mål: tett dashboard for power-users. Mindre padding, kompakte
+   tabeller, sticky headers, tydelige badges.
+   Bruker .app-theme .admin-page-spesifisitet og !important der
+   blaruss-temaet ellers ville vinne.
+   ============================================================ */
+
+/* ----- Generell tetthet på admin-siden ------------------- */
+.app-theme .admin-page {
+  gap: 10px !important;
+}
+
+.app-theme .admin-page .section-card {
+  padding: 8px 0 !important;
+}
+
+.app-theme .admin-page .admin-task-shell {
+  margin-bottom: 4px !important;
+}
+
+.app-theme .admin-page .admin-task-panel {
+  margin-top: 8px !important;
+  gap: 6px !important;
+}
+
+/* Toolbar — slankere knapper, ikke "fullbredde 1-1-160" */
+.app-theme .admin-page .admin-section-toolbar {
+  gap: 8px !important;
+  margin: 0 0 8px !important;
+}
+
+.app-theme .admin-page .admin-section-toolbar__actions {
+  width: auto !important;
+  gap: 6px !important;
+}
+
+.app-theme .admin-page .admin-section-toolbar__actions .action-button {
+  flex: 0 1 auto !important;
+  padding: 6px 12px !important;
+  min-height: 32px !important;
+  font-size: 0.85rem !important;
+}
+
+/* ----- Task-nav: tette pills i stedet for store kort ----- */
+@media (min-width: 901px) {
+  .app-theme .admin-page .admin-task-nav {
+    grid-template-columns: none !important;
+    display: flex !important;
+    flex-wrap: wrap !important;
+    gap: 6px !important;
+  }
+
+  .app-theme .admin-page .admin-task-button {
+    padding: 8px 14px !important;
+    border-radius: 999px !important;
+    flex: 0 0 auto !important;
+    gap: 8px !important;
+    background: var(--card) !important;
+  }
+
+  .app-theme .admin-page .admin-task-button__content strong {
+    font-size: 0.88rem !important;
+    font-weight: 700 !important;
+  }
+
+  .app-theme .admin-page .admin-task-button__content span {
+    display: none !important;
+  }
+
+  .app-theme .admin-page .admin-task-button__badge {
+    min-width: 22px !important;
+    padding: 2px 8px !important;
+    font-size: 0.74rem !important;
+  }
+}
+
+/* ----- Review-filter chip-rad ---------------------------- */
+.app-theme .admin-page .admin-review-toolbar {
+  margin: 0 0 8px !important;
+}
+
+.app-theme .admin-page .admin-review-filters {
+  display: flex !important;
+  flex-wrap: wrap !important;
+  gap: 6px !important;
+  grid-template-columns: none !important;
+}
+
+.app-theme .admin-page .admin-review-filter {
+  min-height: 36px !important;
+  padding: 6px 12px !important;
+  border-radius: 999px !important;
+  font-size: 0.85rem !important;
+  width: auto !important;
+  flex: 0 0 auto !important;
+}
+
+.app-theme .admin-page .admin-review-filter strong {
+  min-width: 22px !important;
+  padding: 2px 8px !important;
+  font-size: 0.74rem !important;
+}
+
+/* ----- Submission-rader: tett listemodus ----------------- */
+.app-theme .admin-page .submission-list {
+  display: grid !important;
+  gap: 6px !important;
+}
+
+.app-theme .admin-page .submission-row {
+  padding: 10px 12px !important;
+  border-radius: 10px !important;
+  display: grid !important;
+  grid-template-columns: 1fr auto !important;
+  gap: 10px !important;
+  align-items: center !important;
+}
+
+.app-theme .admin-page .submission-row__content {
+  gap: 2px !important;
+  display: grid !important;
+}
+
+.app-theme .admin-page .submission-row__content h3 {
+  margin: 0 !important;
+  font-size: 0.95rem !important;
+  font-weight: 700 !important;
+  line-height: 1.3 !important;
+}
+
+.app-theme .admin-page .submission-row__content > p {
+  margin: 0 !important;
+  font-size: 0.78rem !important;
+  color: var(--text-muted) !important;
+  line-height: 1.35 !important;
+}
+
+.app-theme .admin-page .submission-row__content .submission-note {
+  font-size: 0.82rem !important;
+  margin-top: 2px !important;
+}
+
+/* Skjul preview-grid på collapsed rader (vises på is-active) */
+.app-theme .admin-page .submission-row:not(.is-active) .submission-evidence {
+  display: none !important;
+}
+
+.app-theme .admin-page .submission-row.is-active {
+  background: color-mix(in srgb, var(--primary) 6%, var(--surface)) !important;
+}
+
+.app-theme .admin-page .submission-row__actions {
+  display: flex !important;
+  gap: 6px !important;
+  align-items: center !important;
+  flex-wrap: wrap !important;
+  justify-content: flex-end !important;
+}
+
+.app-theme .admin-page .submission-row__actions .action-button {
+  padding: 6px 12px !important;
+  min-height: 32px !important;
+  font-size: 0.82rem !important;
+}
+
+/* ----- Pills: bedre fargekoder/badges -------------------- */
+.app-theme .admin-page .pill {
+  padding: 2px 8px !important;
+  font-size: 0.72rem !important;
+  font-weight: 700 !important;
+  border-radius: 999px !important;
+  letter-spacing: 0.02em !important;
+  text-transform: uppercase !important;
+  line-height: 1.4 !important;
+}
+
+.app-theme .admin-page .pill--success {
+  background: color-mix(in srgb, #22c55e 18%, transparent) !important;
+  color: #166534 !important;
+}
+
+.app-theme .admin-page .pill--warning {
+  background: color-mix(in srgb, #f59e0b 22%, transparent) !important;
+  color: #92400e !important;
+}
+
+.app-theme .admin-page .pill--danger {
+  background: color-mix(in srgb, #ef4444 18%, transparent) !important;
+  color: #991b1b !important;
+}
+
+.app-theme .admin-page .pill--soft {
+  background: color-mix(in srgb, var(--primary) 12%, transparent) !important;
+  color: var(--primary-strong, var(--primary)) !important;
+}
+
+.app-theme .admin-page .pill--muted {
+  background: rgba(0, 0, 0, 0.06) !important;
+  color: var(--text-muted) !important;
+}
+
+/* ----- Bruker-tabell (UserAdminPanel): tette rader ------ */
+.app-theme .admin-page table {
+  font-size: 0.85rem !important;
+}
+
+.app-theme .admin-page table thead th {
+  position: sticky !important;
+  top: 0 !important;
+  z-index: 2 !important;
+  background: var(--card) !important;
+  padding: 8px 6px !important;
+  font-size: 0.72rem !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.04em !important;
+  color: var(--text-muted) !important;
+  border-bottom: 2px solid var(--border) !important;
+}
+
+.app-theme .admin-page table tbody td {
+  padding: 6px 6px !important;
+  vertical-align: middle !important;
+  border-bottom: 1px solid color-mix(in srgb, var(--border) 60%, transparent) !important;
+}
+
+.app-theme .admin-page table tbody tr:hover {
+  background: color-mix(in srgb, var(--primary) 6%, transparent) !important;
+}
+
+/* Handlinger-celle: kompakte ghost-knapper */
+.app-theme .admin-page table tbody td .action-button {
+  padding: 4px 8px !important;
+  min-height: 26px !important;
+  font-size: 0.74rem !important;
+  border-radius: 6px !important;
+}
+
+/* ----- Status-badge i bruker-tabell ---------------------- */
+.app-theme .admin-page .user-status {
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 5px !important;
+  padding: 2px 8px !important;
+  border-radius: 999px !important;
+  font-size: 0.72rem !important;
+  font-weight: 700 !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.03em !important;
+}
+
+.app-theme .admin-page .user-status::before {
+  content: '';
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+.app-theme .admin-page .user-status--active {
+  background: color-mix(in srgb, #22c55e 16%, transparent) !important;
+  color: #15803d !important;
+}
+
+.app-theme .admin-page .user-status--pending {
+  background: color-mix(in srgb, #f59e0b 18%, transparent) !important;
+  color: #92400e !important;
+}
+
+.app-theme .admin-page .user-status--noaccess {
+  background: rgba(0, 0, 0, 0.06) !important;
+  color: var(--text-muted) !important;
+}
+
+.app-theme .admin-page .user-status--inactive {
+  background: color-mix(in srgb, #ef4444 16%, transparent) !important;
+  color: #991b1b !important;
+}
+
+/* ----- Søke-/filterfelt: kompakt ------------------------ */
+.app-theme .admin-page .text-input {
+  padding: 6px 10px !important;
+  min-height: 32px !important;
+  font-size: 0.85rem !important;
+}
+
+.app-theme .admin-page .field-group > span {
+  font-size: 0.74rem !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.04em !important;
+  color: var(--text-muted) !important;
+}
+
+/* ----- Tabell-wrapper med horisontal scroll på mobil ---- */
+.app-theme .admin-page .admin-table-wrapper {
+  overflow-x: auto !important;
+  -webkit-overflow-scrolling: touch !important;
+  border-radius: 10px !important;
+  background: var(--card) !important;
+  box-shadow: var(--shadow-soft) !important;
+}
+
+.app-theme .admin-page .admin-table-wrapper table {
+  width: 100% !important;
+  border-collapse: collapse !important;
+  min-width: 720px !important;
+}
+
+/* Mobil: behold tabell-tetthet, men tillat scroll */
+@media (max-width: 640px) {
+  .app-theme .admin-page table {
+    font-size: 0.8rem !important;
+  }
+
+  .app-theme .admin-page table tbody td,
+  .app-theme .admin-page table thead th {
+    padding: 5px 6px !important;
+    white-space: nowrap !important;
+  }
+
+  /* På mobil — submission-rader bytter til vertikalt layout */
+  .app-theme .admin-page .submission-row {
+    grid-template-columns: 1fr !important;
+  }
+
+  .app-theme .admin-page .submission-row__actions {
+    justify-content: flex-start !important;
+  }
+}

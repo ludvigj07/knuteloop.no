@@ -3,6 +3,7 @@ import { Activity, Home, Play, Shield, Trophy, User } from 'lucide-react';
 import { KnotIcon } from './components/KnotIcon.jsx';
 import './App.css';
 import './styles/blaruss-refresh.css';
+import './styles/admin-density.css';
 import { LiveOnboarding } from './components/LiveOnboarding.jsx';
 import { SettingsModal } from './components/SettingsModal.jsx';
 import { SwipeTabsShell } from './components/SwipeTabsShell.jsx';
