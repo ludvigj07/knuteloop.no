@@ -953,19 +953,6 @@ function App() {
     return (
       <header className="hero-panel hero-panel--page">
         <div className="hero-panel__content">
-          <div className="hero-panel__topbar">
-            <div className="hero-panel__utility">
-              <button
-                type="button"
-                className="hero-icon-button"
-                onClick={handleOpenSettings}
-                aria-label="Apne innstillinger"
-                title="Innstillinger"
-              >
-                ⚙
-              </button>
-            </div>
-          </div>
           <h1>
             Heisann{' '}
             <span className="hero-name-accent">
@@ -1091,6 +1078,7 @@ function App() {
         <ProfilesPage
           {...commonPageProps}
           onBackToOverview={handleBackToProfileOverview}
+          onOpenSettings={handleOpenSettings}
           onSetKnotVisibility={handleSetKnotVisibility}
           profileViewMode={profileViewMode}
           editRequest={profileEditRequest}
