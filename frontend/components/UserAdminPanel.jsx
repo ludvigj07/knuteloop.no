@@ -8,6 +8,38 @@ import {
   adminSetUserActive,
   adminSetUserRussName,
 } from '../data/api.js';
+import { createRussNamePool } from '../utils/russNameGenerator.js';
+import { InvitePrintOverlay } from './InvitePrintOverlay.jsx';
+
+function parseBulkLines(text) {
+  return text
+    .split('\n')
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .map((line) => {
+      const commaIdx = line.lastIndexOf(',');
+      if (commaIdx > 0) {
+        return {
+          name: line.slice(0, commaIdx).trim(),
+          email: line.slice(commaIdx + 1).trim(),
+        };
+      }
+      const tabParts = line.split(/\t/);
+      if (tabParts.length === 2) {
+        return { name: tabParts[0].trim(), email: tabParts[1].trim() };
+      }
+      if (/@/.test(line)) {
+        return { name: '', email: line };
+      }
+      return null;
+    })
+    .filter((entry) => entry && /@/.test(entry.email));
+}
+
+function buildShortHost() {
+  if (typeof window === 'undefined') return '';
+  return window.location.host.replace(/^www\./, '');
+}
 
 function buildInviteLink(email, code) {
   if (typeof window === 'undefined') return '';
@@ -39,6 +71,15 @@ export function UserAdminPanel({ sessionToken }) {
   const [russNameForUserId, setRussNameForUserId] = useState(null);
   const [russNameDraft, setRussNameDraft] = useState('');
   const [rowBusyId, setRowBusyId] = useState(null);
+
+  const [bulkText, setBulkText] = useState('');
+  const [bulkClass, setBulkClass] = useState('');
+  const [bulkRole, setBulkRole] = useState('user');
+  const [bulkBusy, setBulkBusy] = useState(false);
+  const [bulkProgress, setBulkProgress] = useState({ done: 0, total: 0 });
+  const [bulkInvites, setBulkInvites] = useState([]);
+  const [bulkErrors, setBulkErrors] = useState([]);
+  const [printOverlayOpen, setPrintOverlayOpen] = useState(false);
 
   async function refresh() {
     if (!sessionToken) return;
@@ -93,6 +134,72 @@ export function UserAdminPanel({ sessionToken }) {
     } finally {
       setBusy(false);
     }
+  }
+
+  async function handleBulkImport(event) {
+    event.preventDefault();
+    setError('');
+    setBulkErrors([]);
+    setBulkInvites([]);
+
+    const entries = parseBulkLines(bulkText);
+    if (entries.length === 0) {
+      setError('Fant ingen gyldige linjer. Format per linje: «Navn, e-post».');
+      return;
+    }
+    if (!bulkClass.trim()) {
+      setError('Fyll inn klasse for alle (f.eks. 3STA).');
+      return;
+    }
+
+    setBulkBusy(true);
+    setBulkProgress({ done: 0, total: entries.length });
+
+    const namePool = createRussNamePool();
+    const existingRussNames = users.map((u) => u.russName).filter(Boolean);
+    const newInvites = [];
+    const errors = [];
+    const shortHost = buildShortHost();
+
+    for (let i = 0; i < entries.length; i++) {
+      const entry = entries[i];
+      const fallbackName =
+        entry.name ||
+        entry.email.split('@')[0].replace(/[._-]+/g, ' ').trim() ||
+        'Russ';
+      const russName = namePool.take(existingRussNames);
+
+      try {
+        const result = await adminCreateUser(sessionToken, {
+          email: entry.email.trim(),
+          name: fallbackName,
+          class: bulkClass.trim(),
+          role: bulkRole,
+          russName,
+        });
+        newInvites.push({
+          email: result.user.email,
+          name: result.user.name,
+          className: result.user.class ?? bulkClass.trim(),
+          russName: result.user.russName ?? russName,
+          code: result.inviteCode,
+          link: buildInviteLink(result.user.email, result.inviteCode),
+          shortHost,
+        });
+      } catch (err) {
+        errors.push({ email: entry.email, message: err.message });
+      } finally {
+        setBulkProgress({ done: i + 1, total: entries.length });
+      }
+    }
+
+    setBulkInvites(newInvites);
+    setBulkErrors(errors);
+    setBulkBusy(false);
+    if (newInvites.length > 0) {
+      setBulkText('');
+    }
+    await refresh();
   }
 
   async function handleRegenerate(userId) {
@@ -199,6 +306,119 @@ export function UserAdminPanel({ sessionToken }) {
           >
             Lukk
           </button>
+        </div>
+      ) : null}
+
+      <form
+        className="login-form"
+        onSubmit={handleBulkImport}
+        style={{
+          marginBottom: '1.5rem',
+          padding: '1rem',
+          background: 'var(--color-surface-raised, #f5f5ff)',
+          borderRadius: 8,
+        }}
+      >
+        <strong>Bulk-importer brukere fra liste</strong>
+        <p style={{ margin: '0.25rem 0 0.5rem', fontSize: '0.85rem' }}>
+          Lim inn én elev per linje på formatet <code>Navn, e-post</code>. Dåpsnavn
+          genereres automatisk (kleine russenavn). Klasse og rolle gjelder for alle.
+        </p>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
+          <label className="field-group">
+            <span>Klasse for alle</span>
+            <input
+              className="text-input"
+              value={bulkClass}
+              onChange={(event) => setBulkClass(event.target.value)}
+              placeholder="F.eks. 3STA"
+              required
+              disabled={bulkBusy}
+            />
+          </label>
+          <label className="field-group">
+            <span>Rolle for alle</span>
+            <select
+              className="text-input"
+              value={bulkRole}
+              onChange={(event) => setBulkRole(event.target.value)}
+              disabled={bulkBusy}
+            >
+              <option value="user">Bruker</option>
+              <option value="admin">Admin</option>
+            </select>
+          </label>
+        </div>
+        <label className="field-group">
+          <span>Klasseliste</span>
+          <textarea
+            className="text-input"
+            rows={8}
+            value={bulkText}
+            onChange={(event) => setBulkText(event.target.value)}
+            placeholder={'Ola Nordmann, ola@elev.skole.no\nKari Hansen, kari@elev.skole.no'}
+            disabled={bulkBusy}
+            style={{ fontFamily: 'ui-monospace, monospace', fontSize: '0.85rem' }}
+          />
+        </label>
+        {bulkBusy ? (
+          <p style={{ margin: 0 }}>
+            Oppretter brukere... ({bulkProgress.done} / {bulkProgress.total})
+          </p>
+        ) : null}
+        <button type="submit" className="action-button" disabled={bulkBusy}>
+          {bulkBusy ? 'Oppretter...' : 'Opprett alle og generer invitasjoner'}
+        </button>
+      </form>
+
+      {bulkInvites.length > 0 ? (
+        <div
+          className="section-card"
+          style={{
+            background: 'var(--color-surface-raised, #eef7ee)',
+            padding: '1rem',
+            marginBottom: '1.5rem',
+            borderRadius: 8,
+          }}
+        >
+          <strong>{bulkInvites.length} invitasjoner klare</strong>
+          <p style={{ margin: '0.25rem 0 0.75rem', fontSize: '0.9rem' }}>
+            Skriv ut og del ut i klassen. Kodene vises bare nå — du kan generere nye
+            koder per bruker fra tabellen under hvis nødvendig.
+          </p>
+          <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+            <button
+              type="button"
+              className="action-button"
+              onClick={() => setPrintOverlayOpen(true)}
+            >
+              Åpne utskriftsvisning ({bulkInvites.length} ruter)
+            </button>
+            <button
+              type="button"
+              className="action-button action-button--ghost"
+              onClick={() => {
+                setBulkInvites([]);
+                setBulkErrors([]);
+              }}
+            >
+              Lukk
+            </button>
+          </div>
+          {bulkErrors.length > 0 ? (
+            <div style={{ marginTop: '0.75rem' }}>
+              <strong style={{ color: '#a33' }}>
+                {bulkErrors.length} feilet:
+              </strong>
+              <ul style={{ margin: '0.25rem 0 0 1rem', fontSize: '0.85rem' }}>
+                {bulkErrors.map((err) => (
+                  <li key={err.email}>
+                    <code>{err.email}</code>: {err.message}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ) : null}
         </div>
       ) : null}
 
@@ -417,6 +637,13 @@ export function UserAdminPanel({ sessionToken }) {
             </button>
           </div>
         </form>
+      ) : null}
+
+      {printOverlayOpen && bulkInvites.length > 0 ? (
+        <InvitePrintOverlay
+          invites={bulkInvites}
+          onClose={() => setPrintOverlayOpen(false)}
+        />
       ) : null}
     </SectionCard>
   );
