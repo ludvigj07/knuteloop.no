@@ -827,6 +827,25 @@
 .form-feedback {
   color: var(--accent);
   font-weight: 600;
+  font-size: 0.95rem;
+  line-height: 1.4;
+  margin: 0;
+}
+
+.form-feedback--error {
+  color: var(--danger-strong, #bf433e);
+  background: var(--danger-bg, rgba(220, 91, 86, 0.12));
+  padding: 10px 14px;
+  border-radius: 12px;
+  border: 1px solid color-mix(in srgb, var(--danger, #dc5b56) 28%, transparent);
+}
+
+.form-feedback--success {
+  color: #15803d;
+  background: rgba(34, 197, 94, 0.12);
+  padding: 10px 14px;
+  border-radius: 12px;
+  border: 1px solid rgba(34, 197, 94, 0.28);
 }
 
 .knot-toolbar {
