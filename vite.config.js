@@ -11,4 +11,20 @@ export default defineConfig({
       '/uploads': 'http://localhost:3001',
     },
   },
+  build: {
+    target: 'es2020',
+    cssCodeSplit: true,
+    sourcemap: false,
+    reportCompressedSize: false,
+    chunkSizeWarningLimit: 800,
+    rollupOptions: {
+      output: {
+        // Skill ut react/lucide til egne chunks for bedre cache-treff mellom deploys
+        manualChunks: {
+          react: ['react', 'react-dom'],
+          icons: ['lucide-react'],
+        },
+      },
+    },
+  },
 })
