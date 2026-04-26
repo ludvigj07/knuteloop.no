@@ -10399,20 +10399,13 @@ textarea.text-input:focus {
    =========================================================== */
 
 @media (max-width: 640px) {
-  /* Task-nav blir horisontal chip-rad i stedet for stable kort */
+  /* Task-nav blir wrappende chip-rad så alle tabs er synlige uten scrolling */
   .admin-task-nav {
     grid-template-columns: none;
     display: flex;
-    overflow-x: auto;
+    flex-wrap: wrap;
     gap: 8px;
     padding-bottom: 6px;
-    scroll-snap-type: x proximity;
-    scrollbar-width: none;
-    -ms-overflow-style: none;
-  }
-
-  .admin-task-nav::-webkit-scrollbar {
-    display: none;
   }
 
   .admin-task-button {
@@ -10420,7 +10413,6 @@ textarea.text-input:focus {
     padding: 8px 14px;
     border-radius: 999px;
     gap: 6px;
-    scroll-snap-align: start;
     background: var(--card);
   }
 
