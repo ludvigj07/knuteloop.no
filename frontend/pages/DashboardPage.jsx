@@ -63,15 +63,9 @@ function DashboardBanner({ messages }) {
     return () => window.clearInterval(interval);
   }, [messages.length]);
 
-  useEffect(() => {
-    if (index >= messages.length) {
-      setIndex(0);
-    }
-  }, [index, messages.length]);
-
   if (messages.length === 0) return null;
 
-  const safeIndex = Math.min(index, messages.length - 1);
+  const safeIndex = index < messages.length ? index : 0;
   const current = messages[safeIndex];
 
   return (
@@ -225,24 +219,6 @@ export function DashboardPage({
     )
     .slice(0, 3);
 
-  if (!currentLeader) {
-    return (
-      <div className="db-layout">
-        <p className="folder-empty" style={{ textAlign: 'center', padding: '2rem 1rem' }}>
-          Ingen data er tilgjengelig akkurat nå.
-        </p>
-      </div>
-    );
-  }
-
-  const pct = Math.min(Math.round(dashboard.rankProgress?.percent ?? 0), 100);
-  const nextRankNote =
-    dashboard.nextRank?.mode === 'chase'
-      ? `${dashboard.nextRank.pointsNeeded}p til ${
-          dashboard.nextRank.rival?.russName ?? dashboard.nextRank.rival?.name ?? '–'
-        }`
-      : 'Du er øverst';
-
   const bannerMessages = useMemo(() => {
     const collected = [];
 
@@ -264,6 +240,24 @@ export function DashboardPage({
 
     return collected;
   }, [dashboard.messages]);
+
+  if (!currentLeader) {
+    return (
+      <div className="db-layout">
+        <p className="folder-empty" style={{ textAlign: 'center', padding: '2rem 1rem' }}>
+          Ingen data er tilgjengelig akkurat nå.
+        </p>
+      </div>
+    );
+  }
+
+  const pct = Math.min(Math.round(dashboard.rankProgress?.percent ?? 0), 100);
+  const nextRankNote =
+    dashboard.nextRank?.mode === 'chase'
+      ? `${dashboard.nextRank.pointsNeeded}p til ${
+          dashboard.nextRank.rival?.russName ?? dashboard.nextRank.rival?.name ?? '–'
+        }`
+      : 'Du er øverst';
 
   const weeklyTopPost = dashboard.weeklyTopPost ?? null;
   const weeklyPostMinRatings =
