@@ -80,6 +80,10 @@ export function UserAdminPanel({ sessionToken }) {
   const [bulkInvites, setBulkInvites] = useState([]);
   const [bulkErrors, setBulkErrors] = useState([]);
   const [printOverlayOpen, setPrintOverlayOpen] = useState(false);
+  const [regenBusy, setRegenBusy] = useState(false);
+  const [regenProgress, setRegenProgress] = useState({ done: 0, total: 0 });
+
+  const pendingUsers = users.filter((u) => u.hasInvite && !u.activatedAt && u.active);
 
   async function refresh() {
     if (!sessionToken) return;
@@ -198,6 +202,52 @@ export function UserAdminPanel({ sessionToken }) {
     setBulkBusy(false);
     if (newInvites.length > 0) {
       setBulkText('');
+    }
+    await refresh();
+  }
+
+  async function handleRegenerateAllPending() {
+    setError('');
+    setBulkErrors([]);
+    setBulkInvites([]);
+
+    if (pendingUsers.length === 0) {
+      setError('Ingen brukere venter på aktivering.');
+      return;
+    }
+
+    setRegenBusy(true);
+    setRegenProgress({ done: 0, total: pendingUsers.length });
+
+    const newInvites = [];
+    const errors = [];
+    const shortHost = buildShortHost();
+
+    for (let i = 0; i < pendingUsers.length; i++) {
+      const user = pendingUsers[i];
+      try {
+        const result = await adminRegenerateInvite(sessionToken, user.id);
+        newInvites.push({
+          email: result.user.email,
+          name: result.user.name,
+          className: result.user.class ?? '',
+          russName: result.user.russName ?? '',
+          code: result.inviteCode,
+          link: buildInviteLink(result.user.email, result.inviteCode),
+          shortHost,
+        });
+      } catch (err) {
+        errors.push({ email: user.email, message: err.message });
+      } finally {
+        setRegenProgress({ done: i + 1, total: pendingUsers.length });
+      }
+    }
+
+    setBulkInvites(newInvites);
+    setBulkErrors(errors);
+    setRegenBusy(false);
+    if (newInvites.length > 0) {
+      setPrintOverlayOpen(true);
     }
     await refresh();
   }
@@ -419,6 +469,43 @@ export function UserAdminPanel({ sessionToken }) {
               </ul>
             </div>
           ) : null}
+        </div>
+      ) : null}
+
+      {pendingUsers.length > 0 ? (
+        <div
+          style={{
+            marginBottom: '1.5rem',
+            padding: '1rem',
+            background: 'var(--color-surface-raised, #fff7e6)',
+            borderRadius: 8,
+            border: '1px solid #f0d68c',
+          }}
+        >
+          <strong>
+            {pendingUsers.length} bruker{pendingUsers.length === 1 ? '' : 'e'} venter på
+            aktivering
+          </strong>
+          <p style={{ margin: '0.25rem 0 0.5rem', fontSize: '0.9rem' }}>
+            Mistet utskriften? Klikk for å generere nye koder for alle ventende brukere
+            og åpne utskriftsvisningen direkte.{' '}
+            <em>NB: Tidligere koder slutter å virke når du genererer nye.</em>
+          </p>
+          {regenBusy ? (
+            <p style={{ margin: '0.25rem 0' }}>
+              Genererer... ({regenProgress.done} / {regenProgress.total})
+            </p>
+          ) : null}
+          <button
+            type="button"
+            className="action-button"
+            disabled={regenBusy}
+            onClick={handleRegenerateAllPending}
+          >
+            {regenBusy
+              ? 'Genererer...'
+              : `Generer nye koder + skriv ut (${pendingUsers.length})`}
+          </button>
         </div>
       ) : null}
 
