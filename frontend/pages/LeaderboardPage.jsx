@@ -1,6 +1,17 @@
 ﻿import { useEffect, useMemo, useRef, useState } from 'react';
-import { MobileVideo } from '../components/MobileVideo.jsx';
+import {
+  Award,
+  Clock,
+  Info,
+  Percent,
+  Shield,
+  Swords,
+  Trophy,
+  X,
+  ChevronRight,
+} from 'lucide-react';
 import { SectionCard } from '../components/SectionCard.jsx';
+import { DuelEvidenceSheet } from '../components/DuelEvidenceSheet.jsx';
 
 function getRankDisplay(rank) {
   return `#${rank}`;
@@ -38,12 +49,6 @@ function getPodiumRowClass(rank) {
   return '';
 }
 
-const MAX_DUEL_NOTE_WORDS = 100;
-const SUBMISSION_MODE = {
-  REVIEW: 'review',
-  FEED: 'feed',
-  ANONYMOUS_FEED: 'anonymous-feed',
-};
 const GENDER_FILTER_LABELS = {
   girl: 'Jenter',
   boy: 'Gutter',
@@ -69,35 +74,6 @@ const CLASS_INDIVIDUAL_FILTER_OPTIONS = [
   { value: 'ibd', label: 'IBD' },
 ];
 
-function getWordCount(text) {
-  const trimmedText = text.trim();
-
-  if (!trimmedText) {
-    return 0;
-  }
-
-  return trimmedText.split(/\s+/).length;
-}
-
-function normalizeSubmissionMode(value) {
-  if (
-    value === SUBMISSION_MODE.REVIEW ||
-    value === SUBMISSION_MODE.FEED ||
-    value === SUBMISSION_MODE.ANONYMOUS_FEED
-  ) {
-    return value;
-  }
-
-  return SUBMISSION_MODE.FEED;
-}
-
-function revokeObjectUrl(url) {
-  if (!url || typeof URL === 'undefined') {
-    return;
-  }
-
-  URL.revokeObjectURL(url);
-}
 
 function normalizeClassFilterValue(value) {
   const normalizedValue = String(value ?? '')
@@ -233,6 +209,7 @@ export function LeaderboardPage({
   duelAvailability,
   duelHistory,
   duelSummary,
+  duelViewRequest = 0,
   genderLeaderboards = {},
   leaders,
   onMarkDuelCompleted,
@@ -244,16 +221,31 @@ export function LeaderboardPage({
   const [genderFilter, setGenderFilter] = useState('girl');
   const [classIndividualFilter, setClassIndividualFilter] = useState('sta');
   const [duelFeedback, setDuelFeedback] = useState('');
-  const [drafts, setDrafts] = useState({});
-  const [expandedSubmissionDuelId, setExpandedSubmissionDuelId] = useState(null);
+  const [activeSheetDuelId, setActiveSheetDuelId] = useState(null);
+  const [showDuelRules, setShowDuelRules] = useState(false);
+  const [showAllChallengers, setShowAllChallengers] = useState(false);
   const currentLeaderRef = useRef(null);
-  const draftsRef = useRef(drafts);
+  const lastSeenDuelViewRequestRef = useRef(0);
+
   const activeFeedBan =
     currentUserActiveBans.find((ban) => ban.type === 'feed') ?? null;
   const activeSubmissionBan =
     currentUserActiveBans.find((ban) => ban.type === 'submission') ?? null;
   const activeDuels = (duelHistory ?? []).filter((duel) => duel.status === 'active');
   const recentDuels = (duelHistory ?? []).filter((duel) => duel.status === 'resolved');
+  const myFinishedDuels = recentDuels.filter(
+    (duel) => duel.challengerId === currentUserId || duel.opponentId === currentUserId,
+  );
+  const myWonDuels = myFinishedDuels.filter((duel) => duel.winnerId === currentUserId);
+  const myLostDuels = myFinishedDuels.filter(
+    (duel) => duel.winnerId && duel.winnerId !== currentUserId,
+  );
+  const myWinRate = myFinishedDuels.length > 0
+    ? Math.round((myWonDuels.length / myFinishedDuels.length) * 100)
+    : 0;
+  const myActiveDuelCount = activeDuels.filter(
+    (duel) => duel.challengerId === currentUserId || duel.opponentId === currentUserId,
+  ).length;
   const challengeLeaders = (leaders ?? []).filter((leader) => leader.id !== currentUserId);
   const genderFilterOptions = ['girl', 'boy'];
   const selectedGenderLeaderboard = genderLeaderboards[genderFilter] ?? [];
@@ -267,10 +259,6 @@ export function LeaderboardPage({
       ?.label ?? classIndividualFilter.toUpperCase();
 
   useEffect(() => {
-    draftsRef.current = drafts;
-  }, [drafts]);
-
-  useEffect(() => {
     const normalizedCurrentUserClass = normalizeClassFilterValue(currentUserClassName);
 
     if (normalizedCurrentUserClass) {
@@ -278,15 +266,16 @@ export function LeaderboardPage({
     }
   }, [currentUserClassName]);
 
-  useEffect(
-    () => () => {
-      Object.values(draftsRef.current).forEach((draft) => {
-        revokeObjectUrl(draft.imagePreviewUrl);
-        revokeObjectUrl(draft.videoPreviewUrl);
-      });
-    },
-    [],
-  );
+  // Hopper rett inn i duel-view når Status-siden ber om det.
+  useEffect(() => {
+    if (
+      duelViewRequest > 0 &&
+      duelViewRequest !== lastSeenDuelViewRequestRef.current
+    ) {
+      lastSeenDuelViewRequestRef.current = duelViewRequest;
+      setActiveView('duel');
+    }
+  }, [duelViewRequest]);
 
   async function handleStartDuel(opponentId) {
     const result = await onStartDuel?.(opponentId);
@@ -296,101 +285,22 @@ export function LeaderboardPage({
     }
   }
 
-  function updateDraftNote(duelId, note) {
-    setDrafts((currentDrafts) => ({
-      ...currentDrafts,
-      [duelId]: {
-        ...currentDrafts[duelId],
-        note,
-      },
-    }));
-  }
-
-  function updateDraftSubmissionMode(duelId, submissionMode) {
-    setDrafts((currentDrafts) => ({
-      ...currentDrafts,
-      [duelId]: {
-        ...currentDrafts[duelId],
-        submissionMode: normalizeSubmissionMode(submissionMode),
-      },
-    }));
-  }
-
-  function updateDraftFile(duelId, type, file) {
-    if (!file || typeof URL === 'undefined') {
-      return;
-    }
-
-    const previewField = type === 'image' ? 'imagePreviewUrl' : 'videoPreviewUrl';
-    const nameField = type === 'image' ? 'imageName' : 'videoName';
-    const fileField = type === 'image' ? 'imageFile' : 'videoFile';
-    const nextPreviewUrl = URL.createObjectURL(file);
-
-    setDrafts((currentDrafts) => {
-      const currentDraft = currentDrafts[duelId] ?? {};
-      revokeObjectUrl(currentDraft[previewField]);
-
-      return {
-        ...currentDrafts,
-        [duelId]: {
-          ...currentDraft,
-          [nameField]: file.name,
-          [fileField]: file,
-          [previewField]: nextPreviewUrl,
-        },
-      };
-    });
-  }
-
-  function clearDraft(duelId) {
-    setDrafts((currentDrafts) => {
-      const currentDraft = currentDrafts[duelId] ?? {};
-      revokeObjectUrl(currentDraft.imagePreviewUrl);
-      revokeObjectUrl(currentDraft.videoPreviewUrl);
-      const nextDrafts = { ...currentDrafts };
-      delete nextDrafts[duelId];
-      return nextDrafts;
-    });
-  }
-
-  async function handleCompleteDuel(duel, evidence = {}) {
-    const wordCount = getWordCount(evidence.note ?? '');
-
-    if (wordCount > MAX_DUEL_NOTE_WORDS) {
-      setDuelFeedback(`Hold notatet under ${MAX_DUEL_NOTE_WORDS} ord.`);
-      return;
-    }
-
-    if (activeSubmissionBan) {
-      setDuelFeedback(
-        `Du har innsendings-ban i ${activeSubmissionBan.remainingLabel}. Du kan ikke registrere knute-off nå.`,
-      );
-      return;
-    }
-
-    const normalizedSubmissionMode = normalizeSubmissionMode(evidence.submissionMode);
-    const effectiveSubmissionMode = activeFeedBan
-      ? SUBMISSION_MODE.REVIEW
-      : normalizedSubmissionMode;
-    const result = await onMarkDuelCompleted?.(duel.id, currentUserId, {
-      ...evidence,
-      submissionMode: effectiveSubmissionMode,
-    });
-
+  // Wrapper som DuelEvidenceSheet kaller når brukeren submitter bevis.
+  async function handleCompleteDuel(duel, evidence) {
+    const result = await onMarkDuelCompleted?.(duel.id, currentUserId, evidence);
     if (result?.ok) {
-      clearDraft(duel.id);
-      setExpandedSubmissionDuelId((current) => (current === duel.id ? null : current));
       setDuelFeedback(
         result.message ??
-          'Fullføring er registrert og auto-godkjent. Admin kan reversere hvis beviset ikke holder.',
+          'Fullføring er registrert. Admin kan reversere hvis beviset ikke holder.',
       );
-      return;
+      return { ok: true };
     }
-
-    if (result?.message) {
-      setDuelFeedback(result.message);
-    }
+    return { ok: false, message: result?.message ?? 'Noe gikk galt — prøv igjen.' };
   }
+
+  const sheetDuel = activeSheetDuelId
+    ? activeDuels.find((duel) => duel.id === activeSheetDuelId)
+    : null;
 
   function handleJumpToCurrentUser() {
     if (!currentLeaderRef.current) {
@@ -731,24 +641,41 @@ export function LeaderboardPage({
           ) : null}
         </>
       ) : (
-        <div className="stack-layout">
-          <div className="duel-summary-bar duel-summary-bar--friendly">
-            <div>
-              <strong>Knute-off</strong>
-              <p>
-                Knute-off er en frivillig ekstraaktivitet. Du kan utfordre innenfor
-                {` ${duelSummary?.range ?? 5} `}
-                plasseringer, med
-                {` ${duelSummary?.stake ?? 10} `}
-                poeng i innsats og
-                {` ${duelSummary?.deadlineHours ?? 24} `}
-                timers frist. Maks {duelSummary?.dailyLimit ?? 1} per dag.
-              </p>
-            </div>
-            <div className="duel-summary-bar__stats">
-              <span>{duelSummary?.currentUserDailyCount ?? 0}/1 i dag</span>
-              <span>{duelSummary?.currentUserRemaining ?? 0} igjen</span>
-            </div>
+        <div className="duel-v2">
+          {/* 1. STATS-BAR */}
+          <section className="duel-v2-stats" aria-label="Mine duell-tall">
+            <DuelHeroStat
+              Icon={Swords}
+              value={myWonDuels.length}
+              label="vunnet"
+              tone="win"
+            />
+            <DuelHeroStat
+              Icon={Percent}
+              value={`${myWinRate}%`}
+              label="win rate"
+              tone="rate"
+            />
+            <DuelHeroStat
+              Icon={Shield}
+              value={myActiveDuelCount}
+              label="aktive nå"
+              tone="active"
+            />
+          </section>
+
+          <div className="duel-v2-meta">
+            <span>
+              {duelSummary?.currentUserDailyCount ?? 0}/{duelSummary?.dailyLimit ?? 1} i dag
+            </span>
+            <button
+              type="button"
+              className="duel-v2-meta__rules-link"
+              onClick={() => setShowDuelRules(true)}
+            >
+              <Info size={14} strokeWidth={1.8} />
+              <span>Regler</span>
+            </button>
           </div>
 
           {duelFeedback ? (
@@ -766,301 +693,385 @@ export function LeaderboardPage({
           {activeSubmissionBan ? (
             <div className="inline-feedback">
               <p>
-                Innsendings-ban aktiv i {activeSubmissionBan.remainingLabel}. Knuteoff kan ikke
-                registreres akkurat nå.
+                Innsendings-ban aktiv i {activeSubmissionBan.remainingLabel}. Knute-off
+                kan ikke registreres akkurat nå.
               </p>
             </div>
           ) : null}
           {activeFeedBan ? (
             <div className="inline-feedback">
               <p>
-                Feed-ban aktiv i {activeFeedBan.remainingLabel}. Knuteoff registreres uten
+                Feed-ban aktiv i {activeFeedBan.remainingLabel}. Knute-off registreres uten
                 feed-post i perioden.
               </p>
             </div>
           ) : null}
 
-          <div className="duel-history-block">
-            <div className="section-card__header">
-              <h3>Aktive knute-offer</h3>
-              <p>Dere får samme knute og kan levere når det passer.</p>
+          {/* 2. AKTIVE DUELS — VS-kort */}
+          <section className="duel-v2-section">
+            <header className="duel-v2-section__head">
+              <h3>Pågående</h3>
+            </header>
+            {activeDuels.length > 0 ? (
+              <div className="duel-v2-active-list">
+                {activeDuels.map((duel) => (
+                  <ActiveDuelVsCard
+                    key={duel.id}
+                    duel={duel}
+                    currentUserId={currentUserId}
+                    canRegister={!activeSubmissionBan}
+                    onRegister={() => setActiveSheetDuelId(duel.id)}
+                    onOpenProfile={onOpenProfile}
+                  />
+                ))}
+              </div>
+            ) : (
+              <p className="duel-v2-empty">
+                Ingen aktive knute-off akkurat nå. Velg en motstander under.
+              </p>
+            )}
+          </section>
+
+          {/* 3. UTFORDRE-LISTE */}
+          <section className="duel-v2-section">
+            <header className="duel-v2-section__head">
+              <h3>Klar til kamp</h3>
+              {challengeLeaders.length > 5 ? (
+                <button
+                  type="button"
+                  className="duel-v2-link"
+                  onClick={() => setShowAllChallengers((v) => !v)}
+                >
+                  {showAllChallengers ? 'Skjul' : `Se alle (${challengeLeaders.length})`}
+                </button>
+              ) : null}
+            </header>
+            <div className="duel-v2-challenger-list">
+              {(() => {
+                const sorted = [...challengeLeaders].sort((a, b) => {
+                  const aCan = duelAvailability?.byLeaderId?.[a.id]?.canChallenge ? 0 : 1;
+                  const bCan = duelAvailability?.byLeaderId?.[b.id]?.canChallenge ? 0 : 1;
+                  if (aCan !== bCan) return aCan - bCan;
+                  return (a.rank ?? 999) - (b.rank ?? 999);
+                });
+                const visible = showAllChallengers ? sorted : sorted.slice(0, 5);
+                return visible.map((leader) => (
+                  <ChallengerRow
+                    key={leader.id}
+                    leader={leader}
+                    duelState={duelAvailability?.byLeaderId?.[leader.id]}
+                    onChallenge={() => handleStartDuel(leader.id)}
+                    onOpenProfile={onOpenProfile}
+                  />
+                ));
+              })()}
+              {challengeLeaders.length === 0 ? (
+                <p className="duel-v2-empty">Ingen mulige motstandere akkurat nå.</p>
+              ) : null}
             </div>
+          </section>
 
-            <div className="duel-history-list">
-              {activeDuels.length > 0 ? (
-                activeDuels.map((duel) => {
-                  const isChallenger = duel.challengerId === currentUserId;
-                  const isOpponent = duel.opponentId === currentUserId;
-                  const isParticipant = isChallenger || isOpponent;
-                  const currentUserCompleted = isChallenger
-                    ? Boolean(duel.challengerCompletedAt)
-                    : isOpponent
-                      ? Boolean(duel.opponentCompletedAt)
-                      : false;
-                  const draft = drafts[duel.id] ?? {};
-                  const noteValue = draft.note ?? '';
-                  const noteWordCount = getWordCount(noteValue);
-                  const isOverWordLimit = noteWordCount > MAX_DUEL_NOTE_WORDS;
-                  const submissionMode = normalizeSubmissionMode(draft.submissionMode);
-                  const effectiveSubmissionMode = activeFeedBan
-                    ? SUBMISSION_MODE.REVIEW
-                    : submissionMode;
-                  const shareToFeed = effectiveSubmissionMode === SUBMISSION_MODE.FEED;
-                  const shareToAnonymousFeed =
-                    effectiveSubmissionMode === SUBMISSION_MODE.ANONYMOUS_FEED;
-                  const isSubmissionOpen = expandedSubmissionDuelId === duel.id;
+          {/* 4. HISTORIKK */}
+          {recentDuels.length > 0 ? (
+            <section className="duel-v2-section">
+              <header className="duel-v2-section__head">
+                <h3>Historikk</h3>
+              </header>
+              <div className="duel-v2-history-list">
+                {recentDuels.slice(0, 5).map((duel) => (
+                  <DuelHistoryRow
+                    key={duel.id}
+                    duel={duel}
+                    currentUserId={currentUserId}
+                  />
+                ))}
+              </div>
+            </section>
+          ) : null}
 
-                  return (
-                    <article key={duel.id} className="duel-history-row duel-history-row--active duel-history-row--friendly">
-                      <div>
-                        <strong>{duel.knotTitle}</strong>
-                        <p>
-                          {duel.challengerName} vs {duel.opponentName} · Frist {duel.deadlineLabel}
-                        </p>
-                        <p>
-                          Utfordrer: {duel.challengerStatusLabel} · Motstander: {duel.opponentStatusLabel}
-                        </p>
-                      </div>
-                      <div className="duel-history-row__actions">
-                        <span className="pill pill--warning">Potten er {duel.stake * 2} poeng</span>
-                        {isParticipant ? (
-                          <button
-                            type="button"
-                            className="action-button"
-                            disabled={currentUserCompleted || Boolean(activeSubmissionBan)}
-                            onClick={() =>
-                              setExpandedSubmissionDuelId((current) =>
-                                current === duel.id ? null : duel.id,
-                              )
-                            }
-                          >
-                            {currentUserCompleted
-                              ? 'Registrert'
-                              : isSubmissionOpen
-                                ? 'Skjul registrering'
-                                : 'Åpne registrering'}
-                          </button>
-                        ) : null}
-                      </div>
+          {/* RULES SHEET */}
+          {showDuelRules ? (
+            <DuelRulesSheet
+              duelSummary={duelSummary}
+              onClose={() => setShowDuelRules(false)}
+            />
+          ) : null}
 
-                      {isParticipant && !currentUserCompleted && isSubmissionOpen ? (
-                        <div className="submission-form">
-                          <label className="field-group">
-                            <span>Kort notat</span>
-                            <textarea
-                              className="text-input text-input--area"
-                              placeholder="Hva gjorde du, og hva bør admin se etter?"
-                              value={noteValue}
-                              onChange={(event) => updateDraftNote(duel.id, event.target.value)}
-                            />
-                          </label>
-
-                          <div className="submission-form__meta">
-                            <span
-                              className={`word-counter ${isOverWordLimit ? 'is-invalid' : ''}`}
-                            >
-                              {noteWordCount}/{MAX_DUEL_NOTE_WORDS} ord
-                            </span>
-                          </div>
-
-                          <div className="submission-mode-options">
-                            <label className="submission-mode-option">
-                              <input
-                                type="checkbox"
-                                checked={shareToFeed}
-                                disabled={Boolean(activeFeedBan)}
-                                onChange={(event) =>
-                                  updateDraftSubmissionMode(
-                                    duel.id,
-                                    event.target.checked
-                                      ? SUBMISSION_MODE.FEED
-                                      : SUBMISSION_MODE.REVIEW,
-                                  )
-                                }
-                              />
-                              <span>Del i feed</span>
-                            </label>
-                            <label className="submission-mode-option">
-                              <input
-                                type="checkbox"
-                                checked={shareToAnonymousFeed}
-                                disabled={Boolean(activeFeedBan)}
-                                onChange={(event) =>
-                                  updateDraftSubmissionMode(
-                                    duel.id,
-                                    event.target.checked
-                                      ? SUBMISSION_MODE.ANONYMOUS_FEED
-                                      : SUBMISSION_MODE.REVIEW,
-                                  )
-                                }
-                              />
-                              <span>Post anonymt i feed</span>
-                            </label>
-                          </div>
-                          <p className="submission-mode-hint">
-                            {activeFeedBan
-                              ? `Feed-posting er blokkert i ${activeFeedBan.remainingLabel}. Knuteoff registreres uten feed-post.`
-                              : 'Lar du begge stå av, registreres knuteoff uten feed-post.'}
-                          </p>
-
-                          <div className="submission-upload-grid">
-                            <label className="upload-field">
-                              <span>Last opp bilde</span>
-                              <input
-                                type="file"
-                                accept="image/*"
-                                onChange={(event) => {
-                                  updateDraftFile(duel.id, 'image', event.target.files?.[0]);
-                                  event.target.value = '';
-                                }}
-                              />
-                              <small>{draft.imageName || 'Valgfritt bildebevis'}</small>
-                            </label>
-
-                            <label className="upload-field">
-                              <span>Last opp video</span>
-                              <input
-                                type="file"
-                                accept="video/mp4,video/quicktime,video/x-m4v"
-                                onChange={(event) => {
-                                  updateDraftFile(duel.id, 'video', event.target.files?.[0]);
-                                  event.target.value = '';
-                                }}
-                              />
-                              <small>{draft.videoName || 'Valgfritt videobevis'}</small>
-                            </label>
-                          </div>
-
-                          {draft.imagePreviewUrl || draft.videoPreviewUrl ? (
-                            <div className="submission-preview-grid">
-                              {draft.imagePreviewUrl ? (
-                                <div className="evidence-card">
-                                  <span>{draft.imageName || 'Bildebevis'}</span>
-                                  <img src={draft.imagePreviewUrl} alt="Valgt duelbilde" />
-                                </div>
-                              ) : null}
-                              {draft.videoPreviewUrl ? (
-                                <div className="evidence-card">
-                                  <span>{draft.videoName || 'Videobevis'}</span>
-                                  <MobileVideo
-                                    controls
-                                    autoPlay
-                                    muted
-                                    loop
-                                    src={draft.videoPreviewUrl}
-                                  />
-                                </div>
-                              ) : null}
-                            </div>
-                          ) : null}
-
-                          <div className="submission-form__actions">
-                            <button
-                              type="button"
-                              className="action-button"
-                              disabled={isOverWordLimit || Boolean(activeSubmissionBan)}
-                              onClick={() => handleCompleteDuel(duel, draft)}
-                            >
-                              Registrer fullført
-                            </button>
-                          </div>
-                        </div>
-                      ) : null}
-                    </article>
-                  );
-                })
-              ) : (
-                <p className="folder-empty">Ingen aktive knute-offer akkurat nå.</p>
-              )}
-            </div>
-          </div>
-
-          <div className="duel-history-block">
-            <div className="section-card__header">
-              <h3>Utfordre en venn</h3>
-              <p>Vises bare når utfordringen er tilgjengelig og innenfor rammene.</p>
-            </div>
-
-            <div className="leaderboard-list">
-              {challengeLeaders.map((leader) => {
-                const duelState = duelAvailability?.byLeaderId?.[leader.id];
-
-                return (
-                  <article key={leader.id} className="leaderboard-row">
-                    <div
-                      className={`leaderboard-row__rank ${getRankToneClass(leader.rank)}`}
-                    >
-                      #{leader.rank}
-                    </div>
-                    <div className="leaderboard-row__person">
-                      {leader.photoUrl ? (
-                        <div className="profile-photo profile-photo--small">
-                          <img
-                            src={leader.photoUrl}
-                            alt={`${leader.russName ?? leader.name} profilbilde`}
-                          />
-                        </div>
-                      ) : (
-                        <div className="profile-avatar profile-avatar--small">{leader.icon}</div>
-                      )}
-                      <div className="leaderboard-row__person-text">
-                        <h3>{leader.russName ?? leader.name}</h3>
-                        <p>
-                          #{leader.rank} · {leader.points} poeng
-                        </p>
-                      </div>
-                    </div>
-                    <div className="leaderboard-row__details">
-                      <p className="leaderboard-row__duel-hint">
-                        {duelState?.reason ?? 'Knute-off er ikke tilgjengelig akkurat nå.'}
-                      </p>
-                      <div className="leaderboard-row__actions">
-                        <button
-                          type="button"
-                          className="action-button action-button--ghost"
-                          onClick={() => onOpenProfile(leader.id)}
-                        >
-                          Se profil
-                        </button>
-                        <button
-                          type="button"
-                          className="action-button"
-                          disabled={!duelState?.canChallenge}
-                          onClick={() => handleStartDuel(leader.id)}
-                        >
-                          Send utfordring
-                        </button>
-                      </div>
-                    </div>
-                  </article>
-                );
-              })}
-            </div>
-          </div>
-
-          <div className="duel-history-block">
-            <div className="section-card__header">
-              <h3>Siste knute-offer</h3>
-              <p>Avsluttede dueller vises her som historikk.</p>
-            </div>
-
-            <div className="duel-history-list">
-              {recentDuels.slice(0, 5).map((duel) => (
-                <article key={duel.id} className="duel-history-row duel-history-row--friendly">
-                  <div>
-                    <strong>{duel.outcomeTitle}</strong>
-                    <p>
-                      {duel.challengerName} vs {duel.opponentName} · {duel.resolvedAtLabel}
-                    </p>
-                    <p>{duel.outcomeDetail}</p>
-                  </div>
-                  <span className="pill pill--warning">{duel.pointLabel}</span>
-                </article>
-              ))}
-            </div>
-          </div>
+          {/* EVIDENCE SHEET */}
+          <DuelEvidenceSheet
+            duel={sheetDuel}
+            currentUserId={currentUserId}
+            isOpen={Boolean(sheetDuel)}
+            onClose={() => setActiveSheetDuelId(null)}
+            onSubmit={(evidence) => handleCompleteDuel(sheetDuel, evidence)}
+            feedBanned={Boolean(activeFeedBan)}
+            submissionBanned={Boolean(activeSubmissionBan)}
+            submissionBanLabel={activeSubmissionBan?.remainingLabel}
+          />
         </div>
       )}
     </SectionCard>
+  );
+}
+
+// ─── Helper-komponenter for duel-v2 ──────────────────────────────────────
+
+function DuelHeroStat({ Icon, value, label, tone }) {
+  return (
+    <div className={`duel-v2-stat duel-v2-stat--${tone}`}>
+      <span className="duel-v2-stat__icon" aria-hidden="true">
+        <Icon size={20} strokeWidth={1.8} />
+      </span>
+      <strong className="duel-v2-stat__value">{value}</strong>
+      <span className="duel-v2-stat__label">{label}</span>
+    </div>
+  );
+}
+
+function ParticipantBlock({ leader, completed, role, onOpenProfile }) {
+  const photo = leader?.photoUrl;
+  const name = leader?.russName ?? leader?.name ?? '—';
+  const isYou = role === 'you';
+
+  return (
+    <button
+      type="button"
+      className="duel-v2-vs-card__participant"
+      onClick={() => leader?.id && onOpenProfile?.(leader.id)}
+      disabled={!leader?.id}
+    >
+      {photo ? (
+        <div className="duel-v2-vs-card__avatar">
+          <img src={photo} alt={`${name} profilbilde`} />
+        </div>
+      ) : (
+        <div className="duel-v2-vs-card__avatar duel-v2-vs-card__avatar--empty">
+          {leader?.icon ?? '🪢'}
+        </div>
+      )}
+      <span className="duel-v2-vs-card__name">
+        {isYou ? 'Du' : name}
+      </span>
+      <span
+        className={`duel-v2-vs-card__status ${
+          completed ? 'is-done' : 'is-pending'
+        }`}
+      >
+        {completed ? 'Levert' : 'Mangler'}
+      </span>
+    </button>
+  );
+}
+
+function ActiveDuelVsCard({ duel, currentUserId, canRegister, onRegister, onOpenProfile }) {
+  const isChallenger = duel.challengerId === currentUserId;
+  const isOpponent = duel.opponentId === currentUserId;
+  const isParticipant = isChallenger || isOpponent;
+  const myCompleted = isChallenger
+    ? Boolean(duel.challengerCompletedAt)
+    : isOpponent
+      ? Boolean(duel.opponentCompletedAt)
+      : false;
+  const opponentCompleted = isChallenger
+    ? Boolean(duel.opponentCompletedAt)
+    : Boolean(duel.challengerCompletedAt);
+
+  // Bygg en lett "leader-aktig" struktur for ParticipantBlock fra duel-feltene.
+  const meBlock = {
+    id: currentUserId,
+    russName: 'Du',
+    photoUrl: isChallenger ? duel.challengerPhotoUrl : duel.opponentPhotoUrl,
+    icon: isChallenger ? duel.challengerIcon : duel.opponentIcon,
+  };
+  const opponentBlock = {
+    id: isChallenger ? duel.opponentId : duel.challengerId,
+    russName: isChallenger ? duel.opponentName : duel.challengerName,
+    photoUrl: isChallenger ? duel.opponentPhotoUrl : duel.challengerPhotoUrl,
+    icon: isChallenger ? duel.opponentIcon : duel.challengerIcon,
+  };
+
+  return (
+    <article className="duel-v2-vs-card">
+      <div className="duel-v2-vs-card__top">
+        <ParticipantBlock
+          leader={isParticipant ? meBlock : { russName: duel.challengerName }}
+          completed={isChallenger ? myCompleted : Boolean(duel.challengerCompletedAt)}
+          role={isParticipant ? 'you' : 'them'}
+          onOpenProfile={onOpenProfile}
+        />
+        <div className="duel-v2-vs-card__vs" aria-hidden="true">
+          <Swords size={18} strokeWidth={1.8} />
+          <span>VS</span>
+        </div>
+        <ParticipantBlock
+          leader={opponentBlock}
+          completed={opponentCompleted}
+          role="them"
+          onOpenProfile={onOpenProfile}
+        />
+      </div>
+      <div className="duel-v2-vs-card__title">{duel.knotTitle}</div>
+      <div className="duel-v2-vs-card__meta">
+        <span className="duel-v2-vs-card__deadline">
+          <Clock size={14} strokeWidth={1.8} aria-hidden="true" />
+          <span>{duel.deadlineLabel}</span>
+        </span>
+        <span className="duel-v2-vs-card__pot">
+          <Trophy size={14} strokeWidth={1.8} aria-hidden="true" />
+          <span>{duel.stake * 2}p på spill</span>
+        </span>
+      </div>
+      {isParticipant ? (
+        <button
+          type="button"
+          className="duel-v2-vs-card__cta"
+          disabled={myCompleted || !canRegister}
+          onClick={onRegister}
+        >
+          {myCompleted ? '✓ Du har levert' : 'Registrer bevis'}
+        </button>
+      ) : null}
+    </article>
+  );
+}
+
+function ChallengerRow({ leader, duelState, onChallenge, onOpenProfile }) {
+  const canChallenge = Boolean(duelState?.canChallenge);
+  const reason = duelState?.reason ?? 'Knute-off er ikke tilgjengelig akkurat nå.';
+  const photo = leader.photoUrl;
+  const name = leader.russName ?? leader.name;
+
+  return (
+    <article className={`duel-v2-challenger ${canChallenge ? 'is-ready' : 'is-locked'}`}>
+      <button
+        type="button"
+        className="duel-v2-challenger__person"
+        onClick={() => onOpenProfile?.(leader.id)}
+      >
+        {photo ? (
+          <div className="duel-v2-challenger__avatar">
+            <img src={photo} alt={`${name} profilbilde`} />
+          </div>
+        ) : (
+          <div className="duel-v2-challenger__avatar duel-v2-challenger__avatar--empty">
+            {leader.icon}
+          </div>
+        )}
+        <div className="duel-v2-challenger__copy">
+          <strong>{name}</strong>
+          <span>
+            #{leader.rank} · {leader.points}p
+          </span>
+        </div>
+      </button>
+      <button
+        type="button"
+        className="duel-v2-challenger__cta"
+        disabled={!canChallenge}
+        onClick={onChallenge}
+        title={canChallenge ? 'Utfordre' : reason}
+      >
+        {canChallenge ? (
+          <>
+            <Swords size={16} strokeWidth={1.8} aria-hidden="true" />
+            <span>Utfordre</span>
+          </>
+        ) : (
+          <>
+            <Shield size={16} strokeWidth={1.8} aria-hidden="true" />
+            <span>Sperret</span>
+          </>
+        )}
+      </button>
+    </article>
+  );
+}
+
+function DuelHistoryRow({ duel, currentUserId }) {
+  const isWin = duel.winnerId === currentUserId;
+  const isLoss = duel.winnerId && duel.winnerId !== currentUserId;
+  const isParticipant =
+    duel.challengerId === currentUserId || duel.opponentId === currentUserId;
+  const opponentName =
+    duel.challengerId === currentUserId ? duel.opponentName : duel.challengerName;
+
+  let toneClass = 'duel-v2-history-row--neutral';
+  if (isParticipant && isWin) toneClass = 'duel-v2-history-row--win';
+  else if (isParticipant && isLoss) toneClass = 'duel-v2-history-row--loss';
+
+  return (
+    <div className={`duel-v2-history-row ${toneClass}`}>
+      <div className="duel-v2-history-row__main">
+        <strong>
+          {isParticipant
+            ? isWin
+              ? `Vant mot ${opponentName}`
+              : isLoss
+                ? `Tapte mot ${opponentName}`
+                : duel.outcomeTitle
+            : duel.outcomeTitle}
+        </strong>
+        <span className="duel-v2-history-row__sub">
+          {duel.knotTitle} · {duel.resolvedAtLabel}
+        </span>
+      </div>
+      <span className="duel-v2-history-row__pill">{duel.pointLabel}</span>
+    </div>
+  );
+}
+
+function DuelRulesSheet({ duelSummary, onClose }) {
+  return (
+    <div
+      className="duel-sheet-backdrop"
+      role="presentation"
+      onClick={(event) => {
+        if (event.target === event.currentTarget) onClose?.();
+      }}
+    >
+      <div
+        className="duel-sheet duel-sheet--rules"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="duel-rules-title"
+        data-swipe-lock="true"
+        onClick={(event) => event.stopPropagation()}
+        onPointerDown={(event) => event.stopPropagation()}
+      >
+        <div className="duel-sheet__handle" aria-hidden="true" />
+        <div className="duel-sheet__header">
+          <div>
+            <p className="duel-sheet__eyebrow">Regler</p>
+            <h3 id="duel-rules-title">Knute-off</h3>
+          </div>
+          <button
+            type="button"
+            className="duel-sheet__close"
+            onClick={onClose}
+            aria-label="Lukk"
+          >
+            <X size={20} strokeWidth={2} />
+          </button>
+        </div>
+        <ul className="duel-rules-list">
+          <li>
+            <Trophy size={16} strokeWidth={1.8} aria-hidden="true" />
+            <span>{duelSummary?.stake ?? 10}p på spill (potten blir {(duelSummary?.stake ?? 10) * 2}p)</span>
+          </li>
+          <li>
+            <Clock size={16} strokeWidth={1.8} aria-hidden="true" />
+            <span>{duelSummary?.deadlineHours ?? 24}t frist for å registrere bevis</span>
+          </li>
+          <li>
+            <ChevronRight size={16} strokeWidth={1.8} aria-hidden="true" />
+            <span>Du kan utfordre innenfor {duelSummary?.range ?? 5} plasseringer</span>
+          </li>
+          <li>
+            <Award size={16} strokeWidth={1.8} aria-hidden="true" />
+            <span>Maks {duelSummary?.dailyLimit ?? 1} ny utfordring per dag</span>
+          </li>
+        </ul>
+      </div>
+    </div>
   );
 }

@@ -162,6 +162,7 @@ function App() {
   const [appError, setAppError] = useState('');
   const [isOnboardingOpen, setIsOnboardingOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [duelViewRequest, setDuelViewRequest] = useState(0);
   const [isDark, setIsDark] = useState(() => {
     const stored = window.localStorage.getItem('theme');
     if (stored) return stored === 'dark';
@@ -1397,6 +1398,7 @@ function App() {
       duelAvailability,
       duelHistory,
       duelSummary,
+      duelViewRequest,
       duels,
       focusedKnotId,
       focusedKnotScrollRequest,
@@ -1503,7 +1505,10 @@ function App() {
           duelSummary={duelSummary}
           knots={knots}
           onOpenKnots={() => handleChangePage('knuter')}
-          onOpenLeaderboard={() => handleChangePage('leaderboard')}
+          onOpenLeaderboard={() => {
+            setDuelViewRequest(Date.now());
+            handleChangePage('leaderboard');
+          }}
         />
       );
     } else if (page.id === 'admin') {

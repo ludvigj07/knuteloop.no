@@ -15,7 +15,11 @@
       "Bash(grep -n \":root\\\\|--color\\\\|--bg\\\\|--text\\\\|--border\\\\|--surface\\\\|--primary\\\\|--secondary\\\\|#[0-9a-fA-F]\\\\{3,6\\\\}\\\\|rgb\\\\|hsl\" C:/development/repo/knuteloop.no/frontend/index.css)",
       "Bash(npx kill-port *)",
       "Bash(git add *)",
-      "Bash(git commit *)"
+      "Bash(git commit *)",
+      "Bash(git *)",
+      "Read(//c/development/repo/knuteloop-swipe-work/**)",
+      "Bash(npx vite *)",
+      "Bash(cmd //c rmdir \"C:\\\\development\\\\repo\\\\knuteloop-swipe-work\\\\node_modules\")"
     ]
   }
 }
