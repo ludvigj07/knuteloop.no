@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@700;800&family=Inter:wght@400;500;600&display=swap');
+/* Font lastes via <link rel="preload"> i index.html for å unngå render-blokkering */
 
 :root {
   --background-hsl: 48 60% 96%;
