@@ -13996,19 +13996,23 @@ button[type="button"]:not(.no-ripple):not(.action-button):not(.bottom-swipe-nav_
   color: var(--text-muted, rgba(0, 0, 0, 0.6));
 }
 
-/* Full-bleed admin-duels-shell på mobil — bryter ut av app-shell sin
-   16px sideinset på små skjermer slik at kø og detail-panel får
-   hele skjermbredden. På desktop holder den seg innenfor shell. */
+/* Admin-duels-shell — full-bleed bryter app-shellens sideinset på mobil
+   så vi får hele bredden, men holder innholdet trygt innenfor viewport
+   (overflow-x: clip på roten + padding på shell-en selv). */
 .admin-duels-shell {
   display: block;
-  margin-inline: -16px;
-  padding-inline: 12px;
+  margin-inline: -8px;
+  padding-inline: 8px;
+  min-width: 0;
+  max-width: 100%;
+  overflow-x: clip;
 }
 
 @media (min-width: 720px) {
   .admin-duels-shell {
     margin-inline: 0;
     padding-inline: 0;
+    overflow-x: visible;
   }
 }
 
@@ -14123,12 +14127,19 @@ button[type="button"]:not(.no-ripple):not(.action-button):not(.bottom-swipe-nav_
   overflow-x: auto;
   overflow-y: hidden;
   padding-bottom: 2px;
-  flex: 1 1 0;
   min-width: 0;
   width: 100%;
+  flex: 0 0 auto;
   -webkit-overflow-scrolling: touch;
   scrollbar-width: none;
   scroll-snap-type: x proximity;
+}
+
+@media (min-width: 720px) {
+  .adh-filters {
+    flex: 1 1 0;
+    width: auto;
+  }
 }
 
 .adh-filters::-webkit-scrollbar {
@@ -14235,6 +14246,9 @@ button[type="button"]:not(.no-ripple):not(.action-button):not(.bottom-swipe-nav_
   color: var(--text-muted, rgba(0, 0, 0, 0.55));
   font-style: italic;
   text-align: center;
+  word-break: break-word;
+  overflow-wrap: anywhere;
+  max-width: 100%;
 }
 
 /* Queue row */
