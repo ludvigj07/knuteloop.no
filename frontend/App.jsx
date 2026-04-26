@@ -326,8 +326,11 @@ function App() {
     () =>
       buildAchievements(knots, currentLeader, {
         streakDays: Number(currentUserStreak?.current ?? 0),
+        duelHistory: duels,
+        currentUserId: currentUser?.leaderId ?? null,
+        totalLeaderboardCount: Array.isArray(leaders) ? leaders.length : 0,
       }),
-    [currentLeader, currentUserStreak, knots],
+    [currentLeader, currentUser, currentUserStreak, duels, knots, leaders],
   );
 
   // Watch achievements for newly unlocked items and show a celebration.

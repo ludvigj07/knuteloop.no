@@ -128,17 +128,35 @@ function countKnotsByFolder(knots) {
 
 function buildAchievementsFromInputs({
   approvedKnots,
+  allKnots,
   folderTotals,
   systemTotalKnots,
   totalPoints,
   leaderboardRank,
+  totalLeaderboardCount,
   streakDays,
+  duelsWon,
+  duelsLost,
+  duelsTotal,
+  rejectedKnotsCount,
 }) {
   const knots = safeArray(approvedKnots);
   const folderCounts = countKnotsByFolder(knots);
   const goldKnotsCount = knots.filter(isGoldKnot).length;
   const folderTotalsMap = folderTotals instanceof Map ? folderTotals : new Map();
   const systemTotal = Math.max(0, Number(systemTotalKnots) || 0);
+  const allKnotsArr = safeArray(allKnots);
+  const computedRejectedCount = Number.isFinite(rejectedKnotsCount)
+    ? rejectedKnotsCount
+    : allKnotsArr.filter((k) => k.status === 'Avslått' || k.status === 'Avslaatt').length;
+  const wonDuels = Math.max(0, Number(duelsWon) || 0);
+  const lostDuels = Math.max(0, Number(duelsLost) || 0);
+  const totalDuels = Math.max(0, Number(duelsTotal) || wonDuels + lostDuels);
+  const totalLeaderboard = Math.max(0, Number(totalLeaderboardCount) || 0);
+  const isLastPlace =
+    totalLeaderboard > 1 &&
+    Number.isFinite(leaderboardRank) &&
+    leaderboardRank === totalLeaderboard;
 
   const achievements = [];
 
@@ -258,6 +276,184 @@ function buildAchievementsFromInputs({
     }),
   );
 
+  // ── Gøy-merker ──────────────────────────────────────────────────────────
+  // Disse er ikke flink-baserte. Mål er å feire *alle* typer russ-erfaringer.
+
+  // 8) Førstegangs-russen — første godkjente knute. 1 tier, varig minne.
+  achievements.push(
+    buildAchievement({
+      id: 'first-knot',
+      title: 'Førstegangs-russen',
+      description: 'Du tok din aller første knute. Begynnelsen på alt.',
+      category: 'Milepæl',
+      icon: '🌱',
+      targets: [1, 1, 1, 1],
+      progress: knots.length > 0 ? 1 : 0,
+    }),
+  );
+
+  // 9) Sisteplassen — selvironi: vært dønn nederst på topplisten.
+  achievements.push(
+    buildAchievement({
+      id: 'last-place',
+      title: 'Sisteplassen',
+      description: 'Noen må jo være sist. Du valgte å være best på det.',
+      category: 'Anti-prestisje',
+      icon: '🐢',
+      targets: [1, 1, 1, 1],
+      progress: isLastPlace ? 1 : 0,
+    }),
+  );
+
+  // 10) Knustnukke — antall avslag. Selvironi-pakke.
+  achievements.push(
+    buildAchievement({
+      id: 'rejected',
+      title: 'Knustnukke',
+      description: 'Avslag bygger karakter. Bevis det.',
+      category: 'Karakter',
+      icon: '💔',
+      targets: [1, 5, 15, 30],
+      progress: computedRejectedCount,
+    }),
+  );
+
+  // 11) Spammer — antall innsendinger totalt (alle statuser unntatt
+  //     "Tilgjengelig"). Belønner aktivitet, uavhengig av kvalitet.
+  const submittedAtAllCount = allKnotsArr.filter(
+    (k) =>
+      k.status === 'Godkjent' ||
+      k.status === 'Sendt inn' ||
+      k.status === 'Avslått' ||
+      k.status === 'Avslaatt',
+  ).length;
+  achievements.push(
+    buildAchievement({
+      id: 'submitter',
+      title: 'Innsender',
+      description: 'Du prøver, og det er det som teller.',
+      category: 'Aktivitet',
+      icon: '📨',
+      targets: [3, 10, 25, 60],
+      progress: submittedAtAllCount,
+    }),
+  );
+
+  // 12) Knute-off-vinner — antall vunne dueller.
+  achievements.push(
+    buildAchievement({
+      id: 'duel-winner',
+      title: 'Knute-off-konge',
+      description: 'Vinn knute-off og bevis hvem som er sjefen.',
+      category: 'Knute-off',
+      icon: '⚔️',
+      targets: [1, 3, 10, 25],
+      progress: wonDuels,
+    }),
+  );
+
+  // 13) Knute-off-taper — selvironi.
+  achievements.push(
+    buildAchievement({
+      id: 'duel-loser',
+      title: 'Den gode taper',
+      description: 'Tap er bare en mulighet til å bli en bedre forteller.',
+      category: 'Knute-off',
+      icon: '😅',
+      targets: [1, 3, 10, 25],
+      progress: lostDuels,
+    }),
+  );
+
+  // 14) Veteran — totalt antall dueller (vunnet + tapt). Belønner mot.
+  achievements.push(
+    buildAchievement({
+      id: 'duel-veteran',
+      title: 'Knute-off-veteran',
+      description: 'Du dukker opp uansett resultat. Det krever guts.',
+      category: 'Knute-off',
+      icon: '🛡️',
+      targets: [3, 10, 25, 50],
+      progress: totalDuels,
+    }),
+  );
+
+  // 15) Halvgudd — passert 50% av alle knuter i systemet.
+  //     Egen badge selv om det overlapper Knutesamler, fordi 50% er
+  //     en stor milestone for de fleste russ.
+  const halfThreshold = Math.max(1, Math.ceil(systemTotal / 2));
+  achievements.push(
+    buildAchievement({
+      id: 'halfway',
+      title: 'Halvgudd',
+      description: 'Halvveis gjennom russetiden, halvveis gjennom knutene.',
+      category: 'Milepæl',
+      icon: '🌗',
+      targets: [halfThreshold, halfThreshold, halfThreshold, halfThreshold],
+      progress: knots.length,
+    }),
+  );
+
+  // 16) Vidunderbarn — på topp-3 på leaderboardet (ulik fra Topplass
+  //     siden Topplass har 4 tiers). Dette er en signature-medal for de
+  //     som faktisk tar tronen.
+  achievements.push(
+    buildAchievement({
+      id: 'podium',
+      title: 'Pallplass',
+      description: 'Topp-3 på lista. Folk vet hvem du er.',
+      category: 'Topp',
+      icon: '🥇',
+      targets: [1, 1, 1, 1],
+      progress:
+        Number.isFinite(leaderboardRank) && leaderboardRank > 0 && leaderboardRank <= 3 ? 1 : 0,
+    }),
+  );
+
+  // 17) Stahet — minst 1 godkjent knute fra mappen og minst 1 avslag
+  //     samtidig. Du gir aldri opp.
+  const hasComeback = knots.length > 0 && computedRejectedCount > 0;
+  achievements.push(
+    buildAchievement({
+      id: 'comeback',
+      title: 'Aldri-gi-opp',
+      description: 'Du har både fått avslag og kommet tilbake. Stahet > talent.',
+      category: 'Karakter',
+      icon: '🔁',
+      targets: [1, 1, 1, 1],
+      progress: hasComeback ? 1 : 0,
+    }),
+  );
+
+  // 18) Heldiggris — vant uten å ha mest poeng (bare hvis duelsWon > 0).
+  //     Egentlig en feire-første-duel-medal med skummel undertone.
+  achievements.push(
+    buildAchievement({
+      id: 'first-blood',
+      title: 'Førsteblod',
+      description: 'Vant din første knute-off. Alle vil møte deg nå.',
+      category: 'Milepæl',
+      icon: '🩸',
+      targets: [1, 1, 1, 1],
+      progress: wonDuels > 0 ? 1 : 0,
+    }),
+  );
+
+  // 19) Klubben for de med lange streaks — egen "fyrverkeri"-badge når
+  //     streaken passerer en latterlig høy verdi. Adskilt fra Streak-konge
+  //     for å gi noe å strekke seg mot.
+  achievements.push(
+    buildAchievement({
+      id: 'streak-legend',
+      title: 'Streak-legende',
+      description: 'Brennende streak i 60+ dager. Hvem er du??',
+      category: 'Streak',
+      icon: '☄️',
+      targets: [60, 60, 60, 60],
+      progress: Math.max(0, Number(streakDays ?? 0)),
+    }),
+  );
+
   return achievements;
 }
 
@@ -275,13 +471,30 @@ export function buildAchievements(knots, currentLeader, meta = {}) {
   const leaderboardRank = Number(currentLeader?.rank);
   const streakDays = Number(meta.streakDays ?? meta.streak ?? currentLeader?.streak ?? 0);
 
+  // Duel-stats
+  const duelHistory = safeArray(meta.duelHistory);
+  const currentUserId = meta.currentUserId ?? null;
+  const myFinishedDuels = duelHistory.filter(
+    (d) =>
+      d &&
+      d.status !== 'active' &&
+      (d.challengerId === currentUserId || d.opponentId === currentUserId),
+  );
+  const duelsWon = myFinishedDuels.filter((d) => d.winnerId === currentUserId).length;
+  const duelsLost = myFinishedDuels.length - duelsWon;
+
   return buildAchievementsFromInputs({
     approvedKnots,
+    allKnots,
     folderTotals,
     systemTotalKnots: allKnots.length,
     totalPoints,
     leaderboardRank,
+    totalLeaderboardCount: Number(meta.totalLeaderboardCount) || 0,
     streakDays,
+    duelsWon,
+    duelsLost,
+    duelsTotal: myFinishedDuels.length,
   });
 }
 
@@ -304,11 +517,16 @@ export function buildProfileAchievements(profile, meta = {}) {
 
   return buildAchievementsFromInputs({
     approvedKnots: profileKnots,
+    allKnots,
     folderTotals,
     systemTotalKnots,
     totalPoints,
     leaderboardRank,
+    totalLeaderboardCount: Number(meta.totalLeaderboardCount) || 0,
     streakDays,
+    duelsWon: Number(meta.duelsWon) || 0,
+    duelsLost: Number(meta.duelsLost) || 0,
+    duelsTotal: Number(meta.duelsTotal) || 0,
   });
 }
 
