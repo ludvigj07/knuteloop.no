@@ -13,6 +13,7 @@ import {
   buildLeaderboard,
   DUEL_DAILY_LIMIT,
   DUEL_LIMITS_DISABLED,
+  DUEL_LOCK_TTL_MILLIS,
   DUEL_RANGE,
   DUEL_STAKE,
   DUEL_WINDOW_HOURS,
@@ -3324,6 +3325,15 @@ async function handleStartDuel(request, response) {
         opponentImagePreviewUrl: '',
         opponentVideoName: '',
         opponentVideoPreviewUrl: '',
+        // Admin-collab-felter (init'd ved opprettelse)
+        lockedByAdminId: null,
+        lockedAt: null,
+        lastReviewedByAdminId: null,
+        lastReviewedAt: null,
+        reviewLog: [],
+        cancelledAt: null,
+        cancelledByAdminId: null,
+        cancelReason: null,
       },
       ...db.duels,
     ],
@@ -3583,15 +3593,27 @@ async function handleReviewDuelCompletion(request, response, duelId) {
         return item;
       }
 
+      const reviewLogEntry = {
+        adminId: user.id,
+        action: approved ? 'approve' : 'reverse',
+        target: isChallenger ? 'challenger' : 'opponent',
+        timestamp: reviewedAtRaw,
+      };
+      const baseUpdate = {
+        ...item,
+        lastReviewedByAdminId: user.id,
+        lastReviewedAt: reviewedAtRaw,
+        reviewLog: [...(item.reviewLog ?? []), reviewLogEntry],
+      };
       if (isChallenger) {
         return {
-          ...item,
+          ...baseUpdate,
           challengerCompletionApproved: approved,
         };
       }
 
       return {
-        ...item,
+        ...baseUpdate,
         opponentCompletionApproved: approved,
       };
     }),
@@ -3636,6 +3658,7 @@ async function handleResolveDuel(request, response, duelId) {
     result = 'opponent-wins';
   }
 
+  const resolvedAt = nowIso();
   const nextDb = {
     ...db,
     duels: db.duels.map((item) =>
@@ -3644,7 +3667,272 @@ async function handleResolveDuel(request, response, duelId) {
             ...item,
             status: 'resolved',
             result,
-            resolvedAt: nowIso(),
+            resolvedAt,
+            lockedByAdminId: null,
+            lockedAt: null,
+            lastReviewedByAdminId: user.id,
+            lastReviewedAt: resolvedAt,
+            reviewLog: [
+              ...(item.reviewLog ?? []),
+              {
+                adminId: user.id,
+                action: 'resolve',
+                target: null,
+                result,
+                timestamp: resolvedAt,
+              },
+            ],
+          }
+        : item,
+    ),
+  };
+
+  await writeDb(nextDb);
+  sendJson(response, 200, buildBootstrap(nextDb, user));
+}
+
+// ─── Admin-collab handlers ────────────────────────────────────────────────
+
+async function handleClaimDuel(request, response, duelId) {
+  const db = await readDb();
+  const user = getAuthedUser(db, request);
+
+  if (!assertAdmin(user)) {
+    sendJson(response, 403, { error: 'Kun admin kan claime knute-off-review.' });
+    return;
+  }
+
+  const body = await readJsonBody(request);
+  const force = Boolean(body?.override);
+  const duel = db.duels.find((item) => item.id === duelId);
+
+  if (!duel) {
+    sendJson(response, 404, { error: 'Fant ikke knute-off.' });
+    return;
+  }
+
+  if (duel.status !== 'active') {
+    sendJson(response, 400, { error: 'Knute-off er ikke aktiv lenger.' });
+    return;
+  }
+
+  const now = Date.now();
+  const lockedAtMs = duel.lockedAt ? new Date(duel.lockedAt).getTime() : 0;
+  const lockExpired =
+    !duel.lockedByAdminId ||
+    !lockedAtMs ||
+    now - lockedAtMs > DUEL_LOCK_TTL_MILLIS;
+  const lockedBySomeoneElse =
+    !lockExpired && duel.lockedByAdminId && duel.lockedByAdminId !== user.id;
+
+  if (lockedBySomeoneElse && !force) {
+    const otherLeader = db.leaders.find(
+      (leader) => leader.id === duel.lockedByAdminId,
+    );
+    sendJson(response, 409, {
+      error: `Sjekkes nå av ${
+        otherLeader?.russName ?? otherLeader?.name ?? 'en annen admin'
+      }.`,
+      lockedByAdminId: duel.lockedByAdminId,
+      lockedAt: duel.lockedAt,
+    });
+    return;
+  }
+
+  const claimedAt = nowIso();
+  const nextDb = {
+    ...db,
+    duels: db.duels.map((item) =>
+      item.id === duelId
+        ? {
+            ...item,
+            lockedByAdminId: user.id,
+            lockedAt: claimedAt,
+          }
+        : item,
+    ),
+  };
+
+  await writeDb(nextDb);
+  sendJson(response, 200, buildBootstrap(nextDb, user));
+}
+
+async function handleReleaseDuel(request, response, duelId) {
+  const db = await readDb();
+  const user = getAuthedUser(db, request);
+
+  if (!assertAdmin(user)) {
+    sendJson(response, 403, { error: 'Kun admin kan slippe knute-off-review.' });
+    return;
+  }
+
+  const duel = db.duels.find((item) => item.id === duelId);
+
+  if (!duel) {
+    sendJson(response, 404, { error: 'Fant ikke knute-off.' });
+    return;
+  }
+
+  // Tillater bare release fra lock-eier — andre må eksplisitt overstyre
+  // via /claim med override:true.
+  if (duel.lockedByAdminId && duel.lockedByAdminId !== user.id) {
+    sendJson(response, 403, {
+      error: 'Kan bare slippe lås fra admin som holder den.',
+    });
+    return;
+  }
+
+  const nextDb = {
+    ...db,
+    duels: db.duels.map((item) =>
+      item.id === duelId
+        ? {
+            ...item,
+            lockedByAdminId: null,
+            lockedAt: null,
+          }
+        : item,
+    ),
+  };
+
+  await writeDb(nextDb);
+  sendJson(response, 200, buildBootstrap(nextDb, user));
+}
+
+async function handleCancelDuel(request, response, duelId) {
+  const db = await readDb();
+  const user = getAuthedUser(db, request);
+
+  if (!assertAdmin(user)) {
+    sendJson(response, 403, { error: 'Kun admin kan annullere knute-offs.' });
+    return;
+  }
+
+  const body = await readJsonBody(request);
+  const reason = typeof body?.reason === 'string' ? body.reason.trim() : '';
+
+  if (!reason) {
+    sendJson(response, 400, { error: 'Annullering krever en grunn.' });
+    return;
+  }
+
+  const duel = db.duels.find((item) => item.id === duelId);
+
+  if (!duel) {
+    sendJson(response, 404, { error: 'Fant ikke knute-off.' });
+    return;
+  }
+
+  if (duel.status !== 'active') {
+    sendJson(response, 400, { error: 'Knute-off er ikke aktiv lenger.' });
+    return;
+  }
+
+  const cancelledAt = nowIso();
+  const nextDb = {
+    ...db,
+    // Når duell annulleres skal eventuelle innsendinger som hørte til den
+    // "henges av" — vi setter status='Avslått' så de ikke teller mot poeng.
+    submissions: db.submissions.map((item) => {
+      if (
+        item.id !== duel.challengerSubmissionId &&
+        item.id !== duel.opponentSubmissionId
+      ) {
+        return item;
+      }
+      return {
+        ...item,
+        status: 'Avslått',
+        reviewedAtRaw: cancelledAt,
+        reviewedBy: user.id,
+      };
+    }),
+    duels: db.duels.map((item) =>
+      item.id === duelId
+        ? {
+            ...item,
+            status: 'resolved',
+            result: 'cancelled',
+            resolvedAt: cancelledAt,
+            cancelledAt,
+            cancelledByAdminId: user.id,
+            cancelReason: reason,
+            lockedByAdminId: null,
+            lockedAt: null,
+            lastReviewedByAdminId: user.id,
+            lastReviewedAt: cancelledAt,
+            reviewLog: [
+              ...(item.reviewLog ?? []),
+              {
+                adminId: user.id,
+                action: 'cancel',
+                reason,
+                timestamp: cancelledAt,
+              },
+            ],
+          }
+        : item,
+    ),
+  };
+
+  const recalculated = applyStreakRecalculation(nextDb, [
+    duel.challengerId,
+    duel.opponentId,
+  ]);
+  await writeDb(recalculated.db);
+  sendJson(response, 200, buildBootstrap(recalculated.db, user));
+}
+
+async function handleManualResolveDuel(request, response, duelId) {
+  const db = await readDb();
+  const user = getAuthedUser(db, request);
+
+  if (!assertAdmin(user)) {
+    sendJson(response, 403, { error: 'Kun admin kan avgjøre knute-offs manuelt.' });
+    return;
+  }
+
+  const body = await readJsonBody(request);
+  const result = body?.result;
+  const validResults = ['challenger-wins', 'opponent-wins', 'split', 'no-completion'];
+
+  if (!validResults.includes(result)) {
+    sendJson(response, 400, {
+      error: 'Ugyldig resultat. Må være et av: ' + validResults.join(', '),
+    });
+    return;
+  }
+
+  const duel = db.duels.find((item) => item.id === duelId);
+
+  if (!duel || duel.status !== 'active') {
+    sendJson(response, 404, { error: 'Fant ikke aktiv knute-off.' });
+    return;
+  }
+
+  const resolvedAt = nowIso();
+  const nextDb = {
+    ...db,
+    duels: db.duels.map((item) =>
+      item.id === duelId
+        ? {
+            ...item,
+            status: 'resolved',
+            result,
+            resolvedAt,
+            lockedByAdminId: null,
+            lockedAt: null,
+            lastReviewedByAdminId: user.id,
+            lastReviewedAt: resolvedAt,
+            reviewLog: [
+              ...(item.reviewLog ?? []),
+              {
+                adminId: user.id,
+                action: 'manual-resolve',
+                result,
+                timestamp: resolvedAt,
+              },
+            ],
           }
         : item,
     ),
@@ -3939,6 +4227,42 @@ const server = createServer(async (request, response) => {
     ) {
       const duelId = url.pathname.split('/')[3];
       await handleResolveDuel(request, response, duelId);
+      return;
+    }
+
+    if (
+      request.method === 'POST' &&
+      /^\/api\/duels\/[^/]+\/claim$/.test(url.pathname)
+    ) {
+      const duelId = url.pathname.split('/')[3];
+      await handleClaimDuel(request, response, duelId);
+      return;
+    }
+
+    if (
+      request.method === 'POST' &&
+      /^\/api\/duels\/[^/]+\/release$/.test(url.pathname)
+    ) {
+      const duelId = url.pathname.split('/')[3];
+      await handleReleaseDuel(request, response, duelId);
+      return;
+    }
+
+    if (
+      request.method === 'POST' &&
+      /^\/api\/duels\/[^/]+\/cancel$/.test(url.pathname)
+    ) {
+      const duelId = url.pathname.split('/')[3];
+      await handleCancelDuel(request, response, duelId);
+      return;
+    }
+
+    if (
+      request.method === 'POST' &&
+      /^\/api\/duels\/[^/]+\/manual-resolve$/.test(url.pathname)
+    ) {
+      const duelId = url.pathname.split('/')[3];
+      await handleManualResolveDuel(request, response, duelId);
       return;
     }
 

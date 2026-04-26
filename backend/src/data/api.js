@@ -22,7 +22,12 @@ async function apiRequest(path, { method = 'GET', token, body } = {}) {
   }
 
   if (!response.ok) {
-    throw new Error(payload?.error ?? `Klarte ikke å kontakte backend (HTTP ${response.status}).`);
+    const message =
+      payload?.error ?? `Klarte ikke å kontakte backend (HTTP ${response.status}).`;
+    const error = new Error(message);
+    error.status = response.status;
+    error.payload = payload;
+    throw error;
   }
 
   return payload;
@@ -299,6 +304,37 @@ export function resolveDuel(token, duelId) {
   return apiRequest(`/duels/${duelId}/resolve`, {
     method: 'PATCH',
     token,
+  });
+}
+
+export function claimDuel(token, duelId, { override = false } = {}) {
+  return apiRequest(`/duels/${duelId}/claim`, {
+    method: 'POST',
+    token,
+    body: { override },
+  });
+}
+
+export function releaseDuel(token, duelId) {
+  return apiRequest(`/duels/${duelId}/release`, {
+    method: 'POST',
+    token,
+  });
+}
+
+export function cancelDuel(token, duelId, { reason }) {
+  return apiRequest(`/duels/${duelId}/cancel`, {
+    method: 'POST',
+    token,
+    body: { reason },
+  });
+}
+
+export function manuallyResolveDuel(token, duelId, { result }) {
+  return apiRequest(`/duels/${duelId}/manual-resolve`, {
+    method: 'POST',
+    token,
+    body: { result },
   });
 }
 

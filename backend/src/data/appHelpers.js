@@ -693,10 +693,7 @@ export function buildDuelAvailability(
     let reason = `Fast innsats: ${DUEL_STAKE} poeng`;
     let canChallenge = true;
 
-    if (rankGap > DUEL_RANGE) {
-      canChallenge = false;
-      reason = 'Kan bare utfordre brukere innenfor 5 plasser.';
-    } else if (!DUEL_LIMITS_DISABLED && activePairDuel) {
+    if (!DUEL_LIMITS_DISABLED && activePairDuel) {
       canChallenge = false;
       reason = 'Dere har allerede en aktiv knute-off.';
     } else if (!DUEL_LIMITS_DISABLED && activeDuelForCurrentUser) {
@@ -734,11 +731,31 @@ export function buildDuelAvailability(
   };
 }
 
+// Lock-vinduet for at admin "claimer" en duel under review.
+// Etter dette behandles låsen som utløpt og andre admins kan claime.
+const DUEL_LOCK_TTL_MS = 5 * 60 * 1000;
+
+function resolveAdminName(adminId, leaderById) {
+  if (!adminId) return null;
+  const admin = leaderById[adminId];
+  return admin?.russName ?? admin?.name ?? `Admin ${adminId}`;
+}
+
+function enrichReviewLog(reviewLog, leaderById) {
+  if (!Array.isArray(reviewLog)) return [];
+  return reviewLog.map((entry) => ({
+    ...entry,
+    adminName: resolveAdminName(entry.adminId, leaderById) ?? entry.adminName ?? 'Admin',
+  }));
+}
+
 export function buildDuelHistory(duels, leaders) {
   const leaderById = leaders.reduce((accumulator, leader) => {
     accumulator[leader.id] = leader;
     return accumulator;
   }, {});
+
+  const now = Date.now();
 
   return [...duels]
     .sort(
@@ -754,10 +771,49 @@ export function buildDuelHistory(duels, leaders) {
           ? buildDuelOutcomeMeta(duel, challengerName, opponentName)
           : null;
 
+      // Computed lock state — backend kan ha en gammel lock liggende
+      // i db, men hvis den er > 5 min så regnes den som utløpt og UI
+      // skal behandle duellen som tilgjengelig for andre admins.
+      const lockedAtMs = duel.lockedAt ? new Date(duel.lockedAt).getTime() : 0;
+      const lockExpired =
+        !duel.lockedByAdminId || !lockedAtMs || now - lockedAtMs > DUEL_LOCK_TTL_MS;
+      const lockedByAdminName = !lockExpired
+        ? resolveAdminName(duel.lockedByAdminId, leaderById)
+        : null;
+      const lastReviewedByAdminName = resolveAdminName(
+        duel.lastReviewedByAdminId,
+        leaderById,
+      );
+      const cancelledByAdminName = resolveAdminName(
+        duel.cancelledByAdminId,
+        leaderById,
+      );
+
+      // Computed "klar for avgjørelse" — begge har levert/godkjent
+      // status, ELLER fristen har gått ut. Brukes til admin-triage.
+      const deadlineMs = duel.deadlineAt ? new Date(duel.deadlineAt).getTime() : 0;
+      const deadlinePassed = deadlineMs > 0 && now > deadlineMs;
+      const challengerSettled =
+        Boolean(duel.challengerCompletedAt) || deadlinePassed;
+      const opponentSettled =
+        Boolean(duel.opponentCompletedAt) || deadlinePassed;
+      const readyForResolution =
+        duel.status === 'active' && challengerSettled && opponentSettled;
+      const millisToDeadline =
+        deadlineMs > 0 ? Math.max(0, deadlineMs - now) : null;
+      const isUrgent =
+        duel.status === 'active' &&
+        millisToDeadline !== null &&
+        millisToDeadline <= 2 * 60 * 60 * 1000; // < 2t
+
       return {
         ...duel,
         challengerName,
         opponentName,
+        challengerPhotoUrl: challenger?.photoUrl ?? null,
+        opponentPhotoUrl: opponent?.photoUrl ?? null,
+        challengerIcon: challenger?.icon ?? null,
+        opponentIcon: opponent?.icon ?? null,
         challengerStatusLabel: formatCompletionStatus(
           duel.challengerCompletedAt,
           duel.challengerCompletionApproved,
@@ -767,16 +823,39 @@ export function buildDuelHistory(duels, leaders) {
           duel.opponentCompletionApproved,
         ),
         createdAtLabel: formatDuelDate(duel.createdAt),
+        createdAtRaw: duel.createdAt ?? null,
         deadlineLabel: formatDuelDate(duel.deadlineAt),
+        deadlineAtRaw: duel.deadlineAt ?? null,
+        deadlinePassed,
+        millisToDeadline,
+        isUrgent,
         resolvedAtLabel: duel.resolvedAt ? formatDuelDate(duel.resolvedAt) : '',
+        resolvedAtRaw: duel.resolvedAt ?? null,
         outcomeTitle: outcomeMeta?.title ?? 'Aktiv knute-off',
         outcomeDetail:
           outcomeMeta?.detail ??
           'Venter på fullføring eller avgjøring i admin-prototypen.',
         pointLabel: outcomeMeta?.pointLabel ?? `Potten er ${duel.stake * 2} poeng`,
+        readyForResolution,
+        // Admin-collab-felter
+        lockedByAdminId: duel.lockedByAdminId ?? null,
+        lockedAt: duel.lockedAt ?? null,
+        lockedAtRaw: duel.lockedAt ?? null,
+        lockedByAdminName,
+        lockExpired,
+        lastReviewedByAdminId: duel.lastReviewedByAdminId ?? null,
+        lastReviewedAt: duel.lastReviewedAt ?? null,
+        lastReviewedByAdminName,
+        reviewLog: enrichReviewLog(duel.reviewLog ?? [], leaderById),
+        cancelledAt: duel.cancelledAt ?? null,
+        cancelledByAdminId: duel.cancelledByAdminId ?? null,
+        cancelledByAdminName,
+        cancelReason: duel.cancelReason ?? null,
       };
     });
 }
+
+export const DUEL_LOCK_TTL_MILLIS = DUEL_LOCK_TTL_MS;
 
 export function buildImportedKnots(
   rawText,

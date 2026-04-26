@@ -2,6 +2,7 @@
 import { MobileVideo } from '../components/MobileVideo.jsx';
 import { SectionCard } from '../components/SectionCard.jsx';
 import { StatCard } from '../components/StatCard.jsx';
+import { AdminDuelHub } from '../components/AdminDuelHub.jsx';
 import { KNOT_FOLDERS, resolveKnotFolder } from '../data/knotFolders.js';
 import { UserAdminPanel } from '../components/UserAdminPanel.jsx';
 
@@ -441,15 +442,20 @@ function SubmissionList({
 
 export function AdminPage({
   bans = [],
+  currentUserId,
   duelHistory,
   duelSummary,
   knotFeedbackMessages = {},
   knots,
   leaders = [],
+  onCancelDuel,
+  onClaimDuel,
   onDeleteKnot,
   onCreateBan,
   onImportKnots,
+  onManualResolveDuel,
   onUpdateKnotFeedbackMessages,
+  onReleaseDuel,
   onRemoveBan,
   onReviewReport,
   onReviewDuelCompletion,
@@ -1220,136 +1226,19 @@ export function AdminPage({
       {activeAdminTask === 'duels' ? (
         <SectionCard
           title="Knute-offs"
-          description="Her styrer admin de små duellene som gir litt ekstra bevegelse i leaderboardet."
+          description="Triage, gjennomgang og avgjørelse av aktive duells."
         >
-          <div className="admin-section-toolbar">
-            <div>
-              <strong>{activeDuelCount} aktive knute-offs</strong>
-              <p>
-                Hver duel har {duelSummary?.stake ?? 10} poeng innsats og{' '}
-                {duelSummary?.deadlineHours ?? 24} timers frist.
-              </p>
-            </div>
-            <div className="admin-section-toolbar__actions">
-              <button
-                type="button"
-                className="action-button action-button--ghost"
-                onClick={() => setActiveAdminTask('submissions')}
-              >
-                Til innsendinger
-              </button>
-            </div>
-          </div>
-
-          <div className="admin-task-panel">
-            <div className="admin-subsection">
-              <div className="section-card__header">
-                <h3>Aktive knute-offs</h3>
-                <p>Fullføringer er auto-godkjent. Reverser ved behov, og avgjør deretter utfallet.</p>
-              </div>
-
-              <div className="duel-history-list">
-                {activeDuels.length ? (
-                  activeDuels.map((duel) => (
-                    <article
-                      key={duel.id}
-                      className="duel-history-row duel-history-row--active"
-                    >
-                      <div>
-                        <strong>{duel.knotTitle}</strong>
-                        <p>
-                          {duel.challengerName} vs {duel.opponentName} | Frist {duel.deadlineLabel}
-                        </p>
-                        <p>
-                          Utfordrer: {duel.challengerStatusLabel} | Motstander:{' '}
-                          {duel.opponentStatusLabel}
-                        </p>
-                        <div className="duel-evidence-grid">
-                          <DuelEvidencePanel
-                            title={`Bevis fra ${duel.challengerName}`}
-                            evidence={getDuelEvidence(duel, 'challenger')}
-                          />
-                          <DuelEvidencePanel
-                            title={`Bevis fra ${duel.opponentName}`}
-                            evidence={getDuelEvidence(duel, 'opponent')}
-                          />
-                        </div>
-                      </div>
-                      <div className="duel-history-row__actions duel-history-row__actions--admin">
-                        <button
-                          type="button"
-                          className="action-button action-button--ghost"
-                          disabled={!duel.challengerCompletedAt}
-                          onClick={() =>
-                            handleDuelCompletionReview(
-                              duel,
-                              duel.challengerId,
-                              duel.challengerCompletionApproved === false,
-                            )
-                          }
-                        >
-                          {duel.challengerCompletionApproved === false
-                            ? 'Godkjenn utfordrer'
-                            : 'Reverser utfordrer'}
-                        </button>
-                        <button
-                          type="button"
-                          className="action-button action-button--ghost"
-                          disabled={!duel.opponentCompletedAt}
-                          onClick={() =>
-                            handleDuelCompletionReview(
-                              duel,
-                              duel.opponentId,
-                              duel.opponentCompletionApproved === false,
-                            )
-                          }
-                        >
-                          {duel.opponentCompletionApproved === false
-                            ? 'Godkjenn motstander'
-                            : 'Reverser motstander'}
-                        </button>
-                        <button
-                          type="button"
-                          className="action-button"
-                          onClick={() => onResolveDuel(duel.id)}
-                        >
-                          Avgjor knute-off
-                        </button>
-                      </div>
-                    </article>
-                  ))
-                ) : (
-                  <p className="folder-empty">Ingen aktive knute-offs akkurat nå.</p>
-                )}
-              </div>
-            </div>
-
-            <div className="admin-subsection">
-              <div className="section-card__header">
-                <h3>Historikk</h3>
-                <p>{resolvedDuelCount} avgjorte knute-offs er logget.</p>
-              </div>
-
-              <div className="duel-history-list">
-                {resolvedDuels.length ? (
-                  resolvedDuels.map((duel) => (
-                    <article key={duel.id} className="duel-history-row">
-                      <div>
-                        <strong>{duel.outcomeTitle}</strong>
-                        <p>
-                          {duel.challengerName} vs {duel.opponentName} | {duel.resolvedAtLabel}
-                        </p>
-                        <p>{duel.outcomeDetail}</p>
-                      </div>
-                      <span className="pill pill--warning">{duel.pointLabel}</span>
-                    </article>
-                  ))
-                ) : (
-                  <p className="folder-empty">Ingen knute-offs er registrert ennå.</p>
-                )}
-              </div>
-            </div>
-          </div>
+          <AdminDuelHub
+            duels={duelHistory ?? []}
+            duelSummary={duelSummary}
+            currentAdminId={currentUserId}
+            onClaimDuel={onClaimDuel}
+            onReleaseDuel={onReleaseDuel}
+            onReviewDuelCompletion={onReviewDuelCompletion}
+            onResolveDuel={onResolveDuel}
+            onManualResolveDuel={onManualResolveDuel}
+            onCancelDuel={onCancelDuel}
+          />
         </SectionCard>
       ) : null}
 

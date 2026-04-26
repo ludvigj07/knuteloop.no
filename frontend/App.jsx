@@ -32,7 +32,9 @@ import {
 } from './data/appHelpers.js';
 import { buildAchievements } from './data/badgeSystem.js';
 import {
+  cancelDuel,
   changeOwnPassword,
+  claimDuel,
   completeDuel,
   createBan,
   createComment,
@@ -41,6 +43,8 @@ import {
   deleteOwnAccount,
   deleteSubmission,
   likeComment,
+  manuallyResolveDuel,
+  releaseDuel,
   reportComment,
   setKnotVisibility,
   fetchBootstrap,
@@ -1239,6 +1243,54 @@ function App() {
     setAppData(nextAppData);
   }
 
+  async function handleClaimDuel(duelId, options = {}) {
+    try {
+      const nextAppData = await claimDuel(sessionToken, duelId, options);
+      setAppData(nextAppData);
+      return { ok: true };
+    } catch (error) {
+      return {
+        ok: false,
+        message: error?.message ?? 'Kunne ikke claime knute-off.',
+        // Hvis backend returnerer 409 og lokk-info, send den videre.
+        lockedByAdminId: error?.payload?.lockedByAdminId ?? null,
+      };
+    }
+  }
+
+  async function handleReleaseDuel(duelId) {
+    try {
+      const nextAppData = await releaseDuel(sessionToken, duelId);
+      setAppData(nextAppData);
+      return { ok: true };
+    } catch (error) {
+      return { ok: false, message: error?.message ?? 'Kunne ikke slippe knute-off.' };
+    }
+  }
+
+  async function handleCancelDuel(duelId, reason) {
+    try {
+      const nextAppData = await cancelDuel(sessionToken, duelId, { reason });
+      setAppData(nextAppData);
+      return { ok: true };
+    } catch (error) {
+      return { ok: false, message: error?.message ?? 'Kunne ikke annullere knute-off.' };
+    }
+  }
+
+  async function handleManualResolveDuel(duelId, result) {
+    try {
+      const nextAppData = await manuallyResolveDuel(sessionToken, duelId, { result });
+      setAppData(nextAppData);
+      return { ok: true };
+    } catch (error) {
+      return {
+        ok: false,
+        message: error?.message ?? 'Kunne ikke avgjøre knute-off manuelt.',
+      };
+    }
+  }
+
   async function handleRateSubmission(submissionId, rating) {
     if (!submissionId) {
       return;
@@ -1413,7 +1465,11 @@ function App() {
       onDeleteSubmission: handleDeleteSubmission,
       onCreateBan: handleCreateBan,
       onImportKnots: handleImportKnots,
+      onCancelDuel: handleCancelDuel,
+      onClaimDuel: handleClaimDuel,
+      onManualResolveDuel: handleManualResolveDuel,
       onMarkDuelCompleted: handleMarkDuelCompleted,
+      onReleaseDuel: handleReleaseDuel,
       onOpenDailyKnot: handleOpenDailyKnot,
       onOpenProfile: handleOpenProfile,
       onRemoveBan: handleRemoveBan,
