@@ -61,8 +61,13 @@ export function UserAdminPanel({ sessionToken }) {
 
   async function handleCreate(event) {
     event.preventDefault();
-    if (!form.email.trim() || !form.name.trim() || !form.class.trim()) {
-      setError('Fyll inn e-post, navn og klasse.');
+    if (
+      !form.email.trim() ||
+      !form.name.trim() ||
+      !form.class.trim() ||
+      !form.russName.trim()
+    ) {
+      setError('Fyll inn e-post, navn, klasse og dåpsnavn.');
       return;
     }
     setBusy(true);
@@ -241,12 +246,13 @@ export function UserAdminPanel({ sessionToken }) {
             </select>
           </label>
           <label className="field-group" style={{ gridColumn: '1 / -1' }}>
-            <span>Dåpsnavn (valgfritt)</span>
+            <span>Dåpsnavn</span>
             <input
               className="text-input"
               value={form.russName}
               onChange={(event) => setForm({ ...form, russName: event.target.value })}
               placeholder="Russenavnet som vises i appen"
+              required
             />
           </label>
         </div>
