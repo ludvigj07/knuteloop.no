@@ -307,6 +307,75 @@
   min-width: 720px !important;
 }
 
+/* ----- Duel-history rows: kompakte ---------------------- */
+.app-theme .admin-page .duel-history-list {
+  display: grid !important;
+  gap: 6px !important;
+}
+
+.app-theme .admin-page .duel-history-row {
+  padding: 10px 12px !important;
+  border-radius: 10px !important;
+  gap: 10px !important;
+}
+
+.app-theme .admin-page .duel-history-row strong {
+  font-size: 0.92rem !important;
+}
+
+.app-theme .admin-page .duel-history-row p {
+  font-size: 0.78rem !important;
+  margin: 1px 0 !important;
+  line-height: 1.35 !important;
+}
+
+.app-theme .admin-page .duel-history-row__actions .action-button {
+  padding: 5px 10px !important;
+  min-height: 28px !important;
+  font-size: 0.78rem !important;
+}
+
+/* Skjul evidence-grid på collapsed rader (åpne via knapp) */
+.app-theme .admin-page .duel-history-row .duel-evidence-grid {
+  display: none !important;
+}
+
+.app-theme .admin-page .duel-history-row.is-expanded .duel-evidence-grid {
+  display: grid !important;
+}
+
+/* ----- Sticky review-toolbar i submissions-listen ------- */
+.app-theme .admin-page .admin-review-toolbar {
+  position: sticky !important;
+  top: 0 !important;
+  z-index: 5 !important;
+  background: var(--app-canvas-background, var(--surface)) !important;
+  padding: 6px 0 !important;
+  backdrop-filter: blur(8px) !important;
+  -webkit-backdrop-filter: blur(8px) !important;
+}
+
+/* ----- Subsection-headers: kompakt, ikke som store kort - */
+.app-theme .admin-page .admin-subsection > .section-card__header {
+  display: block !important;
+  padding: 0 0 6px 0 !important;
+}
+
+.app-theme .admin-page .admin-subsection > .section-card__header h3 {
+  margin: 0 !important;
+  font-size: 0.95rem !important;
+  font-weight: 700 !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.04em !important;
+  color: var(--text-muted) !important;
+}
+
+.app-theme .admin-page .admin-subsection > .section-card__header p {
+  margin: 1px 0 0 !important;
+  font-size: 0.78rem !important;
+  color: var(--text-muted) !important;
+}
+
 /* Mobil: behold tabell-tetthet, men tillat scroll */
 @media (max-width: 640px) {
   .app-theme .admin-page table {
