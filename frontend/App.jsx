@@ -12,7 +12,7 @@ import { RankUpToast } from './components/RankUpToast.jsx';
 import { SettingsModal } from './components/SettingsModal.jsx';
 import { SwipeTabsShell } from './components/SwipeTabsShell.jsx';
 import { Toast } from './components/Toast.jsx';
-import { playDing, playSwoosh, isSoundsMuted, setSoundsMuted } from './lib/sounds.js';
+import { playDing, playSwoosh, playTick, isSoundsMuted, setSoundsMuted } from './lib/sounds.js';
 import { useIdleAnimation } from './lib/useIdleAnimation.js';
 import {
   buildActivityLog,
@@ -224,6 +224,54 @@ function App() {
 
   function showToast(message, type = 'success') {
     setToast({ message, type, key: Date.now() });
+  }
+
+  // Testpanel — trigges fra Innstillinger så Ludvig kan se alle de små
+  // animasjonene/celebrasjonene uten å måtte fremprovosere dem naturlig.
+  function handleRunTest(testId) {
+    switch (testId) {
+      case 'confetti':
+        setConfettiTrigger((c) => c + 1);
+        break;
+      case 'achievement':
+        setPendingAchievementCelebration({
+          id: 'test-achievement',
+          title: 'Testprestasjon',
+          description: 'Dette er en testcelebrasjon for å se hvordan den ser ut.',
+          icon: '🏆',
+          currentTierIndex: 2,
+          currentTierLabel: 'Gull',
+          isUnlocked: true,
+        });
+        break;
+      case 'rank-up':
+        setPendingRankUp({
+          key: Date.now(),
+          passedName: 'Test Russen',
+          newRank: 3,
+        });
+        break;
+      case 'toast-success':
+        showToast('Knute sendt inn! ✓', 'success');
+        break;
+      case 'toast-error':
+        showToast('Noe gikk galt', 'error');
+        break;
+      case 'toast-info':
+        showToast('Lenke kopiert til utklippstavlen', 'info');
+        break;
+      case 'sound-ding':
+        playDing();
+        break;
+      case 'sound-swoosh':
+        playSwoosh();
+        break;
+      case 'sound-tick':
+        playTick();
+        break;
+      default:
+        break;
+    }
   }
 
   const currentUser = appData?.currentUser ?? null;
@@ -1526,6 +1574,7 @@ function App() {
           onNavigateToProfile={handleSettingsOpenProfile}
           onOpenProfileEditor={handleSettingsOpenProfileEditor}
           onRestartTour={handleRestartTour}
+          onRunTest={handleRunTest}
           onSubmitPasswordChange={handleChangeOwnPassword}
           onToggleDark={() => setIsDark((prev) => !prev)}
           onToggleSounds={handleToggleSounds}

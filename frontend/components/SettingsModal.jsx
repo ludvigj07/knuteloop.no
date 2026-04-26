@@ -18,6 +18,7 @@ export function SettingsModal({
   onNavigateToProfile,
   onOpenProfileEditor,
   onRestartTour,
+  onRunTest,
   onSubmitPasswordChange,
   onToggleDark,
   onToggleSounds,
@@ -222,6 +223,53 @@ export function SettingsModal({
                   ) : null}
                 </div>
               </section>
+
+              {typeof onRunTest === 'function' ? (
+                <section className="settings-section">
+                  <div className="settings-section__header">
+                    <h4>🧪 Test agent-funksjoner</h4>
+                    <p>
+                      Trigg de små animasjonene og lydene agenten la inn — uten å
+                      måtte fremprovosere dem naturlig.
+                    </p>
+                  </div>
+                  <div className="settings-shortcuts">
+                    <button type="button" className="action-button action-button--ghost" onClick={() => onRunTest('confetti')}>
+                      🎉 Confetti
+                    </button>
+                    <button type="button" className="action-button action-button--ghost" onClick={() => onRunTest('achievement')}>
+                      🏆 Achievement
+                    </button>
+                    <button type="button" className="action-button action-button--ghost" onClick={() => onRunTest('rank-up')}>
+                      🚀 Rank-up toast
+                    </button>
+                    <button type="button" className="action-button action-button--ghost" onClick={() => onRunTest('toast-success')}>
+                      ✓ Toast (success)
+                    </button>
+                    <button type="button" className="action-button action-button--ghost" onClick={() => onRunTest('toast-error')}>
+                      ! Toast (error)
+                    </button>
+                    <button type="button" className="action-button action-button--ghost" onClick={() => onRunTest('toast-info')}>
+                      • Toast (info)
+                    </button>
+                    <button type="button" className="action-button action-button--ghost" onClick={() => onRunTest('sound-ding')}>
+                      🔔 Lyd: ding
+                    </button>
+                    <button type="button" className="action-button action-button--ghost" onClick={() => onRunTest('sound-swoosh')}>
+                      💨 Lyd: swoosh
+                    </button>
+                    <button type="button" className="action-button action-button--ghost" onClick={() => onRunTest('sound-tick')}>
+                      · Lyd: tick
+                    </button>
+                  </div>
+                  <p className="settings-hint">
+                    Andre småting (heart-pop, long-press reactions, idle-wobble,
+                    pull-to-refresh, photo zoom) trigges naturlig i feeden — stå
+                    stille i 30s for wobble, dra ned i feeden for refresh, hold
+                    inne en kommentar for reactions.
+                  </p>
+                </section>
+              ) : null}
 
               <section className="settings-section settings-section--danger">
                 <div className="settings-section__header">
