@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { SectionCard } from './SectionCard.jsx';
 import {
   adminCreateUser,
@@ -46,6 +46,23 @@ export function UserAdminPanel({ sessionToken }) {
   const [russNameForUserId, setRussNameForUserId] = useState(null);
   const [russNameDraft, setRussNameDraft] = useState('');
   const [rowBusyId, setRowBusyId] = useState(null);
+  const [search, setSearch] = useState('');
+  const [statusFilter, setStatusFilter] = useState('all');
+
+  const filteredUsers = useMemo(() => {
+    const needle = search.trim().toLowerCase();
+    return users.filter((user) => {
+      if (statusFilter !== 'all' && userStatusVariant(user) !== statusFilter) {
+        return false;
+      }
+      if (!needle) return true;
+      const haystack = [user.name, user.russName, user.email, user.class, user.role]
+        .filter(Boolean)
+        .join(' ')
+        .toLowerCase();
+      return haystack.includes(needle);
+    });
+  }, [users, search, statusFilter]);
 
   async function refresh() {
     if (!sessionToken) return;
@@ -263,9 +280,31 @@ export function UserAdminPanel({ sessionToken }) {
       </form>
 
       <div>
-        <strong>{users.length} brukere</strong>
-        {loading ? <p>Laster...</p> : null}
-        <div className="admin-table-wrapper" style={{ marginTop: '0.5rem' }}>
+        <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap', marginBottom: '0.5rem' }}>
+          <strong>{filteredUsers.length} av {users.length} brukere</strong>
+          <input
+            type="search"
+            className="text-input"
+            placeholder="Søk navn, e-post, klasse…"
+            value={search}
+            onChange={(event) => setSearch(event.target.value)}
+            style={{ flex: '1 1 200px', minWidth: '160px' }}
+          />
+          <select
+            className="text-input"
+            value={statusFilter}
+            onChange={(event) => setStatusFilter(event.target.value)}
+            style={{ flex: '0 0 auto' }}
+          >
+            <option value="all">Alle status</option>
+            <option value="active">Aktivert</option>
+            <option value="pending">Venter aktivering</option>
+            <option value="noaccess">Uten tilgang</option>
+            <option value="inactive">Deaktivert</option>
+          </select>
+          {loading ? <span style={{ color: 'var(--text-muted)' }}>Laster…</span> : null}
+        </div>
+        <div className="admin-table-wrapper">
         <table>
           <thead>
             <tr>
@@ -279,7 +318,7 @@ export function UserAdminPanel({ sessionToken }) {
             </tr>
           </thead>
           <tbody>
-            {users.map((user) => {
+            {filteredUsers.map((user) => {
               const busyRow = rowBusyId === user.id;
               return (
                 <tr key={user.id}>
