@@ -3442,6 +3442,9 @@ async function handleCompleteDuel(request, response, duelId) {
 
   await Promise.all(removedSubmissions.map((submission) => cleanupSubmissionAssets(submission)));
 
+  // Knute-off-bevis går alltid gjennom admin-godkjenning før det havner i feed.
+  // Brukerens valg av submissionMode bevares som ønske, men status starter alltid
+  // som 'Venter' og isAnonymousFeed settes først av admin-review-flowen.
   const duelSubmission = {
     id: duelSubmissionId,
     knotId: knot.id,
@@ -3450,7 +3453,7 @@ async function handleCompleteDuel(request, response, duelId) {
     student: user.name,
     leaderId: user.id,
     submittedAtRaw: completedAt,
-    status: 'Godkjent',
+    status: 'Venter',
     points: knot.points,
     basePoints: knot.points,
     streakBonusPoints: 0,
@@ -3462,10 +3465,10 @@ async function handleCompleteDuel(request, response, duelId) {
     imagePreviewUrl,
     videoName: body.videoName ?? '',
     videoPreviewUrl,
-    isAnonymousFeed,
+    isAnonymousFeed: false,
     submissionMode,
     ratings: {},
-    reviewedAtRaw: completedAt,
+    reviewedAtRaw: null,
     reviewedBy: null,
     profileHidden: false,
   };

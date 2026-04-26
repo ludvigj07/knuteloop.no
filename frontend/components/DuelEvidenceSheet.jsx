@@ -227,6 +227,9 @@ export function DuelEvidenceSheet({
             <span>Post anonymt</span>
           </label>
         </div>
+        <p className="duel-sheet__hint">
+          Alle knute-off-bevis går via admin-godkjenning før de eventuelt havner i feed.
+        </p>
 
         <div className="duel-sheet__upload-row">
           <label className="duel-sheet__upload">

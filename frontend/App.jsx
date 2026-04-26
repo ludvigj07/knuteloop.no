@@ -1211,11 +1211,9 @@ function App() {
       return {
         ok: true,
         message:
-          normalizedSubmissionMode === 'anonymous-feed'
-            ? 'Bevis registrert og lagt anonymt ut i feed med en gang.'
-            : normalizedSubmissionMode === 'review'
-              ? 'Bevis registrert med en gang. Admin kan fortsatt reversere ved behov.'
-              : 'Bevis registrert og lagt ut i feed med en gang.',
+          normalizedSubmissionMode === 'review'
+            ? 'Bevis registrert. Venter på admin-godkjenning.'
+            : 'Bevis registrert. Venter på admin-godkjenning før det havner i feed.',
       };
     } catch (error) {
       return {
