@@ -460,58 +460,6 @@ function FeedPostActions({
   );
 }
 
-function FeedShareButton({ entry, onCopied, variant = 'default' }) {
-  if (!entry?.submissionId) return null;
-
-  async function handleClick() {
-    const shareUrl = `https://russeknute.no/feed/${entry.submissionId}`;
-    try {
-      if (navigator.clipboard?.writeText) {
-        await navigator.clipboard.writeText(shareUrl);
-      } else {
-        // Fallback for very old browsers — invisible textarea + execCommand.
-        const tmp = document.createElement('textarea');
-        tmp.value = shareUrl;
-        tmp.setAttribute('readonly', '');
-        tmp.style.position = 'fixed';
-        tmp.style.left = '-9999px';
-        document.body.appendChild(tmp);
-        tmp.select();
-        document.execCommand('copy');
-        document.body.removeChild(tmp);
-      }
-      onCopied?.();
-    } catch {
-      onCopied?.('Kunne ikke kopiere lenken.');
-    }
-  }
-
-  if (variant === 'hud') {
-    return (
-      <button
-        type="button"
-        className="feed-reel-card__hud-button"
-        onClick={handleClick}
-        aria-label="Del lenke til knuten"
-        title="Del lenke"
-      >
-        {'\u{1F517}'}
-      </button>
-    );
-  }
-
-  return (
-    <button
-      type="button"
-      className="action-button action-button--ghost action-button--compact feed-card-share-button"
-      onClick={handleClick}
-      aria-label="Del lenke til knuten"
-    >
-      <span aria-hidden="true">{'\u{1F517}'}</span> Del
-    </button>
-  );
-}
-
 function FeedReportButton({ entry, isSubmitting, onReport, variant = 'default' }) {
   if (!entry?.submissionId || !onReport) {
     return null;
@@ -1410,7 +1358,6 @@ function FeedCardMobile({
   feedInteractionsDisabled,
   feedInteractionMessage,
   registerCardRef,
-  onShareCopied,
 }) {
   const isLightScene = entry.mediaType === 'none';
   const noteText =
@@ -1445,7 +1392,6 @@ function FeedCardMobile({
             <span className="feed-reel-card__hud-pill">Feed</span>
           </div>
           <div className="feed-reel-card__hud-side feed-reel-card__hud-side--end">
-            <FeedShareButton entry={entry} onCopied={onShareCopied} variant="hud" />
             <FeedPostActions
               canManage={canManage}
               entry={entry}
@@ -1573,7 +1519,6 @@ function FeedCardDesktop({
   comments,
   feedInteractionsDisabled,
   feedInteractionMessage,
-  onShareCopied,
 }) {
   const isTextOnly = entry.mediaType === 'none';
 
@@ -1605,7 +1550,6 @@ function FeedCardDesktop({
           <span className="feed-card-v3__index">
             {index + 1}/{total}
           </span>
-          <FeedShareButton entry={entry} onCopied={onShareCopied} />
           <FeedReportButton entry={entry} isSubmitting={isReporting} onReport={onReport} />
         </div>
       </header>
@@ -1680,24 +1624,6 @@ export function FeedPage({
   const [reportFeedback, setReportFeedback] = useState('');
   const [deleteFeedback, setDeleteFeedback] = useState('');
   const [deleteToast, setDeleteToast] = useState('');
-  const [shareToast, setShareToast] = useState('');
-  const shareToastTimeoutRef = useRef(null);
-  const handleShareCopied = useCallback((errorMessage) => {
-    setShareToast(errorMessage || 'Lenke kopiert!');
-    if (shareToastTimeoutRef.current) {
-      clearTimeout(shareToastTimeoutRef.current);
-    }
-    shareToastTimeoutRef.current = window.setTimeout(() => setShareToast(''), 2200);
-  }, []);
-  useEffect(
-    () => () => {
-      if (shareToastTimeoutRef.current) {
-        clearTimeout(shareToastTimeoutRef.current);
-        shareToastTimeoutRef.current = null;
-      }
-    },
-    [],
-  );
   const [activeMobileIndex, setActiveMobileIndex] = useState(0);
   const [commentSheetEntry, setCommentSheetEntry] = useState(null);
   const [flaggedCommentId, setFlaggedCommentId] = useState(null);
@@ -2266,15 +2192,6 @@ export function FeedPage({
           )
         : null}
 
-      {shareToast && typeof document !== 'undefined'
-        ? createPortal(
-            <div className="feed-share-toast" role="status" aria-live="polite">
-              <p>{shareToast}</p>
-            </div>,
-            document.body,
-          )
-        : null}
-
       {isDesktop ? (
         <div className="feed-list-v3">
           {feedEntries.map((entry, index) => (
@@ -2300,7 +2217,6 @@ export function FeedPage({
               comments={commentsBySubmission[String(entry.submissionId)] ?? []}
               feedInteractionsDisabled={Boolean(activeFeedBan)}
               feedInteractionMessage={feedInteractionMessage}
-              onShareCopied={handleShareCopied}
             />
           ))}
         </div>
@@ -2374,7 +2290,6 @@ export function FeedPage({
               feedInteractionsDisabled={Boolean(activeFeedBan)}
               feedInteractionMessage={feedInteractionMessage}
               registerCardRef={registerCardRef}
-              onShareCopied={handleShareCopied}
             />
           ))}
         </div>
