@@ -71,10 +71,7 @@ export function AchievementCelebration({ achievement, onClose }) {
       aria-labelledby="achievement-celebration-title"
       onClick={onClose}
     >
-      <div
-        className="achievement-celebration-card"
-        onClick={(event) => event.stopPropagation()}
-      >
+      <div className="achievement-celebration-card">
         <p className="achievement-celebration-eyebrow">Du fikk:</p>
         <div className="achievement-celebration-icon" aria-hidden="true">
           <span>{icon}</span>
@@ -93,6 +90,7 @@ export function AchievementCelebration({ achievement, onClose }) {
         >
           Fett!
         </button>
+        <p className="achievement-celebration-hint">Trykk hvor som helst for å fortsette</p>
       </div>
     </div>,
     document.body,
