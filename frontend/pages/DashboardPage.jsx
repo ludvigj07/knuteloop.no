@@ -224,25 +224,39 @@ export function DashboardPage({
         </div>
       </section>
 
-      {/* ══ 2. DAGENS KNUTE — kompakt stripe ═════════════════════════════════ */}
+      {/* ══ 2. DAGENS KNUTE — featured headliner ═════════════════════════════ */}
       {dailyKnot ? (
-        <section className="db-daily-strip">
-          <span className="db-daily-strip__icon" aria-hidden="true">☀️</span>
-          <div className="db-daily-strip__text">
-            <span className="db-daily-strip__eyebrow">Dagens knute</span>
-            <span className="db-daily-strip__title">{dailyKnot.title}</span>
+        <section className="db-daily-feature" aria-label="Dagens knute">
+          <span className="db-daily-feature__shine" aria-hidden="true" />
+          <div className="db-daily-feature__top">
+            <span className="db-daily-feature__eyebrow">
+              <span aria-hidden="true">☀️</span> Dagens knute
+            </span>
+            <span className="db-daily-feature__pts">{dailyKnot.points}p</span>
           </div>
-          <span className="db-daily-strip__pts">{dailyKnot.points}p</span>
+          <h3 className="db-daily-feature__title">{dailyKnot.title}</h3>
+          {dailyKnot.description ? (
+            <p className="db-daily-feature__desc">{shortenNote(dailyKnot.description, 90)}</p>
+          ) : null}
           <button
             type="button"
-            className="action-button action-button--compact db-daily-strip__btn"
+            className="action-button db-daily-feature__cta"
             onClick={() => onOpenDailyKnot(dailyKnot.id)}
-            aria-label={`Åpne dagens knute: ${dailyKnot.title}`}
+            aria-label={`Ta dagens knute: ${dailyKnot.title}`}
           >
-            Åpne knute
+            Ta knuten
           </button>
         </section>
-      ) : null}
+      ) : (
+        <section className="db-daily-feature db-daily-feature--empty" aria-label="Dagens knute">
+          <span className="db-daily-feature__eyebrow">
+            <span aria-hidden="true">☀️</span> Dagens knute
+          </span>
+          <p className="db-daily-feature__empty-text">
+            Ingen knute idag — sjekk inn igjen i morgen.
+          </p>
+        </section>
+      )}
 
       {/* ══ 3. TOPP 3 PÅ SKOLEN ══════════════════════════════════════════════ */}
       {schoolTopThree.length > 0 ? (
