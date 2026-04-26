@@ -21,13 +21,26 @@ const STATUS_LEGEND_ITEMS = Object.freeze([
   { key: 'rejected', label: 'Avslått' },
 ]);
 
-const STATUS_FILTERS = ['Alle', 'Tilgjengelig', 'Sendt inn', 'Godkjent', 'Avslått'];
+// Forenklet status-system: ett trykk for å sykle gjennom de tre vanlige
+// scenarioene. "Ikke gjort" inkluderer alt som ikke er godkjent (også
+// ventende/avslåtte) så folk ikke mister oversikt over disse.
+const STATUS_FILTERS = ['Ikke gjort', 'Gjort', 'Alle'];
 
 const SORT_OPTIONS = [
   { value: 'standard', label: 'Standard' },
   { value: 'points-desc', label: 'Høyest poeng' },
   { value: 'points-asc', label: 'Lavest poeng' },
 ];
+
+// Smart default: status styrer sortering uten ekstra trykk.
+// "Ikke gjort" → lavest poeng først (det enkleste å gå løs på)
+// "Gjort" → høyest poeng først (vis frem dine beste prestasjoner)
+// "Alle" → standard
+function autoSortKeyForStatus(statusFilter) {
+  if (statusFilter === 'Ikke gjort') return 'points-asc';
+  if (statusFilter === 'Gjort') return 'points-desc';
+  return 'standard';
+}
 
 const DIFFICULTY_ORDER = {
   lett: 0,
@@ -903,8 +916,8 @@ export function KnotsPage({
     () => (focusedKnot ? resolveKnotFolder(focusedKnot) : ALL_KNOTS_FOLDER_ID),
   );
   const [searchQuery, setSearchQuery] = useState('');
-  const [statusFilter, setStatusFilter] = useState('Alle');
-  const [sortKey, setSortKey] = useState('standard');
+  const [statusFilter, setStatusFilter] = useState('Ikke gjort');
+  const [sortKey, setSortKey] = useState(() => autoSortKeyForStatus('Ikke gjort'));
   const [openDetailId, setOpenDetailId] = useState(null);
   const [openFormId, setOpenFormId] = useState(null);
   const [sheetKnotId, setSheetKnotId] = useState(null);
@@ -947,9 +960,11 @@ export function KnotsPage({
     visibleFolderKnots.filter((k) => {
       const matchesStatus =
         statusFilter === 'Alle' ||
-        (statusFilter === 'Avslått'
-          ? isRejectedStatus(k.status)
-          : k.status === statusFilter);
+        (statusFilter === 'Gjort'
+          ? k.status === 'Godkjent'
+          : statusFilter === 'Ikke gjort'
+            ? k.status !== 'Godkjent'
+            : k.status === statusFilter);
       const matchesSearch =
         !normalizedQuery ||
         k.title.toLowerCase().includes(normalizedQuery) ||
@@ -970,7 +985,9 @@ export function KnotsPage({
     (k) => k.status === 'Godkjent',
   ).length;
   const hasActiveFilters =
-    searchQuery.trim() !== '' || statusFilter !== 'Alle' || sortKey !== 'standard';
+    searchQuery.trim() !== '' ||
+    statusFilter !== 'Ikke gjort' ||
+    sortKey !== autoSortKeyForStatus(statusFilter);
   const activeFeedBan =
     currentUserActiveBans.find((b) => b.type === 'feed') ?? null;
   const activeSubmissionBan =
@@ -1576,8 +1593,8 @@ export function KnotsPage({
 
   function handleResetFilters() {
     setSearchQuery('');
-    setStatusFilter('Alle');
-    setSortKey('standard');
+    setStatusFilter('Ikke gjort');
+    setSortKey(autoSortKeyForStatus('Ikke gjort'));
   }
 
   function handleDocumentClick(knotId) {
@@ -1694,7 +1711,7 @@ export function KnotsPage({
         onChangeFolder={handleFolderChange}
       />
 
-      {/* Compact toolbar */}
+      {/* Forenklet toolbar — søk + én syklerende status-pill + reverse-sort. */}
       <div className="knot-toolbar-compact">
         <input
           type="search"
@@ -1703,39 +1720,37 @@ export function KnotsPage({
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
         />
-        <div className="knot-toolbar-compact__status-pills" role="group" aria-label="Statusfilter">
-          {STATUS_FILTERS.map((filter) => (
-            <button
-              key={filter}
-              type="button"
-              className={`knot-status-pill${statusFilter === filter ? ' is-active' : ''}`}
-              aria-pressed={statusFilter === filter}
-              onClick={() => setStatusFilter(filter)}
-            >
-              {filter}
-            </button>
-          ))}
-        </div>
-        <select
-          className="knot-toolbar-compact__select knot-toolbar-compact__select--status text-input"
-          value={statusFilter}
-          onChange={(e) => setStatusFilter(e.target.value)}
-          aria-label="Statusfilter"
+        <button
+          type="button"
+          className="knot-status-cycle"
+          aria-label={`Status: ${statusFilter}. Trykk for å bytte.`}
+          onClick={() => {
+            const i = STATUS_FILTERS.indexOf(statusFilter);
+            const next = STATUS_FILTERS[(i + 1) % STATUS_FILTERS.length];
+            setStatusFilter(next);
+            setSortKey(autoSortKeyForStatus(next));
+          }}
         >
-          {STATUS_FILTERS.map((s) => (
-            <option key={s} value={s}>{s}</option>
-          ))}
-        </select>
-        <select
-          className="knot-toolbar-compact__select text-input"
-          value={sortKey}
-          onChange={(e) => setSortKey(e.target.value)}
-          aria-label="Sortering"
-        >
-          {SORT_OPTIONS.map((o) => (
-            <option key={o.value} value={o.value}>{o.label}</option>
-          ))}
-        </select>
+          <span className="knot-status-cycle__label">{statusFilter}</span>
+          <span className="knot-status-cycle__hint" aria-hidden="true">↻</span>
+        </button>
+        {statusFilter !== 'Alle' ? (
+          <button
+            type="button"
+            className="knot-sort-flip"
+            aria-label={
+              sortKey === 'points-asc'
+                ? 'Snu sortering: høyest poeng først'
+                : 'Snu sortering: lavest poeng først'
+            }
+            title={sortKey === 'points-asc' ? 'Lavest poeng først' : 'Høyest poeng først'}
+            onClick={() =>
+              setSortKey((prev) => (prev === 'points-asc' ? 'points-desc' : 'points-asc'))
+            }
+          >
+            <span aria-hidden="true">{sortKey === 'points-asc' ? '↑' : '↓'}</span>
+          </button>
+        ) : null}
       </div>
 
       {/* Feedback & ban banners */}
