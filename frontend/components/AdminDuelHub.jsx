@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import {
   AlertTriangle,
+  ArrowLeft,
   CheckCircle2,
   ChevronRight,
   Clock,
@@ -395,18 +396,19 @@ function DetailPanel({
   return (
     <aside className="adh-detail" aria-label="Knute-off detaljer">
       <header className="adh-detail__header">
-        <div>
+        <button
+          type="button"
+          className="adh-detail__back"
+          onClick={onClose}
+          aria-label="Tilbake til kø"
+        >
+          <ArrowLeft size={18} strokeWidth={2} aria-hidden="true" />
+          <span>Tilbake</span>
+        </button>
+        <div className="adh-detail__title-block">
           <p className="adh-detail__eyebrow">Knute-off</p>
           <h3>{duel.knotTitle}</h3>
         </div>
-        <button
-          type="button"
-          className="adh-detail__close"
-          onClick={onClose}
-          aria-label="Lukk detaljer"
-        >
-          <X size={18} strokeWidth={2} />
-        </button>
       </header>
 
       <div className="adh-detail__lock-bar">
