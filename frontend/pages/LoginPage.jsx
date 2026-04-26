@@ -28,8 +28,11 @@ export function LoginPage({
           <label className="field-group">
             <span>E-post</span>
             <input
-              type="text"
+              type="email"
               inputMode="email"
+              autoCapitalize="none"
+              autoCorrect="off"
+              spellCheck={false}
               className="text-input"
               value={email}
               onChange={(event) => onChangeEmail(event.target.value)}
