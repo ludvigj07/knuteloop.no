@@ -210,14 +210,42 @@ export function UserAdminPanel({ sessionToken }) {
               <a href={lastInvite.link} target="_blank" rel="noreferrer">{lastInvite.link}</a>
             </dd>
           </dl>
-          <button
-            type="button"
-            className="action-button action-button--ghost"
-            style={{ marginTop: '0.75rem' }}
-            onClick={() => setLastInvite(null)}
-          >
-            Lukk
-          </button>
+          <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.75rem', flexWrap: 'wrap' }}>
+            <button
+              type="button"
+              className="action-button"
+              onClick={async () => {
+                try {
+                  await navigator.clipboard?.writeText(lastInvite.link);
+                } catch {
+                  /* clipboard kan være blokkert */
+                }
+              }}
+            >
+              Kopier lenke
+            </button>
+            <button
+              type="button"
+              className="action-button action-button--ghost"
+              onClick={async () => {
+                const text = `Invitasjon til knuteloop\nE-post: ${lastInvite.email}\nKode: ${lastInvite.code}\nLenke: ${lastInvite.link}`;
+                try {
+                  await navigator.clipboard?.writeText(text);
+                } catch {
+                  /* ignore */
+                }
+              }}
+            >
+              Kopier alt
+            </button>
+            <button
+              type="button"
+              className="action-button action-button--ghost"
+              onClick={() => setLastInvite(null)}
+            >
+              Lukk
+            </button>
+          </div>
         </div>
       ) : null}
 
