@@ -3788,16 +3788,10 @@
 .bottom-swipe-nav__label {
   position: relative;
   z-index: 1;
-  font-size: 0.6rem;
-  font-weight: 700;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  line-height: 1;
-  white-space: nowrap;
-}
-
-.bottom-swipe-nav__label {
   font-size: 0.74rem;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
   line-height: 1;
   overflow: hidden;
   text-overflow: ellipsis;
