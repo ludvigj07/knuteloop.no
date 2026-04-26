@@ -7102,7 +7102,8 @@ textarea.text-input:focus {
 /* Subtil "invitasjon"-puls når brukeren åpner detaljene på en knute
    de kan registrere. Bare transform + box-shadow så vi ikke trigger
    layout/scroll-jank under swipe. */
-.knot-row__doc-btn.is-inviting {
+.knot-row__doc-btn.is-inviting,
+body.force-invite-pulse .knot-row__doc-btn:not(.is-active):not(:disabled) {
   animation: knot-doc-btn-invite 1.6s ease-out 2 both;
   animation-delay: 120ms;
 }

@@ -261,8 +261,15 @@ export function SettingsModal({
                     <button type="button" className="action-button action-button--ghost" onClick={() => onRunTest('sound-tick')}>
                       · Lyd: tick
                     </button>
+                    <button type="button" className="action-button action-button--ghost" onClick={() => onRunTest('invite-pulse')}>
+                      ✨ Registrer-puls
+                    </button>
                   </div>
                   <p className="settings-hint">
+                    Registrer-puls lukker innstillingene og pulser
+                    Registrer-knappene på Knuter-siden i ~3 sek — gå dit
+                    først så du ser dem.
+                    <br /><br />
                     Andre småting (heart-pop, long-press reactions, idle-wobble,
                     pull-to-refresh, photo zoom) trigges naturlig i feeden — stå
                     stille i 30s for wobble, dra ned i feeden for refresh, hold

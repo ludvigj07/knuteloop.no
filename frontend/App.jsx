@@ -269,6 +269,19 @@ function App() {
       case 'sound-tick':
         playTick();
         break;
+      case 'invite-pulse': {
+        // Trigger invitasjons-pulsen på alle synlige Registrer-knapper i ~3 sek.
+        // Lukker innstillinger først så brukeren ser knappene blinke.
+        if (typeof document === 'undefined') break;
+        setIsSettingsOpen(false);
+        window.setTimeout(() => {
+          document.body.classList.add('force-invite-pulse');
+          window.setTimeout(() => {
+            document.body.classList.remove('force-invite-pulse');
+          }, 3400);
+        }, 320);
+        break;
+      }
       default:
         break;
     }
