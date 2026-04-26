@@ -984,22 +984,23 @@ export function AdminPage({
   return (
     <div className="stack-layout admin-page">
       <div className="admin-task-shell">
-        <div className="admin-task-select-row">
-          <label className="field-group admin-task-select">
-            <span>Adminområde</span>
-            <select
-              className="text-input"
-              value={activeAdminTask}
-              onChange={(event) => setActiveAdminTask(event.target.value)}
+        <nav className="admin-task-nav" aria-label="Adminområde">
+          {adminTasks.map((task) => (
+            <button
+              key={task.id}
+              type="button"
+              className={`admin-task-button ${activeAdminTask === task.id ? 'is-active' : ''}`}
+              aria-pressed={activeAdminTask === task.id}
+              onClick={() => setActiveAdminTask(task.id)}
             >
-              {adminTasks.map((task) => (
-                <option key={task.id} value={task.id}>
-                  {task.label} ({task.count})
-                </option>
-              ))}
-            </select>
-          </label>
-        </div>
+              <span className="admin-task-button__content">
+                <strong>{task.label}</strong>
+                <span>{task.note}</span>
+              </span>
+              <span className="admin-task-button__badge">{task.count}</span>
+            </button>
+          ))}
+        </nav>
       </div>
 
       {activeAdminTask === 'submissions' ? (
