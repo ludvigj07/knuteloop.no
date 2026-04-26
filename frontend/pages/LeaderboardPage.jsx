@@ -312,7 +312,7 @@ export function LeaderboardPage({
   }
 
   const sheetDuel = activeSheetDuelId
-    ? activeDuels.find((duel) => duel.id === activeSheetDuelId)
+    ? allActiveDuels.find((duel) => duel.id === activeSheetDuelId)
     : null;
 
   function handleJumpToCurrentUser() {
