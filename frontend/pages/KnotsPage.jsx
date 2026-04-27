@@ -593,6 +593,7 @@ function KnotRow({
   const isOverCharacterLimit = characterCount > NOTE_MAX_CHARS;
   const isCompletedKnot = knot.status === 'Godkjent' || knot.status === 'Fullført';
   const isPendingKnot = knot.status === 'Sendt inn';
+  const isRejected = isRejectedStatus(knot.status);
   const isGoldByName = (knot.title ?? '').toLowerCase().includes('gull');
 
   return (
@@ -620,6 +621,11 @@ function KnotRow({
             Sendt inn
           </span>
         ) : null}
+        {isRejected ? (
+          <span className="knot-row__type-badge knot-row__type-badge--rejected">
+            Avslått
+          </span>
+        ) : null}
 
         {isCompletedKnot ? (
           <span className="knot-row__taken-label" aria-label="Tatt">Tatt</span>
@@ -630,7 +636,7 @@ function KnotRow({
             disabled={Boolean(activeSubmissionBan) && !isFormOpen}
             onClick={onDocumentClick}
           >
-            {isPendingKnot ? 'Endre' : 'Ta knute'}
+            {isPendingKnot ? 'Endre' : isRejected ? 'Send på nytt' : 'Ta knute'}
           </button>
         ) : null}
       </div>

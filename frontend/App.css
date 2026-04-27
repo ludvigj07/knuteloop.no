@@ -12621,6 +12621,11 @@ textarea.text-input:focus {
   color: #1a2540;
 }
 
+.knot-row__type-badge--rejected {
+  background: #ffd6d6;
+  color: #8a1818;
+}
+
 .knot-row__take-btn {
   background: #1a2540;
   color: #fff;
