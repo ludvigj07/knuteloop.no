@@ -12456,7 +12456,7 @@ textarea.text-input:focus {
   justify-content: flex-end;
   padding: 0 16px;
   margin-top: -8px;
-  margin-bottom: 0;
+  margin-bottom: -22px;
 }
 
 .knot-list__sort-cycle {
