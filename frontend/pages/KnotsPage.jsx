@@ -393,7 +393,7 @@ function SubmissionFormContent({
         <span>Forklaring:</span>
         <textarea
           className="text-input text-input--area text-input--compact"
-          placeholder="Kort forklaring på hvordan knuten ble gjort. Maks 300 tegn."
+          placeholder="Caption / forklaring av hvordan knuten ble utført"
           value={draft.note ?? ''}
           onChange={(e) => onUpdateNote(e.target.value)}
           maxLength={NOTE_MAX_CHARS}
