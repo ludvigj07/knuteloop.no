@@ -1,6 +1,16 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { ArrowDown, ArrowUp, ArrowUpDown } from 'lucide-react';
+import {
+  ArrowDown,
+  ArrowUp,
+  ArrowUpDown,
+  Beer,
+  Circle,
+  Flame,
+  Heart,
+  Layers,
+  Users,
+} from 'lucide-react';
 import { MobileVideo } from '../components/MobileVideo.jsx';
 import { isGoldKnot } from '../data/badgeSystem.js';
 import { NOTE_MAX_CHARS } from '../data/appHelpers.js';
@@ -11,12 +21,12 @@ const SHEET_DISMISS_THRESHOLD = 120;
 const ALL_KNOTS_FOLDER_ID = 'Alle knuter';
 
 const KNOT_TYPE_FILTERS = [
-  { id: ALL_KNOTS_FOLDER_ID, label: 'Alle knuter', icon: '●' },
-  { id: 'Generelle', label: 'Generelle', icon: '◯' },
-  { id: 'Dobbelknuter', label: 'Dobbelknuter', icon: '⚡' },
-  { id: 'Fordervett-knuter', label: 'Fordervett-knuter', icon: '🃏' },
-  { id: 'Alkoholknuter', label: 'Alkoholknuter', icon: '🍺' },
-  { id: 'Sexknuter', label: 'Sexknuter', icon: '❤' },
+  { id: ALL_KNOTS_FOLDER_ID, label: 'Alle knuter', Icon: Layers },
+  { id: 'Generelle', label: 'Generelle knuter', Icon: Circle },
+  { id: 'Dobbelknuter', label: 'Dobbelknute-kategori', Icon: Users },
+  { id: 'Fordervett-knuter', label: 'Rampestreker', Icon: Flame },
+  { id: 'Alkoholknuter', label: 'Alkoholkategori', Icon: Beer },
+  { id: 'Sexknuter', label: 'Sexkategori', Icon: Heart },
 ];
 
 const STATUS_FILTERS = [
@@ -322,7 +332,9 @@ function KnotTypeFilters({ filters, activeFilter, onChangeFilter }) {
           className={`knot-type-filter${filter.id === activeFilter ? ' is-active' : ''}`}
           onClick={() => onChangeFilter(filter.id)}
         >
-          <span className="knot-type-filter__icon" aria-hidden="true">{filter.icon}</span>
+          <span className="knot-type-filter__icon" aria-hidden="true">
+            <filter.Icon size={20} strokeWidth={1.8} />
+          </span>
         </button>
       ))}
     </div>
@@ -833,10 +845,8 @@ export function KnotsPage({
 
   const draftsRef = useRef(drafts);
   const focusedCardRef = useRef(null);
-  const knotResultsRef = useRef(null);
   const handledFocusOpenRequestRef = useRef(0);
   const handledScrollRequestRef = useRef(0);
-  const folderScrollFrameRef = useRef(0);
   const highlightTimeoutRef = useRef(null);
 
   // ── Derived ──────────────────────────────────────────────────────────────
@@ -971,9 +981,6 @@ export function KnotsPage({
 
   useEffect(
     () => () => {
-      if (folderScrollFrameRef.current) {
-        window.cancelAnimationFrame(folderScrollFrameRef.current);
-      }
       if (highlightTimeoutRef.current) {
         window.clearTimeout(highlightTimeoutRef.current);
       }
@@ -1368,88 +1375,6 @@ export function KnotsPage({
     setActiveFolder(folderId);
     setOpenFormId(null);
     setSheetKnotId(null);
-    scheduleScrollToKnotResults();
-  }
-
-  function scrollToKnotResults() {
-    if (typeof window === 'undefined' || typeof document === 'undefined') {
-      return;
-    }
-
-    const element = knotResultsRef.current;
-    if (!element) {
-      return;
-    }
-
-    const rect = element.getBoundingClientRect();
-    const viewportHeight = window.innerHeight || 0;
-    const topOffset = isMobileViewport
-      ? Math.max(Math.round(viewportHeight * 0.18), 84)
-      : 88;
-    const isiOSWebKit =
-      typeof navigator !== 'undefined' &&
-      /iP(hone|od|ad)/i.test(navigator.userAgent ?? '');
-    const scrollBehavior = isiOSWebKit ? 'auto' : 'smooth';
-
-    let scrollContainer = element.parentElement;
-    while (scrollContainer && scrollContainer !== document.body) {
-      const style = window.getComputedStyle(scrollContainer);
-      const canScrollY = /(auto|scroll|overlay)/.test(style.overflowY);
-      if (canScrollY && scrollContainer.scrollHeight > scrollContainer.clientHeight) {
-        break;
-      }
-      scrollContainer = scrollContainer.parentElement;
-    }
-
-    if (scrollContainer && scrollContainer !== document.body) {
-      const containerRect = scrollContainer.getBoundingClientRect();
-      const targetWithinContainer = Math.max(
-        Math.round(scrollContainer.scrollTop + rect.top - containerRect.top - 16),
-        0,
-      );
-
-      scrollContainer.scrollTo({
-        top: targetWithinContainer,
-        left: 0,
-        behavior: scrollBehavior,
-      });
-
-      if (isiOSWebKit) {
-        scrollContainer.scrollTop = targetWithinContainer;
-      }
-      return;
-    }
-
-    const targetTop = Math.max(Math.round(window.scrollY + rect.top - topOffset), 0);
-    window.scrollTo({
-      top: targetTop,
-      left: 0,
-      behavior: scrollBehavior,
-    });
-
-    if (isiOSWebKit) {
-      const scrollingElement = document.scrollingElement ?? document.documentElement;
-      scrollingElement.scrollTop = targetTop;
-      document.documentElement.scrollTop = targetTop;
-      document.body.scrollTop = targetTop;
-    }
-  }
-
-  function scheduleScrollToKnotResults() {
-    if (typeof window === 'undefined') {
-      return;
-    }
-
-    if (folderScrollFrameRef.current) {
-      window.cancelAnimationFrame(folderScrollFrameRef.current);
-    }
-
-    folderScrollFrameRef.current = window.requestAnimationFrame(() => {
-      folderScrollFrameRef.current = window.requestAnimationFrame(() => {
-        folderScrollFrameRef.current = 0;
-        scrollToKnotResults();
-      });
-    });
   }
 
   function handleResetFilters() {
@@ -1567,12 +1492,12 @@ export function KnotsPage({
 
       {/* Empty states */}
       {visibleFolderKnots.length === 0 ? (
-        <p ref={knotResultsRef} className="folder-empty">
+        <p className="folder-empty">
           Det ligger ingen knuter i denne mappen ennå.
         </p>
       ) : null}
       {visibleFolderKnots.length > 0 && visibleKnots.length === 0 ? (
-        <div ref={knotResultsRef} className="filter-empty-state">
+        <div className="filter-empty-state">
           <h3>{statusFilter === 'tatt' ? 'Du har ikke tatt noen knuter ennå' : 'Ingen knuter igjen i denne kategorien'}</h3>
           <button
             type="button"
@@ -1586,7 +1511,7 @@ export function KnotsPage({
 
       {/* Knot list */}
       {visibleKnots.length > 0 ? (
-        <div ref={knotResultsRef} className="knot-list">
+        <div className="knot-list">
           <div className="knot-list__header">
             <button
               type="button"
