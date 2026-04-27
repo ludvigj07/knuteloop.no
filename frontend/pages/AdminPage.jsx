@@ -1009,14 +1009,14 @@ export function AdminPage({
             <div className="admin-section-toolbar__actions">
               <button
                 type="button"
-                className="action-button action-button--ghost"
+                className="action-button action-button--ghost admin-shortcut"
                 onClick={() => setActiveAdminTask('overview')}
               >
                 Se oversikt
               </button>
               <button
                 type="button"
-                className="action-button action-button--ghost"
+                className="action-button action-button--ghost admin-shortcut"
                 onClick={() => setActiveAdminTask('duels')}
               >
                 Aktive knute-offs
@@ -1068,7 +1068,7 @@ export function AdminPage({
             <div className="admin-section-toolbar__actions">
               <button
                 type="button"
-                className="action-button action-button--ghost"
+                className="action-button action-button--ghost admin-shortcut"
                 onClick={() => setActiveAdminTask('overview')}
               >
                 Se oversikt
@@ -1231,7 +1231,7 @@ export function AdminPage({
             <div className="admin-section-toolbar__actions">
               <button
                 type="button"
-                className="action-button action-button--ghost"
+                className="action-button action-button--ghost admin-shortcut"
                 onClick={() => setActiveAdminTask('submissions')}
               >
                 Til innsendinger
@@ -1364,7 +1364,7 @@ export function AdminPage({
             <div className="admin-section-toolbar__actions">
               <button
                 type="button"
-                className="action-button action-button--ghost"
+                className="action-button action-button--ghost admin-shortcut"
                 onClick={() => setActiveAdminTask('submissions')}
               >
                 Til innsendinger
@@ -1508,7 +1508,7 @@ export function AdminPage({
             <div className="admin-section-toolbar__actions">
               <button
                 type="button"
-                className="action-button action-button--ghost"
+                className="action-button action-button--ghost admin-shortcut"
                 onClick={() => setActiveAdminTask('overview')}
               >
                 Se oversikt
@@ -1639,14 +1639,14 @@ export function AdminPage({
             <div className="admin-section-toolbar__actions">
               <button
                 type="button"
-                className="action-button action-button--ghost"
+                className="action-button action-button--ghost admin-shortcut"
                 onClick={handleResetFeedbackDraft}
               >
                 Nullstill
               </button>
               <button
                 type="button"
-                className="action-button"
+                className="action-button admin-shortcut"
                 disabled={isSavingFeedbackSettings}
                 onClick={handleSaveFeedbackMessages}
               >
@@ -1675,7 +1675,7 @@ export function AdminPage({
               <div className="admin-section-toolbar__actions">
                 <button
                   type="button"
-                  className="action-button action-button--ghost"
+                  className="action-button action-button--ghost admin-shortcut"
                   onClick={handleTestRareFeedback}
                 >
                   Test rare
@@ -1711,14 +1711,14 @@ export function AdminPage({
             <div className="admin-section-toolbar__actions">
               <button
                 type="button"
-                className="action-button"
+                className="action-button admin-shortcut"
                 onClick={() => setActiveAdminTask('submissions')}
               >
                 Gå til ventende
               </button>
               <button
                 type="button"
-                className="action-button action-button--ghost"
+                className="action-button action-button--ghost admin-shortcut"
                 onClick={() => setActiveAdminTask('knots')}
               >
                 Gå til knuter
