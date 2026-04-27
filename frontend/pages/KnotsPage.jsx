@@ -365,6 +365,8 @@ function SubmissionFormContent({
   const hasImage = Boolean(draft.imageFile || draft.imagePreviewUrl || draft.imageName);
   const hasVideo = Boolean(draft.videoFile || draft.videoPreviewUrl || draft.videoName);
   const hasEvidence = hasImage || hasVideo;
+  const hasNote = Boolean((draft.note ?? '').trim());
+  const hasContent = hasEvidence || hasNote;
   const knotDescription = getKnotDescription(knot);
 
   function handleImageInputChange(event) {
@@ -450,7 +452,7 @@ function SubmissionFormContent({
         <div className="upload-field upload-field--compact evidence-picker">
           <div className="evidence-picker__top">
             <span>Bevis</span>
-            <small>{hasImage || hasVideo ? 'Klart for innsending' : 'Velg ett bevis'}</small>
+            <small>{hasImage || hasVideo ? 'Bevis valgt' : 'Valgfritt'}</small>
           </div>
 
           <div className="evidence-picker__actions" role="group" aria-label="Velg bevis">
@@ -546,13 +548,15 @@ function SubmissionFormContent({
         <button
           type="button"
           className="action-button action-button--hero"
-          disabled={isOverCharacterLimit || Boolean(activeSubmissionBan) || !hasEvidence}
+          disabled={isOverCharacterLimit || Boolean(activeSubmissionBan) || !hasContent}
           onClick={onSubmit}
         >
           {buttonLabel}
         </button>
-        {!hasEvidence ? (
-          <p className="submission-form__hint">Velg bilde eller video for å sende inn.</p>
+        {!hasContent ? (
+          <p className="submission-form__hint">
+            Skriv en forklaring eller legg ved bilde/video for å sende inn.
+          </p>
         ) : null}
       </div>
     </div>
