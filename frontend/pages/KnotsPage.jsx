@@ -1526,7 +1526,7 @@ export function KnotsPage({
 
       {/* Knot list */}
       {visibleKnots.length > 0 ? (
-        <div className="knot-list">
+        <>
           <div className="knot-list__header">
             <button
               type="button"
@@ -1553,6 +1553,7 @@ export function KnotsPage({
               </span>
             </button>
           </div>
+          <div className="knot-list">
           {visibleKnots.map((knot, knotIndex) => {
             const canSubmit =
               knot.status === 'Tilgjengelig' ||
@@ -1594,7 +1595,8 @@ export function KnotsPage({
               />
             );
           })}
-        </div>
+          </div>
+        </>
       ) : null}
 
       {/* Mobile bottom sheet */}
