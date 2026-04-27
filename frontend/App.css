@@ -8114,6 +8114,10 @@ textarea.text-input:focus {
   border-radius: 999px;
   background: color-mix(in srgb, var(--text-strong) 25%, transparent 75%);
   transition: background 160ms ease;
+  border: 0;
+  padding: 0;
+  cursor: pointer;
+  font: inherit;
 }
 
 .db-banner__dot.is-active {

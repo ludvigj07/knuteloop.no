@@ -54,14 +54,53 @@ function pickRandomMessage(pool) {
 
 function DashboardBanner({ messages }) {
   const [index, setIndex] = useState(0);
+  const [isPaused, setIsPaused] = useState(false);
+  const touchStartXRef = useRef(null);
+  const pauseTimeoutRef = useRef(null);
 
   useEffect(() => {
-    if (messages.length <= 1) return undefined;
+    if (messages.length <= 1 || isPaused) return undefined;
     const interval = window.setInterval(() => {
       setIndex((current) => (current + 1) % messages.length);
     }, 4000);
     return () => window.clearInterval(interval);
-  }, [messages.length]);
+  }, [messages.length, isPaused]);
+
+  useEffect(() => {
+    return () => {
+      if (pauseTimeoutRef.current) window.clearTimeout(pauseTimeoutRef.current);
+    };
+  }, []);
+
+  function pauseAutoRotation(durationMs = 8000) {
+    setIsPaused(true);
+    if (pauseTimeoutRef.current) window.clearTimeout(pauseTimeoutRef.current);
+    pauseTimeoutRef.current = window.setTimeout(() => {
+      setIsPaused(false);
+    }, durationMs);
+  }
+
+  function goTo(nextIndex) {
+    if (messages.length === 0) return;
+    const wrapped = ((nextIndex % messages.length) + messages.length) % messages.length;
+    setIndex(wrapped);
+    pauseAutoRotation();
+  }
+
+  function handleTouchStart(event) {
+    touchStartXRef.current = event.touches[0].clientX;
+  }
+
+  function handleTouchEnd(event) {
+    if (touchStartXRef.current === null) return;
+    const endX = event.changedTouches[0].clientX;
+    const diff = touchStartXRef.current - endX;
+    touchStartXRef.current = null;
+
+    if (Math.abs(diff) > 40 && messages.length > 1) {
+      goTo(index + (diff > 0 ? 1 : -1));
+    }
+  }
 
   if (messages.length === 0) return null;
 
@@ -69,17 +108,28 @@ function DashboardBanner({ messages }) {
   const current = messages[safeIndex];
 
   return (
-    <div className="db-banner" role="status" aria-live="polite">
+    <div
+      className="db-banner"
+      role="status"
+      aria-live="polite"
+      onTouchStart={handleTouchStart}
+      onTouchEnd={handleTouchEnd}
+    >
       <span className="db-banner__icon" aria-hidden="true">
         {current.icon ?? '✨'}
       </span>
       <span className="db-banner__text">{current.text}</span>
       {messages.length > 1 ? (
-        <span className="db-banner__dots" aria-hidden="true">
+        <span className="db-banner__dots" role="tablist">
           {messages.map((_, i) => (
-            <span
+            <button
               key={i}
+              type="button"
               className={`db-banner__dot${i === safeIndex ? ' is-active' : ''}`}
+              aria-label={`Vis melding ${i + 1}`}
+              aria-selected={i === safeIndex}
+              role="tab"
+              onClick={() => goTo(i)}
             />
           ))}
         </span>
