@@ -12454,7 +12454,9 @@ textarea.text-input:focus {
   display: flex;
   align-items: center;
   justify-content: flex-end;
-  padding: 0 16px 6px;
+  padding: 0 16px;
+  margin-top: -8px;
+  margin-bottom: 4px;
 }
 
 .knot-list__sort-cycle {
