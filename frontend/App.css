@@ -8237,74 +8237,65 @@ textarea.text-input:focus {
   background: color-mix(in srgb, var(--gold) 16%, var(--surface) 84%);
 }
 
-.db-top3-row__medal {
-  width: 30px;
-  height: 30px;
+.db-top3-row__rank {
+  width: 26px;
+  text-align: center;
   flex-shrink: 0;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 50%;
-  font-size: 0.95rem;
+  font-size: 1.05rem;
   font-weight: 800;
-  color: #fff;
-  text-shadow: 0 1px 1px rgba(0, 0, 0, 0.35);
-  background-size: 200% 200%;
-  background-position: 50% 50%;
+  color: rgba(0, 0, 0, 0.7);
+  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.5);
 }
 
-.db-top3-row__medal--gold {
-  background-image: linear-gradient(
-    135deg,
-    #8a6500 0%,
-    #d4a017 25%,
-    #ffd700 45%,
-    #fff5b8 50%,
-    #ffd700 55%,
-    #d4a017 75%,
-    #8a6500 100%
-  );
-  border: 2px solid #8a6500;
+.db-top3-row--gold {
+  border-color: rgba(164, 114, 0, 0.5) !important;
+  background-image:
+    radial-gradient(circle at 18% 12%, rgba(255, 255, 255, 0.78) 0%, transparent 44%),
+    linear-gradient(
+      128deg,
+      rgba(255, 222, 110, 0.85) 0%,
+      rgba(255, 242, 194, 0.95) 32%,
+      rgba(255, 207, 86, 0.88) 56%,
+      rgba(255, 234, 160, 0.92) 100%
+    ) !important;
   box-shadow:
-    0 1px 0 rgba(255, 255, 255, 0.4) inset,
-    0 -1px 0 rgba(0, 0, 0, 0.2) inset,
-    0 2px 4px rgba(180, 130, 10, 0.35);
+    inset 0 1px 0 rgba(255, 255, 255, 0.88),
+    inset 0 -1px 0 rgba(128, 83, 2, 0.2),
+    0 6px 14px rgba(128, 83, 2, 0.16) !important;
 }
 
-.db-top3-row__medal--silver {
-  background-image: linear-gradient(
-    135deg,
-    #5a5e6a 0%,
-    #9aa0ad 25%,
-    #d8dde6 45%,
-    #ffffff 50%,
-    #d8dde6 55%,
-    #9aa0ad 75%,
-    #5a5e6a 100%
-  );
-  border: 2px solid #5a5e6a;
+.db-top3-row--silver {
+  border-color: rgba(99, 117, 139, 0.48) !important;
+  background-image:
+    radial-gradient(circle at 18% 12%, rgba(255, 255, 255, 0.84) 0%, transparent 44%),
+    linear-gradient(
+      128deg,
+      rgba(202, 213, 227, 0.92) 0%,
+      rgba(247, 251, 255, 0.97) 33%,
+      rgba(188, 201, 219, 0.92) 58%,
+      rgba(232, 239, 248, 0.94) 100%
+    ) !important;
   box-shadow:
-    0 1px 0 rgba(255, 255, 255, 0.5) inset,
-    0 -1px 0 rgba(0, 0, 0, 0.15) inset,
-    0 2px 4px rgba(90, 94, 106, 0.3);
+    inset 0 1px 0 rgba(255, 255, 255, 0.9),
+    inset 0 -1px 0 rgba(82, 98, 117, 0.2),
+    0 6px 14px rgba(82, 98, 117, 0.16) !important;
 }
 
-.db-top3-row__medal--bronze {
-  background-image: linear-gradient(
-    135deg,
-    #5a2e15 0%,
-    #a0552a 25%,
-    #cd7f32 45%,
-    #f0c79a 50%,
-    #cd7f32 55%,
-    #a0552a 75%,
-    #5a2e15 100%
-  );
-  border: 2px solid #5a2e15;
+.db-top3-row--bronze {
+  border-color: rgba(141, 85, 48, 0.5) !important;
+  background-image:
+    radial-gradient(circle at 18% 12%, rgba(255, 255, 255, 0.76) 0%, transparent 44%),
+    linear-gradient(
+      128deg,
+      rgba(219, 158, 118, 0.9) 0%,
+      rgba(255, 236, 216, 0.95) 34%,
+      rgba(196, 126, 83, 0.88) 58%,
+      rgba(242, 204, 176, 0.92) 100%
+    ) !important;
   box-shadow:
-    0 1px 0 rgba(255, 255, 255, 0.35) inset,
-    0 -1px 0 rgba(0, 0, 0, 0.2) inset,
-    0 2px 4px rgba(90, 46, 21, 0.3);
+    inset 0 1px 0 rgba(255, 255, 255, 0.86),
+    inset 0 -1px 0 rgba(109, 62, 32, 0.22),
+    0 6px 14px rgba(109, 62, 32, 0.16) !important;
 }
 
 .db-top3-row__info {

@@ -374,14 +374,10 @@ export function DashboardPage({
               <button
                 key={leader.id}
                 type="button"
-                className={`db-top3-row${leader.id === currentUserId ? ' db-top3-row--self' : ''}`}
+                className={`db-top3-row db-top3-row--${MEDAL_TIERS[i]}${leader.id === currentUserId ? ' db-top3-row--self' : ''}`}
                 onClick={() => onOpenProfile(leader.id)}
               >
-                <span
-                  className={`db-top3-row__medal db-top3-row__medal--${MEDAL_TIERS[i]}`}
-                >
-                  {i + 1}
-                </span>
+                <span className="db-top3-row__rank">{i + 1}</span>
                 <MiniAvatar person={leader} />
                 <div className="db-top3-row__info">
                   <strong>{leader.russName ?? leader.name}</strong>
