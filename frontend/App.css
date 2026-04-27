@@ -6931,8 +6931,13 @@ textarea.text-input:focus {
 }
 
 .knot-row__title--gold {
-  color: #c89111;
+  background: linear-gradient(135deg, #b8860b 0%, #ffd700 45%, #daa520 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  color: transparent;
   font-weight: 800;
+  text-shadow: 0 1px 0 rgba(180, 130, 10, 0.18);
 }
 
 .knot-row__title-line {
