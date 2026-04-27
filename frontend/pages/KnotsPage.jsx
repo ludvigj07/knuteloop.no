@@ -12,7 +12,6 @@ import {
   Users,
 } from 'lucide-react';
 import { MobileVideo } from '../components/MobileVideo.jsx';
-import { isGoldKnot } from '../data/badgeSystem.js';
 import { NOTE_MAX_CHARS } from '../data/appHelpers.js';
 import { KNOT_FOLDERS, resolveKnotFolder } from '../data/knotFolders.js';
 
@@ -591,7 +590,7 @@ function KnotRow({
   const isCompletedKnot = knot.status === 'Godkjent' || knot.status === 'Fullført';
   const isPendingKnot = knot.status === 'Sendt inn';
   const isTaken = isCompletedKnot || isPendingKnot;
-  const isGold = isGoldKnot(knot);
+  const isGoldByName = (knot.title ?? '').toLowerCase().includes('gull');
 
   return (
     <div
@@ -604,11 +603,12 @@ function KnotRow({
         {isTaken ? (
           <span className="knot-row__check" aria-hidden="true">✓</span>
         ) : null}
-        <span className="knot-row__title">{knot.title}</span>
+        <span
+          className={`knot-row__title${isGoldByName ? ' knot-row__title--gold' : ''}`}
+        >
+          {knot.title}
+        </span>
         <span className="knot-row__points-badge">{knot.points}p</span>
-        {isGold ? (
-          <span className="knot-row__type-badge knot-row__type-badge--gold">★ Gull</span>
-        ) : null}
         {isHighlighted ? (
           <span className="knot-row__type-badge knot-row__type-badge--today">Dagens</span>
         ) : null}

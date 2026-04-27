@@ -6930,6 +6930,11 @@ textarea.text-input:focus {
   white-space: nowrap;
 }
 
+.knot-row__title--gold {
+  color: #c89111;
+  font-weight: 800;
+}
+
 .knot-row__title-line {
   display: flex;
   align-items: center;
