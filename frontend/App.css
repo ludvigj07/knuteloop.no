@@ -7428,14 +7428,14 @@ textarea.text-input:focus {
 }
 
 .knot-submission-form .evidence-picker__action--image {
-  border-color: #1d4ed8;
-  background: #2563eb;
+  border-color: #4a9968;
+  background: #5db378;
   color: #fff;
 }
 
 .knot-submission-form .evidence-picker__action--video {
-  border-color: #b91c1c;
-  background: #dc2626;
+  border-color: #c4654c;
+  background: #e07a5f;
   color: #fff;
 }
 
@@ -7714,17 +7714,17 @@ textarea.text-input:focus {
 }
 
 .knot-sheet .evidence-picker__action--image {
-  border-color: #1d4ed8 !important;
-  background: #2563eb !important;
+  border-color: #4a9968 !important;
+  background: #5db378 !important;
   color: #fff !important;
-  box-shadow: 2px 2px 0 0 #1d4ed8 !important;
+  box-shadow: 2px 2px 0 0 #4a9968 !important;
 }
 
 .knot-sheet .evidence-picker__action--video {
-  border-color: #b91c1c !important;
-  background: #dc2626 !important;
+  border-color: #c4654c !important;
+  background: #e07a5f !important;
   color: #fff !important;
-  box-shadow: 2px 2px 0 0 #b91c1c !important;
+  box-shadow: 2px 2px 0 0 #c4654c !important;
 }
 
 /* Action bar */
