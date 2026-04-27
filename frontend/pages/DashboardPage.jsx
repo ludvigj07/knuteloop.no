@@ -261,8 +261,9 @@ export function DashboardPage({
 
   function handleOpenDaily(knotId) {
     setIsDailyFlashing(true);
-    window.setTimeout(() => setIsDailyFlashing(false), 700);
-    onOpenDailyKnot(knotId);
+    window.setTimeout(() => {
+      onOpenDailyKnot(knotId);
+    }, 450);
   }
 
   const currentLeader =
@@ -412,7 +413,6 @@ export function DashboardPage({
               <span className="db-daily-strip__eyebrow">Dagens knute</span>
               <span className="db-daily-strip__title">{dailyKnot.title}</span>
             </div>
-            <span className="db-daily-strip__pts">{dailyKnot.points}p</span>
             <button
               type="button"
               className="action-button action-button--compact db-daily-strip__btn"
@@ -421,6 +421,7 @@ export function DashboardPage({
             >
               Ta knute
             </button>
+            <span className="db-daily-strip__pts">{dailyKnot.points}p</span>
           </section>
         )
       ) : null}

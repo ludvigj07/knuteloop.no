@@ -8182,20 +8182,22 @@ textarea.text-input:focus {
 .db-daily-strip {
   position: relative;
   overflow: hidden;
+  isolation: isolate;
 }
 
 .db-daily-strip::before {
   content: '';
   position: absolute;
   inset: 0;
-  background: rgba(37, 99, 235, 0.45);
+  background: rgba(37, 99, 235, 0.55);
   opacity: 0;
   pointer-events: none;
   border-radius: inherit;
+  z-index: 2;
 }
 
 .db-daily-strip.is-flashing::before {
-  animation: dbDailyFlash 700ms ease-out forwards;
+  animation: dbDailyFlash 750ms ease-out forwards;
 }
 
 @keyframes dbDailyFlash {
