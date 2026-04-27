@@ -23,10 +23,10 @@ const ALL_KNOTS_FOLDER_ID = 'Alle knuter';
 const KNOT_TYPE_FILTERS = [
   { id: ALL_KNOTS_FOLDER_ID, label: 'Alle knuter', Icon: Layers },
   { id: 'Generelle', label: 'Generelle knuter', Icon: Circle },
-  { id: 'Dobbelknuter', label: 'Dobbelknute-kategori', Icon: Users },
+  { id: 'Dobbelknuter', label: 'Dobbelknuter', Icon: Users },
   { id: 'Fordervett-knuter', label: 'Rampestreker', Icon: Flame },
-  { id: 'Alkoholknuter', label: 'Alkoholkategori', Icon: Beer },
-  { id: 'Sexknuter', label: 'Sexkategori', Icon: Heart },
+  { id: 'Alkoholknuter', label: 'Alkoholknuter', Icon: Beer },
+  { id: 'Sexknuter', label: 'Sexknuter', Icon: Heart },
 ];
 
 const STATUS_FILTERS = [
