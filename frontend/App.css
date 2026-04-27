@@ -7097,6 +7097,35 @@ textarea.text-input:focus {
   }
 }
 
+@keyframes knot-row-flash-overlay {
+  0% { opacity: 1; }
+  100% { opacity: 0; }
+}
+
+.knot-row {
+  position: relative;
+  isolation: isolate;
+}
+
+.knot-row::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: rgba(37, 99, 235, 0.55);
+  opacity: 0;
+  pointer-events: none;
+  z-index: 1;
+}
+
+.knot-row > * {
+  position: relative;
+  z-index: 2;
+}
+
+.knot-row.is-highlighted::before {
+  animation: knot-row-flash-overlay 1600ms ease-out forwards;
+}
+
 @keyframes knot-detail-badge-fade {
   from {
     opacity: 1;
@@ -8177,32 +8206,6 @@ textarea.text-input:focus {
 .db-daily-strip__btn {
   flex-shrink: 0;
   white-space: nowrap;
-}
-
-.db-daily-strip {
-  position: relative;
-  overflow: hidden;
-  isolation: isolate;
-}
-
-.db-daily-strip::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background: rgba(37, 99, 235, 0.55);
-  opacity: 0;
-  pointer-events: none;
-  border-radius: inherit;
-  z-index: 2;
-}
-
-.db-daily-strip.is-flashing::before {
-  animation: dbDailyFlash 750ms ease-out forwards;
-}
-
-@keyframes dbDailyFlash {
-  0% { opacity: 1; }
-  100% { opacity: 0; }
 }
 
 .db-daily-strip--done {
