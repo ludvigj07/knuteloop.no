@@ -5,6 +5,82 @@ import { StatCard } from '../components/StatCard.jsx';
 import { KNOT_FOLDERS, resolveKnotFolder } from '../data/knotFolders.js';
 import { UserAdminPanel } from '../components/UserAdminPanel.jsx';
 
+const FOLDER_NAME_TO_ID = {
+  sexkategori: 'Sexknuter',
+  sexknuter: 'Sexknuter',
+  sex: 'Sexknuter',
+  rampestreker: 'Fordervett-knuter',
+  rampestrek: 'Fordervett-knuter',
+  fordervett: 'Fordervett-knuter',
+  'fordervett-knuter': 'Fordervett-knuter',
+  alkoholkategori: 'Alkoholknuter',
+  alkoholknuter: 'Alkoholknuter',
+  alkohol: 'Alkoholknuter',
+  'dobbelknute-kategori': 'Dobbelknuter',
+  dobbelknuter: 'Dobbelknuter',
+  dobbelknute: 'Dobbelknuter',
+  'generelle knuter': 'Generelle',
+  generelle: 'Generelle',
+};
+
+function parseStructuredKnotInput(text) {
+  const knots = [];
+  const errors = [];
+  let currentFolder = null;
+  let currentFolderName = '';
+
+  const lines = text.split('\n');
+  for (let i = 0; i < lines.length; i++) {
+    const raw = lines[i];
+    const line = raw.trim();
+    if (!line) continue;
+
+    const isKnotLine = /^[-*•]\s/.test(line);
+
+    if (isKnotLine) {
+      const inner = line.replace(/^[-*•]\s+/, '');
+      const parts = inner.split(/\s+[–—-]\s+/);
+      if (parts.length < 3) {
+        errors.push(`Linje ${i + 1}: må være "- Tittel – Xp – Forklaring": "${line}"`);
+        continue;
+      }
+      const title = parts[0].trim();
+      const pointsStr = parts[1].replace(/p\b/i, '').trim();
+      const description = parts.slice(2).join(' – ').trim();
+      const points = Number.parseInt(pointsStr, 10);
+      if (Number.isNaN(points)) {
+        errors.push(`Linje ${i + 1}: ugyldig poeng "${parts[1]}"`);
+        continue;
+      }
+      if (!currentFolder) {
+        errors.push(`Linje ${i + 1}: knute uten kategori-header over: "${title}"`);
+        continue;
+      }
+      if (!title || !description) {
+        errors.push(`Linje ${i + 1}: tittel eller forklaring mangler`);
+        continue;
+      }
+      knots.push({ title, points, description, folder: currentFolder });
+    } else {
+      const cleaned = line
+        .replace(/^\*{1,3}/, '')
+        .replace(/\*{1,3}$/, '')
+        .replace(/^#+\s*/, '')
+        .trim()
+        .toLowerCase();
+      const folderId = FOLDER_NAME_TO_ID[cleaned];
+      if (folderId) {
+        currentFolder = folderId;
+        currentFolderName = line;
+      } else {
+        errors.push(`Linje ${i + 1}: ukjent kategori "${line}"`);
+      }
+    }
+  }
+
+  return { knots, errors };
+}
+
 function getDuelEvidence(duel, participant) {
   if (participant === 'challenger') {
     return {
@@ -466,6 +542,12 @@ export function AdminPage({
   const [defaultPoints, setDefaultPoints] = useState(20);
   const [defaultFolder, setDefaultFolder] = useState(KNOT_FOLDERS[0].id);
   const [importMessage, setImportMessage] = useState('');
+  const [structuredBulkText, setStructuredBulkText] = useState('');
+  const [structuredBulkBusy, setStructuredBulkBusy] = useState(false);
+  const [structuredBulkProgress, setStructuredBulkProgress] = useState({ done: 0, total: 0 });
+  const [structuredBulkResult, setStructuredBulkResult] = useState(null);
+  const [deleteAllBusy, setDeleteAllBusy] = useState(false);
+  const [deleteAllProgress, setDeleteAllProgress] = useState({ done: 0, total: 0 });
   const [activeAdminTask, setActiveAdminTask] = useState('submissions');
   const [activeReviewFilter, setActiveReviewFilter] = useState(
     REVIEW_FILTER.APPROVAL_ONLY,
@@ -766,6 +848,89 @@ export function AdminPage({
       `La til ${result.added} knuter${result.skipped ? `, hoppet over ${result.skipped}` : ''}.`,
     );
     setBulkInput('');
+  }
+
+  async function handleStructuredImport() {
+    setStructuredBulkResult(null);
+    const { knots: parsed, errors: parseErrors } = parseStructuredKnotInput(structuredBulkText);
+    if (parsed.length === 0) {
+      setStructuredBulkResult({
+        added: 0,
+        failed: 0,
+        errors: parseErrors.length > 0 ? parseErrors : ['Fant ingen knuter i input.'],
+      });
+      return;
+    }
+
+    setStructuredBulkBusy(true);
+    setStructuredBulkProgress({ done: 0, total: parsed.length });
+
+    let added = 0;
+    let failed = 0;
+    const runtimeErrors = [...parseErrors];
+
+    for (let i = 0; i < parsed.length; i++) {
+      const k = parsed[i];
+      try {
+        const result = await onImportKnots(k.title, k.points, k.folder, k.description);
+        if (result?.added > 0) {
+          added += 1;
+        } else {
+          runtimeErrors.push(`"${k.title}" finnes allerede eller ble hoppet over.`);
+          failed += 1;
+        }
+      } catch (err) {
+        runtimeErrors.push(`"${k.title}": ${err.message}`);
+        failed += 1;
+      } finally {
+        setStructuredBulkProgress({ done: i + 1, total: parsed.length });
+      }
+    }
+
+    setStructuredBulkBusy(false);
+    setStructuredBulkResult({ added, failed, errors: runtimeErrors });
+    if (added > 0) {
+      setStructuredBulkText('');
+    }
+  }
+
+  async function handleDeleteAllKnots() {
+    if (knots.length === 0) {
+      setStructuredBulkResult({ added: 0, failed: 0, errors: ['Ingen knuter å slette.'] });
+      return;
+    }
+    const confirmed = window.confirm(
+      `Slette ALLE ${knots.length} knuter? Dette kan ikke angres.`,
+    );
+    if (!confirmed) return;
+
+    setDeleteAllBusy(true);
+    setDeleteAllProgress({ done: 0, total: knots.length });
+    const errors = [];
+    let deleted = 0;
+
+    const snapshot = [...knots];
+    for (let i = 0; i < snapshot.length; i++) {
+      const k = snapshot[i];
+      try {
+        await onDeleteKnot(k.id);
+        deleted += 1;
+      } catch (err) {
+        errors.push(`Kunne ikke slette "${k.title}": ${err.message}`);
+      } finally {
+        setDeleteAllProgress({ done: i + 1, total: snapshot.length });
+      }
+    }
+
+    setDeleteAllBusy(false);
+    setStructuredBulkResult({
+      added: 0,
+      failed: errors.length,
+      errors:
+        errors.length > 0
+          ? [`Slettet ${deleted} knuter`, ...errors]
+          : [`Slettet alle ${deleted} knuter`],
+    });
   }
 
   function handleFeedbackDraftChange(fieldKey, value) {
@@ -1164,6 +1329,91 @@ export function AdminPage({
                     >
                       Legg til knuter
                     </button>
+                  </div>
+                </details>
+
+                <details className="admin-bulk-details" open>
+                  <summary>Strukturert bulk-import (kategori + poeng + forklaring per linje)</summary>
+                  <div className="admin-setup__bulk">
+                    <p style={{ margin: '0.5rem 0', fontSize: '0.85rem' }}>
+                      Format: <strong>kategori-header på egen linje</strong>, deretter knuter
+                      som <code>- Tittel – Xp – Forklaring</code>. Bruk <code>**</code> rundt
+                      headeren om du vil. Hver kategori gjelder for alle knuter til neste header.
+                    </p>
+                    <label className="field-group">
+                      <span>Lim inn liste</span>
+                      <textarea
+                        className="text-input text-input--area"
+                        rows={12}
+                        placeholder={
+                          '**Sexkategori**\n- Konglå – 50p – Ha sex ute\n- Gullkonglå – 60p – Ha sex i et tre\n\n**Rampestreker**\n- Smiskeren – 40p – Få et kyss på kinnet av en lærer'
+                        }
+                        value={structuredBulkText}
+                        onChange={(event) => setStructuredBulkText(event.target.value)}
+                        disabled={structuredBulkBusy || deleteAllBusy}
+                        style={{ fontFamily: 'ui-monospace, monospace', fontSize: '0.85rem' }}
+                      />
+                    </label>
+
+                    {structuredBulkBusy ? (
+                      <p style={{ margin: 0 }}>
+                        Importerer... ({structuredBulkProgress.done} / {structuredBulkProgress.total})
+                      </p>
+                    ) : null}
+                    {deleteAllBusy ? (
+                      <p style={{ margin: 0 }}>
+                        Sletter... ({deleteAllProgress.done} / {deleteAllProgress.total})
+                      </p>
+                    ) : null}
+
+                    <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+                      <button
+                        type="button"
+                        className="action-button"
+                        disabled={!structuredBulkText.trim() || structuredBulkBusy || deleteAllBusy}
+                        onClick={handleStructuredImport}
+                      >
+                        {structuredBulkBusy ? 'Importerer...' : 'Importer alle'}
+                      </button>
+                      <button
+                        type="button"
+                        className="action-button action-button--ghost"
+                        style={{ color: '#a33', borderColor: '#a33' }}
+                        disabled={deleteAllBusy || structuredBulkBusy || knots.length === 0}
+                        onClick={handleDeleteAllKnots}
+                      >
+                        {deleteAllBusy
+                          ? 'Sletter...'
+                          : `Slett alle ${knots.length} eksisterende knuter`}
+                      </button>
+                    </div>
+
+                    {structuredBulkResult ? (
+                      <div
+                        style={{
+                          marginTop: '0.75rem',
+                          padding: '0.75rem',
+                          background: 'var(--color-surface-raised, #f5f5ff)',
+                          borderRadius: 6,
+                        }}
+                      >
+                        <strong>
+                          {structuredBulkResult.added > 0
+                            ? `La til ${structuredBulkResult.added} knuter`
+                            : 'Resultat'}
+                          {structuredBulkResult.failed > 0
+                            ? ` · ${structuredBulkResult.failed} feilet`
+                            : ''}
+                        </strong>
+                        {structuredBulkResult.errors.length > 0 ? (
+                          <ul style={{ margin: '0.5rem 0 0 1rem', fontSize: '0.85rem' }}>
+                            {structuredBulkResult.errors.map((err, idx) => (
+                              <li key={idx}>{err}</li>
+                            ))}
+                          </ul>
+                        ) : null}
+                      </div>
+                    ) : null}
                   </div>
                 </details>
               </div>
