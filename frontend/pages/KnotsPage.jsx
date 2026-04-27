@@ -14,7 +14,7 @@ import {
 import { MobileVideo } from '../components/MobileVideo.jsx';
 import { KNOT_FOLDERS, resolveKnotFolder } from '../data/knotFolders.js';
 
-const NOTE_MAX_CHARS = 200;
+const NOTE_MAX_CHARS = 150;
 
 const MOBILE_BREAKPOINT = 900;
 const SHEET_DISMISS_THRESHOLD = 120;
