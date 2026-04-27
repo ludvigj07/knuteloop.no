@@ -807,7 +807,7 @@
 }
 
 .app-theme .knot-row + .knot-row {
-  border-top: 1.5px solid color-mix(in srgb, var(--foreground) 35%, transparent);
+  border-top: 1.5px solid color-mix(in srgb, var(--foreground) 35%, transparent) !important;
 }
 
 .app-theme .knot-row:hover {
