@@ -1,9 +1,92 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import anonymousFeedJoker from '../assets/anonymous-feed-joker.jpg';
 import anonymousFeedMask from '../assets/anonymous-feed-mask.png';
 import anonymousFeedWolf from '../assets/anonymous-feed-wolf.png';
 import streakFlameIcon from '../assets/streak-flame.svg';
 import { MobileVideo } from '../components/MobileVideo.jsx';
+
+// ─── Tidsbaserte meldinger ────────────────────────────────────────────────────
+
+const MORNING_POOL = [
+  'God morgen! Klar for dagens knute?',
+  'En knute før skolen?',
+  'Ny dag, nye sjanser.',
+  'Start dagen med en lett knute.',
+  'Tidlig russ tar knuten først.',
+];
+
+const DAY_POOL = [
+  'Lunsjpause = knutepause?',
+  'Få unna én knute før neste time.',
+  'Halvgått dag — fortsatt tid til en knute.',
+  'En liten knute mellom slagene?',
+];
+
+const EVENING_POOL = [
+  'Marius tar knuter mens du gamer.',
+  'Dolly puster deg i nakken.',
+  'Ikke vær pingle — ta en knute.',
+  'Kvelden er ung, knutene venter.',
+  'Én knute før Netflix?',
+];
+
+const NIGHT_POOL = [
+  'Sov godt — Marius gjør det ikke.',
+  'Knutene venter til i morgen.',
+  'Stille natt, få knuter.',
+  'Drøm om dobbelknuter.',
+];
+
+function getTimeBasedPool(date = new Date()) {
+  const hour = date.getHours();
+  if (hour >= 6 && hour < 11) return MORNING_POOL;
+  if (hour >= 11 && hour < 17) return DAY_POOL;
+  if (hour >= 17 && hour < 22) return EVENING_POOL;
+  return NIGHT_POOL;
+}
+
+function pickRandomMessage(pool) {
+  if (!pool || pool.length === 0) return null;
+  return pool[Math.floor(Math.random() * pool.length)];
+}
+
+// ─── Banner ───────────────────────────────────────────────────────────────────
+
+function DashboardBanner({ messages }) {
+  const [index, setIndex] = useState(0);
+
+  useEffect(() => {
+    if (messages.length <= 1) return undefined;
+    const interval = window.setInterval(() => {
+      setIndex((current) => (current + 1) % messages.length);
+    }, 4000);
+    return () => window.clearInterval(interval);
+  }, [messages.length]);
+
+  if (messages.length === 0) return null;
+
+  const safeIndex = index < messages.length ? index : 0;
+  const current = messages[safeIndex];
+
+  return (
+    <div className="db-banner" role="status" aria-live="polite">
+      <span className="db-banner__icon" aria-hidden="true">
+        {current.icon ?? '✨'}
+      </span>
+      <span className="db-banner__text">{current.text}</span>
+      {messages.length > 1 ? (
+        <span className="db-banner__dots" aria-hidden="true">
+          {messages.map((_, i) => (
+            <span
+              key={i}
+              className={`db-banner__dot${i === safeIndex ? ' is-active' : ''}`}
+            />
+          ))}
+        </span>
+      ) : null}
+    </div>
+  );
+}
 
 const ANONYMOUS_FEED_AVATARS = [
   anonymousFeedJoker,
@@ -136,6 +219,28 @@ export function DashboardPage({
     )
     .slice(0, 3);
 
+  const bannerMessages = useMemo(() => {
+    const collected = [];
+
+    (dashboard.messages ?? []).forEach((msg) => {
+      const text = msg?.title ?? msg?.detail ?? '';
+      if (!text) return;
+      const icon = msg.id === 'passed' ? '🚀'
+        : msg.id === 'behind' ? '🎯'
+        : msg.id === 'lead' ? '👑'
+        : msg.id === 'achievement' ? '🏆'
+        : '✨';
+      collected.push({ id: msg.id ?? `msg-${collected.length}`, text, icon });
+    });
+
+    const motivational = pickRandomMessage(getTimeBasedPool());
+    if (motivational) {
+      collected.push({ id: 'tone', text: motivational, icon: '💡' });
+    }
+
+    return collected;
+  }, [dashboard.messages]);
+
   if (!currentLeader) {
     return (
       <div className="db-layout">
@@ -168,6 +273,9 @@ export function DashboardPage({
 
   return (
     <div className="db-layout">
+
+      {/* ══ 0. PÅMINNELSES-BANNER ════════════════════════════════════════════ */}
+      <DashboardBanner messages={bannerMessages} />
 
       {/* ══ 1. KOMPAKT HERO ══════════════════════════════════════════════════ */}
       <section className="db-hero">
@@ -228,22 +336,33 @@ export function DashboardPage({
 
       {/* ══ 2. DAGENS KNUTE — kompakt stripe ═════════════════════════════════ */}
       {dailyKnot ? (
-        <section className="db-daily-strip">
-          <span className="db-daily-strip__icon" aria-hidden="true">☀️</span>
-          <div className="db-daily-strip__text">
-            <span className="db-daily-strip__eyebrow">Dagens knute</span>
-            <span className="db-daily-strip__title">{dailyKnot.title}</span>
-          </div>
-          <span className="db-daily-strip__pts">{dailyKnot.points}p</span>
-          <button
-            type="button"
-            className="action-button action-button--compact db-daily-strip__btn"
-            onClick={() => onOpenDailyKnot(dailyKnot.id)}
-            aria-label={`Åpne dagens knute: ${dailyKnot.title}`}
-          >
-            Åpne knute
-          </button>
-        </section>
+        dailyKnot.status && dailyKnot.status !== 'Tilgjengelig' ? (
+          <section className="db-daily-strip db-daily-strip--done" aria-live="polite">
+            <span className="db-daily-strip__icon" aria-hidden="true">✓</span>
+            <div className="db-daily-strip__text">
+              <span className="db-daily-strip__title">
+                Dagens knute er tatt. Kom tilbake i morgen!
+              </span>
+            </div>
+          </section>
+        ) : (
+          <section className="db-daily-strip">
+            <span className="db-daily-strip__icon" aria-hidden="true">☀️</span>
+            <div className="db-daily-strip__text">
+              <span className="db-daily-strip__eyebrow">Dagens knute</span>
+              <span className="db-daily-strip__title">{dailyKnot.title}</span>
+            </div>
+            <span className="db-daily-strip__pts">{dailyKnot.points}p</span>
+            <button
+              type="button"
+              className="action-button action-button--compact db-daily-strip__btn"
+              onClick={() => onOpenDailyKnot(dailyKnot.id)}
+              aria-label={`Ta dagens knute: ${dailyKnot.title}`}
+            >
+              Ta knute
+            </button>
+          </section>
+        )
       ) : null}
 
       {/* ══ 3. TOPP 3 PÅ SKOLEN ══════════════════════════════════════════════ */}
@@ -372,50 +491,6 @@ export function DashboardPage({
           </div>
         )}
       </section>
-
-      {/* ══ 4. RIVALER ═══════════════════════════════════════════════════════ */}
-      {/* ══ 5. ANBEFALT KNUTE ════════════════════════════════════════════════ */}
-      {dashboard.recommendedKnot ? (
-        <section className="db-recommend">
-          <div className="db-recommend__header">
-            <h3 className="db-section-heading db-recommend__heading">Anbefalt knute</h3>
-            <span className="db-recommend__pts">
-              {dashboard.recommendedKnot.points}p
-            </span>
-          </div>
-          <div className="db-recommend__card">
-            <div className="db-recommend__main">
-              <strong className="db-recommend__title">{dashboard.recommendedKnot.title}</strong>
-              <button
-                type="button"
-                className="action-button action-button--compact db-recommend__btn"
-                onClick={() => onOpenDailyKnot(dashboard.recommendedKnot.id)}
-                aria-label={`Ta anbefalt knute: ${dashboard.recommendedKnot.title}`}
-              >
-                Ta knute
-              </button>
-            </div>
-            {dashboard.recommendedKnot.description ? (
-              <p className="db-recommend__description">{dashboard.recommendedKnot.description}</p>
-            ) : null}
-          </div>
-        </section>
-      ) : null}
-
-      {/* ══ 6. PÅMINNELSER ═══════════════════════════════════════════════════ */}
-      {dashboard.messages?.length > 0 ? (
-        <section className="db-messages">
-          <h3 className="db-section-heading">Påminnelser</h3>
-          <div className="db-messages__list">
-            {dashboard.messages.map((msg) => (
-              <div key={msg.id} className="db-message">
-                <strong>{msg.title}</strong>
-                <p>{msg.detail}</p>
-              </div>
-            ))}
-          </div>
-        </section>
-      ) : null}
 
     </div>
   );

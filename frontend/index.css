@@ -259,45 +259,6 @@ textarea:focus-visible,
   outline-offset: 2px;
 }
 
-[data-theme="dark"] {
-  --background-hsl: 228 28% 5%;
-  --foreground-hsl: 220 18% 92%;
-  --primary-hsl: 222 70% 65%;
-  --primary-foreground-hsl: 228 28% 5%;
-  --accent-hsl: 46 100% 58%;
-  --accent-foreground-hsl: 220 30% 8%;
-  --card-hsl: 228 22% 9%;
-  --secondary-hsl: 228 20% 14%;
-  --muted-hsl: 228 18% 11%;
-  --muted-foreground-hsl: 220 14% 55%;
-  --border-hsl: 228 18% 19%;
-
-  color-scheme: dark;
-
-  --surface-border: color-mix(in srgb, hsl(var(--border-hsl)) 100%, transparent);
-  --surface-border-strong: hsl(var(--border-hsl));
-  --line-color: color-mix(in srgb, hsl(var(--border-hsl)) 60%, transparent);
-
-  --text-soft: color-mix(in srgb, var(--primary) 65%, var(--foreground) 35%);
-  --text-muted: hsl(var(--muted-foreground-hsl));
-  --text-secondary: hsl(var(--muted-foreground-hsl));
-
-  --feature-soft: color-mix(in srgb, var(--secondary) 80%, black 20%);
-  --feature-strong: color-mix(in srgb, var(--secondary) 55%, black 45%);
-
-  --accent-bg: color-mix(in srgb, var(--accent) 14%, var(--card) 86%);
-  --accent-border: color-mix(in srgb, var(--accent) 28%, hsl(var(--border-hsl)) 72%);
-  --badge-soft: color-mix(in srgb, var(--accent) 15%, var(--card) 85%);
-  --highlight-soft: color-mix(in srgb, var(--accent) 12%, var(--card) 88%);
-  --gold-soft: color-mix(in srgb, var(--accent) 16%, var(--card) 84%);
-
-  --shadow: none;
-  --shadow-soft: none;
-
-  --glow-primary: 0 0 32px color-mix(in srgb, var(--primary) 22%, transparent);
-  --glow-secondary: 0 0 20px color-mix(in srgb, var(--accent) 14%, transparent);
-}
-
 @media (max-width: 900px) {
   :root {
     font-size: 16px;
