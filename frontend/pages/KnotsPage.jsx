@@ -12,8 +12,9 @@ import {
   Users,
 } from 'lucide-react';
 import { MobileVideo } from '../components/MobileVideo.jsx';
-import { NOTE_MAX_CHARS } from '../data/appHelpers.js';
 import { KNOT_FOLDERS, resolveKnotFolder } from '../data/knotFolders.js';
+
+const NOTE_MAX_CHARS = 200;
 
 const MOBILE_BREAKPOINT = 900;
 const SHEET_DISMISS_THRESHOLD = 120;
