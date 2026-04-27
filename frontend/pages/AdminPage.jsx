@@ -482,18 +482,6 @@ function SubmissionList({
               <>
                 <button
                   type="button"
-                  className="action-button"
-                  disabled={disableRowActions}
-                  onClick={(event) => {
-                    event.stopPropagation();
-                    onReviewAction(submission, 'Godkjent');
-                  }}
-                >
-                  Godkjenn
-                  {isActive ? <span className="submission-row__quickkey">A</span> : null}
-                </button>
-                <button
-                  type="button"
                   className="action-button action-button--ghost"
                   disabled={disableRowActions}
                   onClick={(event) => {
@@ -503,6 +491,18 @@ function SubmissionList({
                 >
                   Avslå
                   {isActive ? <span className="submission-row__quickkey">D</span> : null}
+                </button>
+                <button
+                  type="button"
+                  className="action-button"
+                  disabled={disableRowActions}
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    onReviewAction(submission, 'Godkjent');
+                  }}
+                >
+                  Godkjenn
+                  {isActive ? <span className="submission-row__quickkey">A</span> : null}
                 </button>
               </>
             ) : null}
