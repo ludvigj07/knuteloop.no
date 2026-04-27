@@ -174,7 +174,7 @@ function MiniAvatar({ person }) {
   );
 }
 
-const MEDALS = ['🥇', '🥈', '🥉'];
+const MEDAL_TIERS = ['gold', 'silver', 'bronze'];
 
 function formatStarLabel(value) {
   const numericValue = Number(value);
@@ -377,7 +377,11 @@ export function DashboardPage({
                 className={`db-top3-row${leader.id === currentUserId ? ' db-top3-row--self' : ''}`}
                 onClick={() => onOpenProfile(leader.id)}
               >
-                <span className="db-top3-row__medal">{MEDALS[i]}</span>
+                <span
+                  className={`db-top3-row__medal db-top3-row__medal--${MEDAL_TIERS[i]}`}
+                >
+                  {i + 1}
+                </span>
                 <MiniAvatar person={leader} />
                 <div className="db-top3-row__info">
                   <strong>{leader.russName ?? leader.name}</strong>
