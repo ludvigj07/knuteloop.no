@@ -12616,6 +12616,11 @@ textarea.text-input:focus {
   color: #1a2540;
 }
 
+.knot-row__type-badge--pending {
+  background: #d6e4ff;
+  color: #1a2540;
+}
+
 .knot-row__take-btn {
   background: #1a2540;
   color: #fff;

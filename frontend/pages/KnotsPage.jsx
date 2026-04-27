@@ -593,7 +593,6 @@ function KnotRow({
   const isOverCharacterLimit = characterCount > NOTE_MAX_CHARS;
   const isCompletedKnot = knot.status === 'Godkjent' || knot.status === 'Fullført';
   const isPendingKnot = knot.status === 'Sendt inn';
-  const isTaken = isCompletedKnot || isPendingKnot;
   const isGoldByName = (knot.title ?? '').toLowerCase().includes('gull');
 
   return (
@@ -604,7 +603,7 @@ function KnotRow({
       data-tour-id={isTourTarget ? 'first-knot' : undefined}
     >
       <div className="knot-row__line">
-        {isTaken ? (
+        {isCompletedKnot ? (
           <span className="knot-row__check" aria-hidden="true">✓</span>
         ) : null}
         <span
@@ -616,8 +615,13 @@ function KnotRow({
         {isHighlighted ? (
           <span className="knot-row__type-badge knot-row__type-badge--today">Dagens</span>
         ) : null}
+        {isPendingKnot ? (
+          <span className="knot-row__type-badge knot-row__type-badge--pending">
+            Sendt inn
+          </span>
+        ) : null}
 
-        {isTaken ? (
+        {isCompletedKnot ? (
           <span className="knot-row__taken-label" aria-label="Tatt">Tatt</span>
         ) : canSubmit ? (
           <button
@@ -626,7 +630,7 @@ function KnotRow({
             disabled={Boolean(activeSubmissionBan) && !isFormOpen}
             onClick={onDocumentClick}
           >
-            Ta knute
+            {isPendingKnot ? 'Endre' : 'Ta knute'}
           </button>
         ) : null}
       </div>
