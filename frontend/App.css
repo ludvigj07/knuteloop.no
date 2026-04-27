@@ -8179,6 +8179,30 @@ textarea.text-input:focus {
   white-space: nowrap;
 }
 
+.db-daily-strip {
+  position: relative;
+  overflow: hidden;
+}
+
+.db-daily-strip::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: rgba(37, 99, 235, 0.45);
+  opacity: 0;
+  pointer-events: none;
+  border-radius: inherit;
+}
+
+.db-daily-strip.is-flashing::before {
+  animation: dbDailyFlash 700ms ease-out forwards;
+}
+
+@keyframes dbDailyFlash {
+  0% { opacity: 1; }
+  100% { opacity: 0; }
+}
+
 .db-daily-strip--done {
   background: color-mix(in srgb, var(--surface) 85%, var(--surface-border) 15%);
   border-color: var(--surface-border);

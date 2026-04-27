@@ -257,6 +257,14 @@ export function DashboardPage({
   onOpenDailyKnot,
   onOpenProfile,
 }) {
+  const [isDailyFlashing, setIsDailyFlashing] = useState(false);
+
+  function handleOpenDaily(knotId) {
+    setIsDailyFlashing(true);
+    window.setTimeout(() => setIsDailyFlashing(false), 700);
+    onOpenDailyKnot(knotId);
+  }
+
   const currentLeader =
     dashboard.currentLeader ?? leaders.find((l) => l.id === currentUserId);
   const streakCount = Math.max(0, Number(currentUserStreak?.current ?? 0));
@@ -396,7 +404,9 @@ export function DashboardPage({
             </div>
           </section>
         ) : (
-          <section className="db-daily-strip">
+          <section
+            className={`db-daily-strip${isDailyFlashing ? ' is-flashing' : ''}`}
+          >
             <span className="db-daily-strip__icon" aria-hidden="true">☀️</span>
             <div className="db-daily-strip__text">
               <span className="db-daily-strip__eyebrow">Dagens knute</span>
@@ -406,7 +416,7 @@ export function DashboardPage({
             <button
               type="button"
               className="action-button action-button--compact db-daily-strip__btn"
-              onClick={() => onOpenDailyKnot(dailyKnot.id)}
+              onClick={() => handleOpenDaily(dailyKnot.id)}
               aria-label={`Ta dagens knute: ${dailyKnot.title}`}
             >
               Ta knute
