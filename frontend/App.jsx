@@ -700,10 +700,7 @@ function App() {
     }
 
     assertVideoWithinLimits(evidence.videoFile);
-    const convertedVideoFile = evidence.videoFile
-      ? await convertToMp4(evidence.videoFile)
-      : null;
-    assertVideoWithinLimits(convertedVideoFile);
+    const convertedVideoFile = evidence.videoFile ?? null;
     const normalizedSubmissionMode =
       submissionMode === 'feed' || submissionMode === 'anonymous-feed'
         ? submissionMode
