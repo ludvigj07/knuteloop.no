@@ -43,17 +43,6 @@ export function storeSessionToken(token) {
   }
 }
 
-export function fetchPilotUsers() {
-  return apiRequest('/public/pilot-users');
-}
-
-export function loginWithCode(code) {
-  return apiRequest('/auth/login', {
-    method: 'POST',
-    body: { code },
-  });
-}
-
 export function loginWithEmailPassword(email, password) {
   return apiRequest('/auth/password-login', {
     method: 'POST',

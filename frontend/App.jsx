@@ -30,10 +30,8 @@ import {
   reportComment,
   setKnotVisibility,
   fetchBootstrap,
-  fetchPilotUsers,
   getStoredSessionToken,
   importKnots,
-  loginWithCode,
   loginWithEmailPassword,
   logout,
   readFileAsDataUrl,
@@ -139,8 +137,6 @@ function App() {
   const [focusedKnotScrollRequest, setFocusedKnotScrollRequest] = useState(0);
   const [sessionToken, setSessionToken] = useState(() => getStoredSessionToken());
   const [appData, setAppData] = useState(null);
-  const [pilotUsers, setPilotUsers] = useState([]);
-  const [loginCode, setLoginCode] = useState('');
   const [loginEmail, setLoginEmail] = useState('');
   const [loginPassword, setLoginPassword] = useState('');
   const [loginError, setLoginError] = useState('');
@@ -523,12 +519,6 @@ function App() {
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', 'light');
     window.localStorage.removeItem('theme');
-  }, []);
-
-  useEffect(() => {
-    fetchPilotUsers()
-      .then((result) => setPilotUsers(result?.users ?? []))
-      .catch(() => setPilotUsers([]));
   }, []);
 
   useEffect(() => {

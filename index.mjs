@@ -189,14 +189,6 @@ const GENDER_IDENTITY_ALIASES = Object.freeze({
   annet: 'other',
 });
 
-const PILOT_USERS = [
-  { id: 1, code: 'SOFIE2026', role: 'admin' },
-  { id: 2, code: 'EMIL2026', role: 'user' },
-  { id: 3, code: 'NORA2026', role: 'user' },
-  { id: 4, code: 'JONAS2026', role: 'user' },
-  { id: 5, code: 'LEAH2026', role: 'user' },
-];
-
 const NORWEGIAN_TEXT_REPLACEMENTS = [
   [/\bM\?te\b/gu, 'Møte'],
   [/\bM\?t\b/gu, 'Møt'],
@@ -402,7 +394,6 @@ function createSeedDatabase() {
   };
 
   const users = initialLeaders.map((leader) => {
-    const pilotUser = PILOT_USERS.find((item) => item.id === leader.id);
     const profile = socialProfileDetails[leader.id] ?? {};
 
     return {
@@ -410,8 +401,8 @@ function createSeedDatabase() {
       schoolId: school.id,
       name: leader.name,
       group: leader.group,
-      role: pilotUser?.role ?? 'user',
-      loginCode: pilotUser?.code ?? `${leader.name.toUpperCase()}2026`,
+      role: 'user',
+      loginCode: '',
       basePoints: leader.basePoints,
       baseCompletedKnots: leader.baseCompletedKnots,
       profile: {
@@ -2263,43 +2254,6 @@ function assertAdmin(user) {
   return user?.role === 'admin';
 }
 
-async function handleLogin(request, response) {
-  const db = await readDb();
-  const body = await readJsonBody(request);
-  const code = (body.code ?? '').trim().toUpperCase();
-  const user = db.users.find((entry) => entry.loginCode === code);
-
-  if (!user) {
-    sendJson(response, 401, { error: 'Ugyldig kode.' });
-    return;
-  }
-
-  const token = randomUUID();
-  const nextDb = {
-    ...db,
-    sessions: [
-      ...db.sessions.filter((session) => session.userId !== user.id),
-      {
-        token,
-        userId: user.id,
-        createdAt: nowIso(),
-      },
-    ],
-  };
-
-  await writeDb(nextDb);
-
-  sendJson(response, 200, {
-    token,
-    user: {
-      id: user.id,
-      name: user.name,
-      role: user.role,
-      russName: user.profile.russName,
-    },
-  });
-}
-
 async function handleLogout(request, response) {
   const db = await readDb();
   const token = getSessionToken(request);
@@ -2328,21 +2282,6 @@ async function handleBootstrap(request, response) {
   }
 
   sendJson(response, 200, buildBootstrap(db, user));
-}
-
-async function handlePilotUsers(_request, response) {
-  const db = await readDb();
-
-  sendJson(response, 200, {
-    users: db.users.map((user) => ({
-      id: user.id,
-      name: user.name,
-      russName: user.profile.russName,
-      className: user.profile.className,
-      role: user.role,
-      code: user.loginCode,
-    })),
-  });
 }
 
 async function handleProfileUpdate(request, response) {
@@ -3878,16 +3817,6 @@ const server = createServer(async (request, response) => {
   try {
     if (request.method === 'GET' && url.pathname === '/api/health') {
       sendJson(response, 200, { ok: true });
-      return;
-    }
-
-    if (request.method === 'GET' && url.pathname === '/api/public/pilot-users') {
-      await handlePilotUsers(request, response);
-      return;
-    }
-
-    if (request.method === 'POST' && url.pathname === '/api/auth/login') {
-      await handleLogin(request, response);
       return;
     }
 
