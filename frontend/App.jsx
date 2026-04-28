@@ -6,7 +6,10 @@ import './styles/blaruss-refresh.css';
 import './styles/admin-mobile.css';
 import './styles/mobile-polish.css';
 import './styles/admin-density.css';
+import { AchievementCelebration } from './components/AchievementCelebration.jsx';
+import { ConfettiBurst } from './components/ConfettiBurst.jsx';
 import { LiveOnboarding } from './components/LiveOnboarding.jsx';
+import { RankUpToast } from './components/RankUpToast.jsx';
 import { SettingsModal } from './components/SettingsModal.jsx';
 import { SwipeTabsShell } from './components/SwipeTabsShell.jsx';
 import { Toast } from './components/Toast.jsx';
@@ -172,7 +175,12 @@ function App() {
     const parsed = Number(stored);
     return Number.isFinite(parsed) ? parsed : 0;
   });
+  const [confettiTrigger, setConfettiTrigger] = useState(0);
+  const [pendingAchievementCelebration, setPendingAchievementCelebration] = useState(null);
+  const [pendingRankUp, setPendingRankUp] = useState(null);
   const skipNextPageTopResetRef = useRef(false);
+  const previousApprovedSubmissionIdsRef = useRef(null);
+  const previousRankRef = useRef(null);
 
   function showToast(message, type = 'success') {
     setToast({ message, type, key: Date.now() });
@@ -199,12 +207,115 @@ function App() {
     : null;
   const achievements = appData?.achievements ?? EMPTY_ARRAY;
   const profiles = appData?.profiles ?? EMPTY_ARRAY;
+
+  const achievementSeenStorageKey = currentUser
+    ? `seen_achievement_ids:${currentUser.leaderId ?? currentUser.id ?? 'self'}`
+    : null;
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    if (!achievementSeenStorageKey) return;
+    if (!Array.isArray(achievements) || achievements.length === 0) return;
+
+    let seenIds = [];
+    try {
+      const raw = window.localStorage.getItem(achievementSeenStorageKey);
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed)) seenIds = parsed.filter((id) => typeof id === 'string');
+      }
+    } catch {
+      seenIds = [];
+    }
+
+    const buildKey = (achievement) =>
+      `${achievement.id}:${achievement.currentTierIndex}`;
+
+    const unlockedNow = achievements.filter(
+      (achievement) => achievement.isUnlocked && achievement.currentTierIndex >= 0,
+    );
+
+    const isFirstLoad = seenIds.length === 0;
+    if (isFirstLoad) {
+      const initialKeys = unlockedNow.map(buildKey);
+      try {
+        window.localStorage.setItem(
+          achievementSeenStorageKey,
+          JSON.stringify(initialKeys),
+        );
+      } catch {
+        // ignore quota
+      }
+      return;
+    }
+
+    const newOnes = unlockedNow.filter(
+      (achievement) => !seenIds.includes(buildKey(achievement)),
+    );
+
+    if (newOnes.length === 0) return;
+
+    const nextSeen = Array.from(
+      new Set([...seenIds, ...unlockedNow.map(buildKey)]),
+    );
+    try {
+      window.localStorage.setItem(
+        achievementSeenStorageKey,
+        JSON.stringify(nextSeen),
+      );
+    } catch {
+      // ignore
+    }
+
+    if (!pendingAchievementCelebration) {
+      setPendingAchievementCelebration(newOnes[0]);
+    }
+  }, [achievements, achievementSeenStorageKey, pendingAchievementCelebration]);
+
   const currentProfile = currentUser
     ? profiles.find((profile) => profile.id === currentUser.leaderId) ?? profiles[0]
     : null;
   const selectedProfile =
     profiles.find((profile) => profile.id === selectedProfileId) ?? profiles[0];
   const activityLog = appData?.activityLog ?? EMPTY_ARRAY;
+
+  // Rank-up: vis toast når currentUser passerer noen på topplisten.
+  useEffect(() => {
+    if (!currentUser) {
+      previousRankRef.current = null;
+      return;
+    }
+    const myRank = displayLeaders.find(
+      (leader) => leader.id === currentUser.leaderId,
+    )?.rank;
+    if (!Number.isFinite(myRank)) return;
+
+    const previousRank = previousRankRef.current;
+    previousRankRef.current = myRank;
+
+    if (!Number.isFinite(previousRank)) return;
+    if (myRank >= previousRank) return;
+
+    let rivalName = null;
+    for (let candidateRank = previousRank - 1; candidateRank >= myRank; candidateRank -= 1) {
+      const rival = displayLeaders.find(
+        (leader) =>
+          leader.rank === candidateRank && leader.id !== currentUser.leaderId,
+      );
+      if (rival) {
+        rivalName = rival.russName ?? rival.realName ?? rival.name ?? null;
+        break;
+      }
+    }
+
+    if (!rivalName) return;
+
+    setPendingRankUp({
+      passedName: rivalName,
+      newRank: myRank,
+      key: Date.now(),
+    });
+  }, [currentUser, displayLeaders]);
+
   // Tidsstempel for nyeste feed-post — brukes til å avgjøre om Feed-tabben
   // skal vise en rød "nytt innhold"-prikk.
   const latestFeedEntryAt = useMemo(() => {
@@ -458,6 +569,39 @@ function App() {
     }
   }, [activePage, latestFeedEntryAt, lastVisitedFeedAt]);
 
+  // Confetti når brukerens egen submission går fra ikke-godkjent til "Godkjent".
+  useEffect(() => {
+    if (!currentUser) return;
+    const myLeaderId = currentUser.leaderId;
+    const currentApprovedIds = new Set(
+      submissions
+        .filter(
+          (submission) =>
+            submission?.leaderId === myLeaderId && submission?.status === 'Godkjent',
+        )
+        .map((submission) => submission.id),
+    );
+
+    const previous = previousApprovedSubmissionIdsRef.current;
+    previousApprovedSubmissionIdsRef.current = currentApprovedIds;
+
+    if (previous === null) {
+      return;
+    }
+
+    let foundNewApproved = false;
+    for (const id of currentApprovedIds) {
+      if (!previous.has(id)) {
+        foundNewApproved = true;
+        break;
+      }
+    }
+
+    if (foundNewApproved) {
+      setConfettiTrigger((current) => current + 1);
+      showToast('Knuten din er godkjent! 🎉');
+    }
+  }, [submissions, currentUser]);
 
   async function refreshAppData(token = sessionToken) {
     if (!token) {
@@ -1256,6 +1400,16 @@ function App() {
             onClose={() => setToast(null)}
           />
         ) : null}
+        <ConfettiBurst triggerKey={confettiTrigger} />
+        <AchievementCelebration
+          achievement={pendingAchievementCelebration}
+          onClose={() => setPendingAchievementCelebration(null)}
+        />
+        <RankUpToast
+          key={pendingRankUp?.key ?? 'rank-up'}
+          data={pendingRankUp}
+          onClose={() => setPendingRankUp(null)}
+        />
       </div>
     </div>
   );
