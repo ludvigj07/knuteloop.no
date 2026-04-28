@@ -560,6 +560,9 @@ export function AdminPage({
   );
   const [processingReportId, setProcessingReportId] = useState('');
   const [processingBanId, setProcessingBanId] = useState('');
+  const [expandedDuelId, setExpandedDuelId] = useState(null);
+  const [knotSearch, setKnotSearch] = useState('');
+  const [knotFolderFilter, setKnotFolderFilter] = useState('all');
   const [activeSubmissionId, setActiveSubmissionId] = useState('');
   const [reviewingSubmissionIds, setReviewingSubmissionIds] = useState({});
   const [feedbackDraft, setFeedbackDraft] = useState(() =>
@@ -1425,8 +1428,40 @@ export function AdminPage({
                 <p>Juster poeng eller fjern knuter direkte her.</p>
               </div>
 
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 8, alignItems: 'center' }}>
+                <input
+                  type="search"
+                  className="text-input"
+                  placeholder="Søk knute…"
+                  value={knotSearch}
+                  onChange={(event) => setKnotSearch(event.target.value)}
+                  style={{ flex: '1 1 180px', minWidth: 140 }}
+                />
+                <select
+                  className="text-input"
+                  value={knotFolderFilter}
+                  onChange={(event) => setKnotFolderFilter(event.target.value)}
+                >
+                  <option value="all">Alle mapper</option>
+                  {KNOT_FOLDERS.map((folder) => (
+                    <option key={folder.id} value={folder.id}>
+                      {folder.id}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
               <div className="config-list">
-                {knots.map((knot) => (
+                {knots
+                  .filter((knot) => {
+                    if (knotFolderFilter !== 'all' && resolveKnotFolder(knot) !== knotFolderFilter) {
+                      return false;
+                    }
+                    const needle = knotSearch.trim().toLowerCase();
+                    if (!needle) return true;
+                    return (knot.title ?? '').toLowerCase().includes(needle);
+                  })
+                  .map((knot) => (
                   <article key={knot.id} className="config-row">
                     <div className="config-row__content">
                       <h3>{knot.title}</h3>
@@ -1501,7 +1536,7 @@ export function AdminPage({
                   activeDuels.map((duel) => (
                     <article
                       key={duel.id}
-                      className="duel-history-row duel-history-row--active"
+                      className={`duel-history-row duel-history-row--active ${expandedDuelId === duel.id ? 'is-expanded' : ''}`}
                     >
                       <div>
                         <strong>{duel.knotTitle}</strong>
@@ -1512,6 +1547,16 @@ export function AdminPage({
                           Utfordrer: {duel.challengerStatusLabel} | Motstander:{' '}
                           {duel.opponentStatusLabel}
                         </p>
+                        <button
+                          type="button"
+                          className="action-button action-button--ghost"
+                          style={{ padding: '4px 10px', fontSize: '0.74rem', minHeight: 'auto', marginTop: 4 }}
+                          onClick={() =>
+                            setExpandedDuelId(expandedDuelId === duel.id ? null : duel.id)
+                          }
+                        >
+                          {expandedDuelId === duel.id ? 'Skjul bevis' : 'Vis bevis'}
+                        </button>
                         <div className="duel-evidence-grid">
                           <DuelEvidencePanel
                             title={`Bevis fra ${duel.challengerName}`}

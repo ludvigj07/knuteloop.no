@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { SectionCard } from './SectionCard.jsx';
 import {
   adminCreateUser,
@@ -104,6 +104,13 @@ function userStatusLabel(user) {
   return 'Uten tilgang';
 }
 
+function userStatusVariant(user) {
+  if (!user.active) return 'inactive';
+  if (user.activatedAt) return 'active';
+  if (user.hasInvite) return 'pending';
+  return 'noaccess';
+}
+
 function emptyForm() {
   return { email: '', name: '', class: '', role: 'user', russName: '' };
 }
@@ -120,6 +127,23 @@ export function UserAdminPanel({ sessionToken }) {
   const [russNameForUserId, setRussNameForUserId] = useState(null);
   const [russNameDraft, setRussNameDraft] = useState('');
   const [rowBusyId, setRowBusyId] = useState(null);
+  const [search, setSearch] = useState('');
+  const [statusFilter, setStatusFilter] = useState('all');
+
+  const filteredUsers = useMemo(() => {
+    const needle = search.trim().toLowerCase();
+    return users.filter((user) => {
+      if (statusFilter !== 'all' && userStatusVariant(user) !== statusFilter) {
+        return false;
+      }
+      if (!needle) return true;
+      const haystack = [user.name, user.russName, user.email, user.class, user.role]
+        .filter(Boolean)
+        .join(' ')
+        .toLowerCase();
+      return haystack.includes(needle);
+    });
+  }, [users, search, statusFilter]);
 
   const [bulkText, setBulkText] = useState('');
   const [bulkClass, setBulkClass] = useState('');
@@ -447,14 +471,42 @@ export function UserAdminPanel({ sessionToken }) {
               <a href={lastInvite.link} target="_blank" rel="noreferrer">{lastInvite.link}</a>
             </dd>
           </dl>
-          <button
-            type="button"
-            className="action-button action-button--ghost"
-            style={{ marginTop: '0.75rem' }}
-            onClick={() => setLastInvite(null)}
-          >
-            Lukk
-          </button>
+          <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.75rem', flexWrap: 'wrap' }}>
+            <button
+              type="button"
+              className="action-button"
+              onClick={async () => {
+                try {
+                  await navigator.clipboard?.writeText(lastInvite.link);
+                } catch {
+                  /* clipboard kan være blokkert */
+                }
+              }}
+            >
+              Kopier lenke
+            </button>
+            <button
+              type="button"
+              className="action-button action-button--ghost"
+              onClick={async () => {
+                const text = `Invitasjon til knuteloop\nE-post: ${lastInvite.email}\nKode: ${lastInvite.code}\nLenke: ${lastInvite.link}`;
+                try {
+                  await navigator.clipboard?.writeText(text);
+                } catch {
+                  /* ignore */
+                }
+              }}
+            >
+              Kopier alt
+            </button>
+            <button
+              type="button"
+              className="action-button action-button--ghost"
+              onClick={() => setLastInvite(null)}
+            >
+              Lukk
+            </button>
+          </div>
         </div>
       ) : null}
 
@@ -756,36 +808,67 @@ export function UserAdminPanel({ sessionToken }) {
       </form>
 
       <div>
-        <strong>{users.length} brukere</strong>
-        {loading ? <p>Laster...</p> : null}
-        <table style={{ width: '100%', borderCollapse: 'collapse', marginTop: '0.5rem' }}>
+        <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap', marginBottom: '0.5rem' }}>
+          <strong>{filteredUsers.length} av {users.length} brukere</strong>
+          <input
+            type="search"
+            className="text-input"
+            placeholder="Søk navn, e-post, klasse…"
+            value={search}
+            onChange={(event) => setSearch(event.target.value)}
+            style={{ flex: '1 1 200px', minWidth: '160px' }}
+          />
+          <select
+            className="text-input"
+            value={statusFilter}
+            onChange={(event) => setStatusFilter(event.target.value)}
+            style={{ flex: '0 0 auto' }}
+          >
+            <option value="all">Alle status</option>
+            <option value="active">Aktivert</option>
+            <option value="pending">Venter aktivering</option>
+            <option value="noaccess">Uten tilgang</option>
+            <option value="inactive">Deaktivert</option>
+          </select>
+          {loading ? <span style={{ color: 'var(--text-muted)' }}>Laster…</span> : null}
+        </div>
+        <div className="admin-table-wrapper">
+        <table>
           <thead>
-            <tr style={{ textAlign: 'left', borderBottom: '1px solid var(--color-border, #ddd)' }}>
-              <th style={{ padding: '0.5rem 0.25rem' }}>Navn</th>
-              <th style={{ padding: '0.5rem 0.25rem' }}>Dåpsnavn</th>
-              <th style={{ padding: '0.5rem 0.25rem' }}>E-post</th>
-              <th style={{ padding: '0.5rem 0.25rem' }}>Klasse</th>
-              <th style={{ padding: '0.5rem 0.25rem' }}>Rolle</th>
-              <th style={{ padding: '0.5rem 0.25rem' }}>Status</th>
-              <th style={{ padding: '0.5rem 0.25rem' }}>Handlinger</th>
+            <tr>
+              <th>Navn</th>
+              <th>Dåpsnavn</th>
+              <th>E-post</th>
+              <th>Klasse</th>
+              <th>Rolle</th>
+              <th>Status</th>
+              <th>Handlinger</th>
             </tr>
           </thead>
           <tbody>
-            {users.map((user) => {
+            {filteredUsers.map((user) => {
               const busyRow = rowBusyId === user.id;
               return (
-                <tr key={user.id} style={{ borderBottom: '1px solid var(--color-border-subtle, #eee)' }}>
-                  <td style={{ padding: '0.5rem 0.25rem' }}>{user.name}</td>
-                  <td style={{ padding: '0.5rem 0.25rem', fontStyle: user.russName ? 'normal' : 'italic', opacity: user.russName ? 1 : 0.6 }}>
+                <tr key={user.id}>
+                  <td>{user.name}</td>
+                  <td style={{ fontStyle: user.russName ? 'normal' : 'italic', opacity: user.russName ? 1 : 0.6 }}>
                     {user.russName || '—'}
                   </td>
-                  <td style={{ padding: '0.5rem 0.25rem', fontFamily: 'monospace', fontSize: '0.9rem' }}>
+                  <td style={{ fontFamily: 'monospace', fontSize: '0.78rem' }}>
                     {user.email}
                   </td>
-                  <td style={{ padding: '0.5rem 0.25rem' }}>{user.class}</td>
-                  <td style={{ padding: '0.5rem 0.25rem' }}>{user.role}</td>
-                  <td style={{ padding: '0.5rem 0.25rem' }}>{userStatusLabel(user)}</td>
-                  <td style={{ padding: '0.5rem 0.25rem', display: 'flex', gap: '0.25rem', flexWrap: 'wrap' }}>
+                  <td>{user.class}</td>
+                  <td>
+                    <span className={`pill ${user.role === 'admin' ? 'pill--soft' : 'pill--muted'}`}>
+                      {user.role}
+                    </span>
+                  </td>
+                  <td>
+                    <span className={`user-status user-status--${userStatusVariant(user)}`}>
+                      {userStatusLabel(user)}
+                    </span>
+                  </td>
+                  <td style={{ display: 'flex', gap: '0.25rem', flexWrap: 'wrap' }}>
                     <button
                       type="button"
                       className="action-button action-button--ghost"
@@ -830,6 +913,7 @@ export function UserAdminPanel({ sessionToken }) {
             })}
           </tbody>
         </table>
+        </div>
       </div>
 
       {russNameForUserId != null ? (
