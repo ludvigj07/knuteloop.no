@@ -548,7 +548,7 @@ export function AdminPage({
   const [structuredBulkResult, setStructuredBulkResult] = useState(null);
   const [deleteAllBusy, setDeleteAllBusy] = useState(false);
   const [deleteAllProgress, setDeleteAllProgress] = useState({ done: 0, total: 0 });
-  const [activeAdminTask, setActiveAdminTask] = useState('submissions');
+  const [activeAdminTask, setActiveAdminTask] = useState('overview');
   const [activeReviewFilter, setActiveReviewFilter] = useState(
     REVIEW_FILTER.APPROVAL_ONLY,
   );
