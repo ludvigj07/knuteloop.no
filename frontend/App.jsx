@@ -14,6 +14,7 @@ import { SettingsModal } from './components/SettingsModal.jsx';
 import { SwipeTabsShell } from './components/SwipeTabsShell.jsx';
 import { Toast } from './components/Toast.jsx';
 import { useIdleAnimation } from './lib/useIdleAnimation.js';
+import { playDing, playSwoosh, playTick, isSoundsMuted, setSoundsMuted } from './lib/sounds.js';
 import {
   assertVideoWithinLimits,
   changeOwnPassword,
@@ -160,6 +161,14 @@ function App() {
       iconWrapper.classList.remove('is-knot-wobble');
     }, 1300);
   }, { timeout: 30000 });
+  const [soundsMuted, setSoundsMutedState] = useState(() => isSoundsMuted());
+  const handleToggleSounds = useCallback(() => {
+    setSoundsMutedState((current) => {
+      const next = !current;
+      setSoundsMuted(next);
+      return next;
+    });
+  }, []);
   const [passwordForm, setPasswordForm] = useState(DEFAULT_PASSWORD_FORM);
   const [passwordError, setPasswordError] = useState('');
   const [isChangingPassword, setIsChangingPassword] = useState(false);
@@ -184,6 +193,54 @@ function App() {
 
   function showToast(message, type = 'success') {
     setToast({ message, type, key: Date.now() });
+  }
+
+  // Testpanel — trigges fra Innstillinger så Ludvig kan se alle de små
+  // animasjonene/celebrasjonene uten å måtte fremprovosere dem naturlig.
+  function handleRunTest(testId) {
+    switch (testId) {
+      case 'confetti':
+        setConfettiTrigger((c) => c + 1);
+        break;
+      case 'achievement':
+        setPendingAchievementCelebration({
+          id: 'test-achievement',
+          title: 'Testprestasjon',
+          description: 'Dette er en testcelebrasjon for å se hvordan den ser ut.',
+          icon: '🏆',
+          currentTierIndex: 2,
+          currentTierLabel: 'Gull',
+          isUnlocked: true,
+        });
+        break;
+      case 'rank-up':
+        setPendingRankUp({
+          key: Date.now(),
+          passedName: 'Test Russen',
+          newRank: 3,
+        });
+        break;
+      case 'toast-success':
+        showToast('Knute sendt inn! ✓', 'success');
+        break;
+      case 'toast-error':
+        showToast('Noe gikk galt', 'error');
+        break;
+      case 'toast-info':
+        showToast('Lenke kopiert til utklippstavlen', 'info');
+        break;
+      case 'sound-ding':
+        playDing();
+        break;
+      case 'sound-swoosh':
+        playSwoosh();
+        break;
+      case 'sound-tick':
+        playTick();
+        break;
+      default:
+        break;
+    }
   }
 
   const currentUser = appData?.currentUser ?? null;
@@ -600,6 +657,7 @@ function App() {
     if (foundNewApproved) {
       setConfettiTrigger((current) => current + 1);
       showToast('Knuten din er godkjent! 🎉');
+      playDing();
     }
   }, [submissions, currentUser]);
 
@@ -946,6 +1004,7 @@ function App() {
       } else {
         showToast('Knuten er sendt inn for godkjenning.');
       }
+      playSwoosh();
     } else {
       showToast('Knuten er oppdatert.');
     }
@@ -1388,9 +1447,12 @@ function App() {
           onNavigateToProfile={handleSettingsOpenProfile}
           onOpenProfileEditor={handleSettingsOpenProfileEditor}
           onRestartTour={handleRestartTour}
+          onRunTest={handleRunTest}
           onSubmitPasswordChange={handleChangeOwnPassword}
+          onToggleSounds={handleToggleSounds}
           passwordError={passwordError}
           passwordForm={passwordForm}
+          soundsMuted={soundsMuted}
         />
         {toast ? (
           <Toast

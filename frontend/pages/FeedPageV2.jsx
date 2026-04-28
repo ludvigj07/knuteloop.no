@@ -8,6 +8,7 @@ import {
   ReactionFlyOverlay,
   REACTION_FLY_DURATION_MS,
 } from '../components/ReactionPicker.jsx';
+import { playTick } from '../lib/sounds.js';
 import anonymousFeedJoker from '../assets/anonymous-feed-joker.jpg';
 import anonymousFeedMask from '../assets/anonymous-feed-mask.png';
 import anonymousFeedWolf from '../assets/anonymous-feed-wolf.png';
@@ -1892,6 +1893,8 @@ export function FeedPage({
     if (pendingBySubmission[entry.submissionId]) {
       return;
     }
+
+    playTick();
 
     const previousRating = Number(entry.myRating) || null;
     clearRatingError(entry.submissionId);
