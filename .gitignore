@@ -147,6 +147,7 @@ backend/data/*
 !backend/data/.gitkeep
 backend/uploads/*
 !backend/uploads/.gitkeep
+backend/backups/
 
 # Produksjons-tarball fra deploy-prosedyren
 release.tgz
