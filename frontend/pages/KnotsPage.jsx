@@ -1,26 +1,45 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
+import {
+  ArrowDown,
+  ArrowUp,
+  ArrowUpDown,
+  Beer,
+  Circle,
+  Flame,
+  Heart,
+  Layers,
+  Users,
+} from 'lucide-react';
 import { MobileVideo } from '../components/MobileVideo.jsx';
-import { isGoldKnot } from '../data/badgeSystem.js';
-import { NOTE_MAX_CHARS } from '../data/appHelpers.js';
 import { KNOT_FOLDERS, resolveKnotFolder } from '../data/knotFolders.js';
+
+const NOTE_MAX_CHARS = 150;
 
 const MOBILE_BREAKPOINT = 900;
 const SHEET_DISMISS_THRESHOLD = 120;
 const ALL_KNOTS_FOLDER_ID = 'Alle knuter';
-const KNOT_FOLDER_TABS = [
-  { id: ALL_KNOTS_FOLDER_ID, description: 'Alle knuter samlet pa tvers av mapper.' },
-  ...KNOT_FOLDERS,
+
+const KNOT_TYPE_FILTERS = [
+  { id: ALL_KNOTS_FOLDER_ID, label: 'Alle knuter', Icon: Layers },
+  { id: 'Generelle', label: 'Generelle-knuter', Icon: Circle },
+  { id: 'Dobbelknuter', label: 'Dobbel-knuter', Icon: Users },
+  { id: 'Fordervett-knuter', label: 'Rampestrek-knuter', Icon: Flame },
+  { id: 'Alkoholknuter', label: 'Alkohol-knuter', Icon: Beer },
+  { id: 'Sexknuter', label: 'Sex-knuter', Icon: Heart },
 ];
 
-const STATUS_LEGEND_ITEMS = Object.freeze([
-  { key: 'approved', label: 'Fullførte' },
-  { key: 'available', label: 'Tilgjengelige' },
-  { key: 'pending', label: 'Sendt inn' },
-  { key: 'rejected', label: 'Avslått' },
-]);
+const STATUS_FILTERS = [
+  { id: 'ikke-tatt', label: 'Ikke tatt' },
+  { id: 'tatt', label: 'Tatt' },
+];
 
-const STATUS_FILTERS = ['Alle', 'Tilgjengelig', 'Sendt inn', 'Godkjent', 'Avslått'];
+function matchesStatusFilter(status, filterId) {
+  if (filterId === 'tatt') {
+    return status === 'Godkjent' || status === 'Sendt inn';
+  }
+  return status === 'Tilgjengelig' || isRejectedStatus(status);
+}
 
 const SORT_OPTIONS = [
   { value: 'standard', label: 'Standard' },
@@ -297,50 +316,25 @@ function getStatusKey(status) {
   return 'available';
 }
 
-function getStatusLabel(status) {
-  const statusKey = getStatusKey(status);
+// ─── KnotTypeFilters ──────────────────────────────────────────────────────────
 
-  if (statusKey === 'approved') return 'Fullført';
-  if (statusKey === 'pending') return 'Sendt inn';
-  if (statusKey === 'rejected') return 'Avslått';
-  return 'Tilgjengelig';
-}
-
-// ─── KnotProgressBar ─────────────────────────────────────────────────────────
-
-function KnotProgressBar({ label, approved, total }) {
-  const pct = total > 0 ? Math.round((approved / total) * 100) : 0;
-
+function KnotTypeFilters({ filters, activeFilter, onChangeFilter }) {
   return (
-    <div className="knot-progress-bar">
-      <div className="knot-progress-bar__label">{label}</div>
-      <div className="knot-progress-bar__track" aria-hidden="true">
-        <div className="knot-progress-bar__fill" style={{ width: `${pct}%` }} />
-      </div>
-      <div className="knot-progress-bar__stats">
-        <span>{approved}/{total} godkjent</span>
-        <span className="knot-progress-bar__pct">{pct}%</span>
-      </div>
-    </div>
-  );
-}
-
-// ─── KnotFolderTabs ───────────────────────────────────────────────────────────
-
-function KnotFolderTabs({ folders, activeFolder, folderCounts, onChangeFolder }) {
-  return (
-    <div className="knot-folder-tabs" role="tablist" data-swipe-lock="true">
-      {folders.map((folder) => (
+    <div className="knot-type-filters" role="tablist" data-swipe-lock="true">
+      {filters.map((filter) => (
         <button
-          key={folder.id}
+          key={filter.id}
           type="button"
           role="tab"
-          aria-selected={folder.id === activeFolder}
-          className={`knot-folder-tab ${folder.id === activeFolder ? 'is-active' : ''}`}
-          onClick={() => onChangeFolder(folder.id)}
+          aria-selected={filter.id === activeFilter}
+          aria-label={filter.label}
+          title={filter.label}
+          className={`knot-type-filter${filter.id === activeFilter ? ' is-active' : ''}`}
+          onClick={() => onChangeFilter(filter.id)}
         >
-          {folder.id}
-          <span className="knot-folder-tab__badge">{folderCounts[folder.id] ?? 0}</span>
+          <span className="knot-type-filter__icon" aria-hidden="true">
+            <filter.Icon size={20} strokeWidth={1.8} />
+          </span>
         </button>
       ))}
     </div>
@@ -350,6 +344,7 @@ function KnotFolderTabs({ folders, activeFolder, folderCounts, onChangeFolder })
 // ─── SubmissionFormContent ────────────────────────────────────────────────────
 
 function SubmissionFormContent({
+  knot,
   draft,
   effectiveMode,
   activeFeedBan,
@@ -370,6 +365,10 @@ function SubmissionFormContent({
   const shareToAnonymousFeed = effectiveMode === SUBMISSION_MODE.ANONYMOUS_FEED;
   const hasImage = Boolean(draft.imageFile || draft.imagePreviewUrl || draft.imageName);
   const hasVideo = Boolean(draft.videoFile || draft.videoPreviewUrl || draft.videoName);
+  const hasEvidence = hasImage || hasVideo;
+  const hasNote = Boolean((draft.note ?? '').trim());
+  const hasContent = hasEvidence || hasNote;
+  const knotDescription = getKnotDescription(knot);
 
   function handleImageInputChange(event) {
     const file = event.target.files?.[0];
@@ -385,11 +384,17 @@ function SubmissionFormContent({
 
   return (
     <div className="knot-submission-form" onPaste={onPasteImage}>
+      {knotDescription ? (
+        <div className="knot-submission-form__intro">
+          <p className="knot-submission-form__intro-label">Hva går knuten ut på?</p>
+          <p className="knot-submission-form__intro-text">{knotDescription}</p>
+        </div>
+      ) : null}
       <label className="field-group">
         <span>Forklaring:</span>
         <textarea
           className="text-input text-input--area text-input--compact"
-          placeholder="Kort forklaring på hvordan knuten ble gjort. Maks 300 tegn."
+          placeholder="Caption / forklaring av hvordan knuten ble utført"
           value={draft.note ?? ''}
           onChange={(e) => onUpdateNote(e.target.value)}
           maxLength={NOTE_MAX_CHARS}
@@ -448,7 +453,7 @@ function SubmissionFormContent({
         <div className="upload-field upload-field--compact evidence-picker">
           <div className="evidence-picker__top">
             <span>Bevis</span>
-            <small>{hasImage || hasVideo ? 'Klart for innsending' : 'Velg ett bevis'}</small>
+            <small>{hasImage || hasVideo ? 'Bevis valgt' : 'Valgfritt'}</small>
           </div>
 
           <div className="evidence-picker__actions" role="group" aria-label="Velg bevis">
@@ -544,11 +549,16 @@ function SubmissionFormContent({
         <button
           type="button"
           className="action-button action-button--hero"
-          disabled={isOverCharacterLimit || Boolean(activeSubmissionBan)}
+          disabled={isOverCharacterLimit || Boolean(activeSubmissionBan) || !hasContent}
           onClick={onSubmit}
         >
           {buttonLabel}
         </button>
+        {!hasContent ? (
+          <p className="submission-form__hint">
+            Skriv en forklaring eller legg ved bilde/video for å sende inn.
+          </p>
+        ) : null}
       </div>
     </div>
   );
@@ -558,7 +568,6 @@ function SubmissionFormContent({
 
 function KnotRow({
   knot,
-  isDetailOpen,
   isHighlighted,
   isFormOpen,
   isMobile,
@@ -569,7 +578,6 @@ function KnotRow({
   activeFeedBan,
   activeSubmissionBan,
   focusedRef,
-  onToggleDetail,
   onDocumentClick,
   onUpdateNote,
   onUpdateMode,
@@ -584,128 +592,60 @@ function KnotRow({
   const effectiveMode = activeFeedBan ? SUBMISSION_MODE.REVIEW : submissionMode;
   const characterCount = getCharacterCount(draft.note ?? '');
   const isOverCharacterLimit = characterCount > NOTE_MAX_CHARS;
-  const statusKey = getStatusKey(knot.status);
-  const statusLabel = getStatusLabel(knot.status);
-  const isAvailableKnot = statusKey === 'available';
-  const difficultyInline = knot.difficulty ? (
-    <span className="knot-row__difficulty-inline">
-      {knot.difficulty}
-      {isHighlighted ? (
-        <span className="knot-row__highlight-badge knot-row__highlight-badge--inline is-highlighted">
-          Dagens knute
-        </span>
-      ) : null}
-    </span>
-  ) : null;
   const isCompletedKnot = knot.status === 'Godkjent' || knot.status === 'Fullført';
+  const isPendingKnot = knot.status === 'Sendt inn';
+  const isRejected = isRejectedStatus(knot.status);
+  const isGoldByName = (knot.title ?? '').toLowerCase().includes('gull');
 
   return (
     <div
       ref={focusedRef}
-      className={`knot-row${isCompletedKnot ? ' is-completed' : ''}${isHighlighted ? ' is-highlighted' : ''}${isDetailOpen ? ' is-detail-open' : ''}${isFormOpen ? ' is-form-open' : ''}`}
+      className={`knot-row knot-row--single${isCompletedKnot ? ' is-completed' : ''}${isHighlighted ? ' is-highlighted' : ''}${isFormOpen ? ' is-form-open' : ''}`}
       data-status={getStatusKey(knot.status)}
       data-tour-id={isTourTarget ? 'first-knot' : undefined}
     >
-      <div className="knot-row__header">
-        <div className="knot-row__info">
-          <div className="knot-row__title-line">
-            <span
-              className={`knot-row__status-dot is-${statusKey}`}
-              aria-hidden="true"
-            />
-            <span className={`knot-row__points${isCompletedKnot ? ' is-completed' : ''}`}>
-              P{knot.points}
-            </span>
-            <span className="knot-row__title">{knot.title}</span>
-          </div>
-          <div className="knot-row__sub">
-            {isAvailableKnot ? difficultyInline : <span>{statusLabel}</span>}
-            {!isAvailableKnot ? difficultyInline : null}
-            {!knot.difficulty && isHighlighted ? (
-              <span className="knot-row__highlight-badge knot-row__highlight-badge--inline is-highlighted">
-                Dagens knute
-              </span>
-            ) : null}
-            {knot.safety === 'review' ? <span>Krever sjekk</span> : null}
-          </div>
-        </div>
+      <div className="knot-row__line">
+        {isCompletedKnot ? (
+          <span className="knot-row__check" aria-hidden="true">✓</span>
+        ) : null}
+        <span
+          className={`knot-row__title${isGoldByName ? ' knot-row__title--gold' : ''}`}
+        >
+          {knot.title}
+        </span>
+        <span className="knot-row__points-badge">{knot.points}p</span>
+        {isHighlighted ? (
+          <span className="knot-row__type-badge knot-row__type-badge--today">Dagens</span>
+        ) : null}
+        {isPendingKnot ? (
+          <span className="knot-row__type-badge knot-row__type-badge--pending">
+            Sendt inn
+          </span>
+        ) : null}
+        {isRejected ? (
+          <span className="knot-row__type-badge knot-row__type-badge--rejected">
+            Avslått
+          </span>
+        ) : null}
 
-        <div className="knot-row__cta">
-          {canSubmit ? (
-            <button
-              type="button"
-              className={`knot-row__doc-btn${isFormOpen ? ' is-active' : ''}`}
-              disabled={Boolean(activeSubmissionBan) && !isFormOpen}
-              onClick={onDocumentClick}
-              aria-label={isMobile ? 'Registrer' : undefined}
-            >
-              {isMobile ? (
-                <span className="knot-row__doc-btn-icon" aria-hidden="true">
-                  <svg viewBox="0 0 24 24" fill="none" role="img">
-                    <path
-                      d="M4.75 8.25h3.3l1.25-2h5.4l1.25 2h3.3v10.5H4.75z"
-                      stroke="currentColor"
-                      strokeWidth="1.8"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                    />
-                    <circle
-                      cx="12"
-                      cy="13.25"
-                      r="3.15"
-                      stroke="currentColor"
-                      strokeWidth="1.8"
-                    />
-                    <path
-                      d="M17.25 10.25h.01"
-                      stroke="currentColor"
-                      strokeWidth="1.8"
-                      strokeLinecap="round"
-                    />
-                  </svg>
-                </span>
-              ) : (
-                <span className="knot-row__doc-btn-label">Registrer</span>
-              )}
-            </button>
-          ) : null}
+        {isCompletedKnot ? (
+          <span className="knot-row__taken-label" aria-label="Tatt">Tatt</span>
+        ) : canSubmit ? (
           <button
             type="button"
-            className={`knot-row__expand-btn${isDetailOpen ? ' is-active' : ''}`}
-            aria-expanded={isDetailOpen}
-            aria-label="Vis detaljer"
-            onClick={onToggleDetail}
+            className={`knot-row__take-btn${isFormOpen ? ' is-active' : ''}`}
+            disabled={Boolean(activeSubmissionBan) && !isFormOpen}
+            onClick={onDocumentClick}
           >
-            <span className="knot-row__expand-icon" aria-hidden="true">i</span>
+            {isPendingKnot ? 'Endre' : isRejected ? 'Send på nytt' : 'Ta knute'}
           </button>
-        </div>
+        ) : null}
       </div>
-
-      {isDetailOpen ? (
-        <div className="knot-row__detail">
-          <p className="knot-row__detail-label">Hva går knuten ut på?</p>
-          <p className="knot-row__desc">
-            {getKnotDescription(knot) || 'Ingen forklaring er lagt til ennå.'}
-          </p>
-          <div className="knot-row__hints">
-            {isGoldKnot(knot) ? (
-              <span className="knot-hint knot-hint--gold">✦ Gullknute gir ekstra poeng</span>
-            ) : null}
-            {knot.safety === 'review' ? (
-              <span className="knot-hint knot-hint--warn">⚠ Krever godkjenning av sikkerhetshensyn</span>
-            ) : null}
-            {knot.status === 'Sendt inn' ? (
-              <span className="knot-hint">
-                Innsendingen behandles av admin. Du kan fortsatt legge til mer info.
-              </span>
-            ) : null}
-          </div>
-        </div>
-      ) : null}
 
       {isFormOpen && !isMobile ? (
         <div className="knot-row__form">
           <SubmissionFormContent
+            knot={knot}
             draft={draft}
             effectiveMode={effectiveMode}
             activeFeedBan={activeFeedBan}
@@ -816,6 +756,7 @@ function KnotBottomSheet({
         <div className="knot-sheet__body">
           {knot && canSubmit ? (
             <SubmissionFormContent
+              knot={knot}
               draft={draft}
               effectiveMode={effectiveMode}
               activeFeedBan={activeFeedBan}
@@ -903,10 +844,8 @@ export function KnotsPage({
   const [activeFolder, setActiveFolder] = useState(
     () => (focusedKnot ? resolveKnotFolder(focusedKnot) : ALL_KNOTS_FOLDER_ID),
   );
-  const [searchQuery, setSearchQuery] = useState('');
-  const [statusFilter, setStatusFilter] = useState('Alle');
+  const [statusFilter, setStatusFilter] = useState('ikke-tatt');
   const [sortKey, setSortKey] = useState('standard');
-  const [openDetailId, setOpenDetailId] = useState(null);
   const [openFormId, setOpenFormId] = useState(null);
   const [sheetKnotId, setSheetKnotId] = useState(null);
   const [feedbackMessage, setFeedbackMessage] = useState('');
@@ -921,42 +860,20 @@ export function KnotsPage({
 
   const draftsRef = useRef(drafts);
   const focusedCardRef = useRef(null);
-  const knotResultsRef = useRef(null);
   const handledFocusOpenRequestRef = useRef(0);
   const handledScrollRequestRef = useRef(0);
-  const folderScrollFrameRef = useRef(0);
   const highlightTimeoutRef = useRef(null);
 
   // ── Derived ──────────────────────────────────────────────────────────────
 
-  const folderCounts = Object.fromEntries(
-    KNOT_FOLDER_TABS.map((folder) => [
-      folder.id,
-      folder.id === ALL_KNOTS_FOLDER_ID
-        ? knots.length
-        : knots.filter((k) => resolveKnotFolder(k) === folder.id).length,
-    ]),
-  );
   const visibleFolder =
-    KNOT_FOLDER_TABS.find((f) => f.id === activeFolder) ?? KNOT_FOLDER_TABS[0];
+    KNOT_TYPE_FILTERS.find((f) => f.id === activeFolder) ?? KNOT_TYPE_FILTERS[0];
   const visibleFolderKnots =
     visibleFolder.id === ALL_KNOTS_FOLDER_ID
       ? knots
       : knots.filter((k) => resolveKnotFolder(k) === visibleFolder.id);
-  const normalizedQuery = searchQuery.trim().toLowerCase();
   const filteredKnots = sortKnots(
-    visibleFolderKnots.filter((k) => {
-      const matchesStatus =
-        statusFilter === 'Alle' ||
-        (statusFilter === 'Avslått'
-          ? isRejectedStatus(k.status)
-          : k.status === statusFilter);
-      const matchesSearch =
-        !normalizedQuery ||
-        k.title.toLowerCase().includes(normalizedQuery) ||
-        (k.description ?? '').toLowerCase().includes(normalizedQuery);
-      return matchesStatus && matchesSearch;
-    }),
+    visibleFolderKnots.filter((k) => matchesStatusFilter(k.status, statusFilter)),
     sortKey,
   );
   const visibleKnots =
@@ -970,8 +887,7 @@ export function KnotsPage({
   const approvedCount = visibleFolderKnots.filter(
     (k) => k.status === 'Godkjent',
   ).length;
-  const hasActiveFilters =
-    searchQuery.trim() !== '' || statusFilter !== 'Alle' || sortKey !== 'standard';
+  const hasActiveFilters = statusFilter !== 'ikke-tatt' || sortKey !== 'standard';
   const activeFeedBan =
     currentUserActiveBans.find((b) => b.type === 'feed') ?? null;
   const activeSubmissionBan =
@@ -1061,12 +977,10 @@ export function KnotsPage({
     handledFocusOpenRequestRef.current = focusedKnotScrollRequest;
     const t = window.setTimeout(() => {
       setActiveFolder(resolveKnotFolder(nextFocused) || ALL_KNOTS_FOLDER_ID);
-      setSearchQuery('');
-      setStatusFilter('Alle');
+      setStatusFilter('ikke-tatt');
       setSortKey('standard');
       setOpenFormId(null);
       setSheetKnotId(null);
-      setOpenDetailId(nextFocused.id);
       setHighlightedKnotId(nextFocused.id);
       if (highlightTimeoutRef.current) {
         window.clearTimeout(highlightTimeoutRef.current);
@@ -1082,9 +996,6 @@ export function KnotsPage({
 
   useEffect(
     () => () => {
-      if (folderScrollFrameRef.current) {
-        window.cancelAnimationFrame(folderScrollFrameRef.current);
-      }
       if (highlightTimeoutRef.current) {
         window.clearTimeout(highlightTimeoutRef.current);
       }
@@ -1477,96 +1388,12 @@ export function KnotsPage({
 
   function handleFolderChange(folderId) {
     setActiveFolder(folderId);
-    setOpenDetailId(null);
     setOpenFormId(null);
     setSheetKnotId(null);
-    scheduleScrollToKnotResults();
-  }
-
-  function scrollToKnotResults() {
-    if (typeof window === 'undefined' || typeof document === 'undefined') {
-      return;
-    }
-
-    const element = knotResultsRef.current;
-    if (!element) {
-      return;
-    }
-
-    const rect = element.getBoundingClientRect();
-    const viewportHeight = window.innerHeight || 0;
-    const topOffset = isMobileViewport
-      ? Math.max(Math.round(viewportHeight * 0.18), 84)
-      : 88;
-    const isiOSWebKit =
-      typeof navigator !== 'undefined' &&
-      /iP(hone|od|ad)/i.test(navigator.userAgent ?? '');
-    const scrollBehavior = isiOSWebKit ? 'auto' : 'smooth';
-
-    let scrollContainer = element.parentElement;
-    while (scrollContainer && scrollContainer !== document.body) {
-      const style = window.getComputedStyle(scrollContainer);
-      const canScrollY = /(auto|scroll|overlay)/.test(style.overflowY);
-      if (canScrollY && scrollContainer.scrollHeight > scrollContainer.clientHeight) {
-        break;
-      }
-      scrollContainer = scrollContainer.parentElement;
-    }
-
-    if (scrollContainer && scrollContainer !== document.body) {
-      const containerRect = scrollContainer.getBoundingClientRect();
-      const targetWithinContainer = Math.max(
-        Math.round(scrollContainer.scrollTop + rect.top - containerRect.top - 16),
-        0,
-      );
-
-      scrollContainer.scrollTo({
-        top: targetWithinContainer,
-        left: 0,
-        behavior: scrollBehavior,
-      });
-
-      if (isiOSWebKit) {
-        scrollContainer.scrollTop = targetWithinContainer;
-      }
-      return;
-    }
-
-    const targetTop = Math.max(Math.round(window.scrollY + rect.top - topOffset), 0);
-    window.scrollTo({
-      top: targetTop,
-      left: 0,
-      behavior: scrollBehavior,
-    });
-
-    if (isiOSWebKit) {
-      const scrollingElement = document.scrollingElement ?? document.documentElement;
-      scrollingElement.scrollTop = targetTop;
-      document.documentElement.scrollTop = targetTop;
-      document.body.scrollTop = targetTop;
-    }
-  }
-
-  function scheduleScrollToKnotResults() {
-    if (typeof window === 'undefined') {
-      return;
-    }
-
-    if (folderScrollFrameRef.current) {
-      window.cancelAnimationFrame(folderScrollFrameRef.current);
-    }
-
-    folderScrollFrameRef.current = window.requestAnimationFrame(() => {
-      folderScrollFrameRef.current = window.requestAnimationFrame(() => {
-        folderScrollFrameRef.current = 0;
-        scrollToKnotResults();
-      });
-    });
   }
 
   function handleResetFilters() {
-    setSearchQuery('');
-    setStatusFilter('Alle');
+    setStatusFilter('ikke-tatt');
     setSortKey('standard');
   }
 
@@ -1588,10 +1415,6 @@ export function KnotsPage({
         return next;
       });
     }
-  }
-
-  function handleToggleDetail(knotId) {
-    setOpenDetailId((current) => (current === knotId ? null : knotId));
   }
 
   useEffect(() => {
@@ -1624,94 +1447,45 @@ export function KnotsPage({
         isRare={isRareFeedbackActive}
       />
 
-      <section className="knots-page__hero" aria-labelledby="knots-page-title">
-        <div className="knots-page__hero-copy">
-          <p className="knots-page__eyebrow">Knutekatalog · {knots.length} knuter</p>
-          <h1 id="knots-page-title" className="knots-page__title font-display">
-            Hva tar du <span className="knots-page__title-highlight">i dag?</span>
-          </h1>
-          <div className="knots-status-legend" aria-label="Fargeforklaring for knutestatus">
-            {STATUS_LEGEND_ITEMS.map((item) => (
-              <span
-                key={item.key}
-                className={`knots-status-legend__item is-${item.key}`}
-              >
-                {item.label}
-              </span>
-            ))}
-          </div>
+      <section className="knots-page__hero knots-page__hero--compact" aria-labelledby="knots-page-title">
+        <h1 id="knots-page-title" className="knots-page__title font-display">
+          Hva tar du <span className="knots-page__title-highlight">i dag?</span>
+        </h1>
+        <div className="knots-page__chips">
+          <span className="knots-page__points-chip">{currentUserPoints}p</span>
+          {streakCount > 0 ? (
+            <span className="knots-page__streak-chip">
+              <span aria-hidden="true">🔥</span> {streakCount}
+            </span>
+          ) : null}
         </div>
-
-        <div className="knots-page__points sticker">
-          <small>Dine poeng</small>
-          <span>{currentUserPoints}p</span>
-        </div>
-
-        {streakCount > 0 ? (
-          <div className="knots-page__hero-streak sticker">
-            <span aria-hidden="true">🔥</span>
-            <span>{streakCount} streak</span>
-          </div>
-        ) : null}
       </section>
 
-      {/* Progress */}
-      <KnotProgressBar
-        label={visibleFolder.id}
-        approved={approvedCount}
-        total={visibleFolderKnots.length}
+      <div className="knots-page__folder-meta">
+        <span className="knots-page__folder-name">{visibleFolder.label}</span>
+        <span className="knots-page__progress-text">
+          {approvedCount}/{visibleFolderKnots.length} godkjent
+        </span>
+      </div>
+
+      <KnotTypeFilters
+        filters={KNOT_TYPE_FILTERS}
+        activeFilter={activeFolder}
+        onChangeFilter={handleFolderChange}
       />
 
-      {/* Folder tabs */}
-      <KnotFolderTabs
-        folders={KNOT_FOLDER_TABS}
-        activeFolder={activeFolder}
-        folderCounts={folderCounts}
-        onChangeFolder={handleFolderChange}
-      />
-
-      {/* Compact toolbar */}
-      <div className="knot-toolbar-compact">
-        <input
-          type="search"
-          className="knot-toolbar-compact__search text-input"
-          placeholder={`Søk i ${visibleFolder.id.toLowerCase()}…`}
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-        />
-        <div className="knot-toolbar-compact__status-pills" role="group" aria-label="Statusfilter">
-          {STATUS_FILTERS.map((filter) => (
-            <button
-              key={filter}
-              type="button"
-              className={`knot-status-pill${statusFilter === filter ? ' is-active' : ''}`}
-              aria-pressed={statusFilter === filter}
-              onClick={() => setStatusFilter(filter)}
-            >
-              {filter}
-            </button>
-          ))}
-        </div>
-        <select
-          className="knot-toolbar-compact__select knot-toolbar-compact__select--status text-input"
-          value={statusFilter}
-          onChange={(e) => setStatusFilter(e.target.value)}
-          aria-label="Statusfilter"
-        >
-          {STATUS_FILTERS.map((s) => (
-            <option key={s} value={s}>{s}</option>
-          ))}
-        </select>
-        <select
-          className="knot-toolbar-compact__select text-input"
-          value={sortKey}
-          onChange={(e) => setSortKey(e.target.value)}
-          aria-label="Sortering"
-        >
-          {SORT_OPTIONS.map((o) => (
-            <option key={o.value} value={o.value}>{o.label}</option>
-          ))}
-        </select>
+      <div className="knot-status-pills" role="group" aria-label="Statusfilter">
+        {STATUS_FILTERS.map((filter) => (
+          <button
+            key={filter.id}
+            type="button"
+            className={`knot-status-pill${statusFilter === filter.id ? ' is-active' : ''}`}
+            aria-pressed={statusFilter === filter.id}
+            onClick={() => setStatusFilter(filter.id)}
+          >
+            {filter.label}
+          </button>
+        ))}
       </div>
 
       {/* Feedback & ban banners */}
@@ -1733,17 +1507,13 @@ export function KnotsPage({
 
       {/* Empty states */}
       {visibleFolderKnots.length === 0 ? (
-        <p ref={knotResultsRef} className="folder-empty">
+        <p className="folder-empty">
           Det ligger ingen knuter i denne mappen ennå.
         </p>
       ) : null}
       {visibleFolderKnots.length > 0 && visibleKnots.length === 0 ? (
-        <div ref={knotResultsRef} className="filter-empty-state">
-          <h3>Ingen knuter matcher søket ditt</h3>
-          <p>
-            Prøv et annet søk, bytt statusfilter eller nullstill filtrene for å se hele
-            mappen igjen.
-          </p>
+        <div className="filter-empty-state">
+          <h3>{statusFilter === 'tatt' ? 'Du har ikke tatt noen knuter ennå' : 'Ingen knuter igjen i denne kategorien'}</h3>
           <button
             type="button"
             className="action-button action-button--sticker action-button--compact"
@@ -1756,7 +1526,34 @@ export function KnotsPage({
 
       {/* Knot list */}
       {visibleKnots.length > 0 ? (
-        <div ref={knotResultsRef} className="knot-list">
+        <>
+          <div className="knot-list__header">
+            <button
+              type="button"
+              className="knot-list__sort-cycle"
+              onClick={() => {
+                const order = ['standard', 'points-desc', 'points-asc'];
+                const idx = order.indexOf(sortKey);
+                const next = order[(idx + 1) % order.length];
+                setSortKey(next);
+              }}
+              aria-label={`Sortering: ${sortKey === 'points-desc' ? 'Høyest poeng først' : sortKey === 'points-asc' ? 'Lavest poeng først' : 'Standard'}`}
+            >
+              <span className="knot-list__sort-arrow" aria-hidden="true">
+                {sortKey === 'points-desc' ? (
+                  <ArrowDown size={16} strokeWidth={2.2} />
+                ) : sortKey === 'points-asc' ? (
+                  <ArrowUp size={16} strokeWidth={2.2} />
+                ) : (
+                  <ArrowUpDown size={16} strokeWidth={2.2} />
+                )}
+              </span>
+              <span className="knot-list__sort-label">
+                {sortKey === 'points-desc' ? 'Høyest' : sortKey === 'points-asc' ? 'Lavest' : 'Standard'}
+              </span>
+            </button>
+          </div>
+          <div className="knot-list">
           {visibleKnots.map((knot, knotIndex) => {
             const canSubmit =
               knot.status === 'Tilgjengelig' ||
@@ -1774,7 +1571,6 @@ export function KnotsPage({
               <KnotRow
                 key={knot.id}
                 knot={knot}
-                isDetailOpen={openDetailId === knot.id}
                 isHighlighted={highlightedKnotId === knot.id}
                 isFormOpen={openFormId === knot.id}
                 isMobile={isMobileViewport}
@@ -1785,7 +1581,6 @@ export function KnotsPage({
                 activeFeedBan={activeFeedBan}
                 activeSubmissionBan={activeSubmissionBan}
                 focusedRef={knot.id === focusedKnotId ? focusedCardRef : null}
-                onToggleDetail={() => handleToggleDetail(knot.id)}
                 onDocumentClick={() => handleDocumentClick(knot.id)}
                 onUpdateNote={(note) => updateDraftNote(knot.id, note)}
                 onUpdateMode={(mode) => updateDraftSubmissionMode(knot.id, mode)}
@@ -1800,7 +1595,8 @@ export function KnotsPage({
               />
             );
           })}
-        </div>
+          </div>
+        </>
       ) : null}
 
       {/* Mobile bottom sheet */}

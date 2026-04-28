@@ -181,6 +181,7 @@ export function ProfilesPage({
   currentUserId,
   currentUserRole,
   onBackToOverview,
+  onOpenSettings,
   onSelectProfile,
   onUpdateProfile,
   profileViewMode = 'overview',
@@ -532,6 +533,17 @@ export function ProfilesPage({
             <span>Min profil</span>
             <span className="profile-own-return-card__arrow">→</span>
           </button>
+
+          {onOpenSettings ? (
+            <button
+              type="button"
+              className="profile-own-return-card profile-own-return-card--settings"
+              onClick={onOpenSettings}
+            >
+              <span>⚙ Innstillinger</span>
+              <span className="profile-own-return-card__arrow">→</span>
+            </button>
+          ) : null}
 
           <div className="profile-search-box">
             <label htmlFor="profile-search" className="profile-search-box__label">

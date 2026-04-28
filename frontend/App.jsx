@@ -3,6 +3,7 @@ import { Activity, Home, Play, Shield, Trophy, User } from 'lucide-react';
 import { KnotIcon } from './components/KnotIcon.jsx';
 import './App.css';
 import './styles/blaruss-refresh.css';
+import './styles/admin-mobile.css';
 import { LiveOnboarding } from './components/LiveOnboarding.jsx';
 import { SettingsModal } from './components/SettingsModal.jsx';
 import { SwipeTabsShell } from './components/SwipeTabsShell.jsx';
@@ -139,11 +140,6 @@ function App() {
   const [appError, setAppError] = useState('');
   const [isOnboardingOpen, setIsOnboardingOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
-  const [isDark, setIsDark] = useState(() => {
-    const stored = window.localStorage.getItem('theme');
-    if (stored) return stored === 'dark';
-    return window.matchMedia?.('(prefers-color-scheme: dark)').matches ?? false;
-  });
   const [passwordForm, setPasswordForm] = useState(DEFAULT_PASSWORD_FORM);
   const [passwordError, setPasswordError] = useState('');
   const [isChangingPassword, setIsChangingPassword] = useState(false);
@@ -314,9 +310,9 @@ function App() {
   const currentPage = visiblePages.find((page) => page.id === activePage) ?? visiblePages[0];
 
   useEffect(() => {
-    document.documentElement.setAttribute('data-theme', isDark ? 'dark' : 'light');
-    window.localStorage.setItem('theme', isDark ? 'dark' : 'light');
-  }, [isDark]);
+    document.documentElement.setAttribute('data-theme', 'light');
+    window.localStorage.removeItem('theme');
+  }, []);
 
   useEffect(() => {
     fetchPilotUsers()
@@ -953,19 +949,6 @@ function App() {
     return (
       <header className="hero-panel hero-panel--page">
         <div className="hero-panel__content">
-          <div className="hero-panel__topbar">
-            <div className="hero-panel__utility">
-              <button
-                type="button"
-                className="hero-icon-button"
-                onClick={handleOpenSettings}
-                aria-label="Apne innstillinger"
-                title="Innstillinger"
-              >
-                ⚙
-              </button>
-            </div>
-          </div>
           <h1>
             Heisann{' '}
             <span className="hero-name-accent">
@@ -1091,6 +1074,7 @@ function App() {
         <ProfilesPage
           {...commonPageProps}
           onBackToOverview={handleBackToProfileOverview}
+          onOpenSettings={handleOpenSettings}
           onSetKnotVisibility={handleSetKnotVisibility}
           profileViewMode={profileViewMode}
           editRequest={profileEditRequest}
@@ -1186,7 +1170,6 @@ function App() {
         <SettingsModal
           appVersion={APP_VERSION}
           currentUser={currentUser}
-          isDark={isDark}
           isChangingPassword={isChangingPassword}
           isDeletingAccount={isDeletingAccount}
           isOpen={isSettingsOpen}
@@ -1200,7 +1183,6 @@ function App() {
           onOpenProfileEditor={handleSettingsOpenProfileEditor}
           onRestartTour={handleRestartTour}
           onSubmitPasswordChange={handleChangeOwnPassword}
-          onToggleDark={() => setIsDark((prev) => !prev)}
           passwordError={passwordError}
           passwordForm={passwordForm}
         />
