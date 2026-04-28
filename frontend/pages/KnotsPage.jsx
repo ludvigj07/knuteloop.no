@@ -1505,15 +1505,41 @@ export function KnotsPage({
         </div>
       ) : null}
 
+      {/* Skeleton loaders — vises mens data fortsatt laster */}
+      {knots.length === 0 ? (
+        <div className="knot-list knot-list--skeleton" aria-hidden="true">
+          {Array.from({ length: 5 }).map((_, index) => (
+            <div key={index} className="skeleton skeleton-row">
+              <div className="skeleton-row__dot" />
+              <div className="skeleton-row__lines">
+                <div className="skeleton-row__line skeleton-row__line--title" />
+                <div className="skeleton-row__line skeleton-row__line--sub" />
+              </div>
+              <div className="skeleton-row__cta" />
+            </div>
+          ))}
+        </div>
+      ) : null}
+
       {/* Empty states */}
-      {visibleFolderKnots.length === 0 ? (
-        <p className="folder-empty">
-          Det ligger ingen knuter i denne mappen ennå.
-        </p>
+      {knots.length > 0 && visibleFolderKnots.length === 0 ? (
+        <div className="folder-empty empty-state">
+          <div className="empty-state__icon" aria-hidden="true">🪢</div>
+          <h3 className="empty-state__title">Tomt her</h3>
+          <p className="empty-state__hint">
+            Knuter dukker opp her når noen legger dem til.
+          </p>
+        </div>
       ) : null}
       {visibleFolderKnots.length > 0 && visibleKnots.length === 0 ? (
-        <div className="filter-empty-state">
-          <h3>{statusFilter === 'tatt' ? 'Du har ikke tatt noen knuter ennå' : 'Ingen knuter igjen i denne kategorien'}</h3>
+        <div className="filter-empty-state empty-state">
+          <div className="empty-state__icon" aria-hidden="true">🔍</div>
+          <h3 className="empty-state__title">
+            {statusFilter === 'tatt' ? 'Du har ikke tatt noen knuter ennå' : 'Ingen knuter igjen i denne kategorien'}
+          </h3>
+          <p className="empty-state__hint">
+            Prøv andre filtre eller nullstill for å se hele mappen igjen.
+          </p>
           <button
             type="button"
             className="action-button action-button--sticker action-button--compact"
