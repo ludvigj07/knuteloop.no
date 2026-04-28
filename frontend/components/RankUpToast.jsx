@@ -11,6 +11,15 @@ export function RankUpToast({ data, onClose }) {
   const [dragY, setDragY] = useState(0);
   const dragStateRef = useRef(null);
 
+  // onClose fra parent er en inline arrow som endres ved hver render.
+  // Lagrer siste i ref så useEffect under kun reagerer på `data`-bytte —
+  // uten denne resettes exit-timeren ved hver re-render i App, og toasten
+  // kan henge mye lenger enn 4 sek hvis bakgrunns-fetch trigger render.
+  const onCloseRef = useRef(onClose);
+  useEffect(() => {
+    onCloseRef.current = onClose;
+  }, [onClose]);
+
   useEffect(() => {
     if (!data) return undefined;
 
@@ -23,14 +32,14 @@ export function RankUpToast({ data, onClose }) {
     }, AUTO_DISMISS_MS - 280);
 
     const closeTimerId = window.setTimeout(() => {
-      onClose?.();
+      onCloseRef.current?.();
     }, AUTO_DISMISS_MS);
 
     return () => {
       window.clearTimeout(exitTimerId);
       window.clearTimeout(closeTimerId);
     };
-  }, [data, onClose]);
+  }, [data]);
 
   if (!data || typeof document === 'undefined') {
     return null;
