@@ -1,0 +1,180 @@
+/* mobile-polish.css
+ * Målrettede mobil-UX forbedringer for 360–414px viewports.
+ * Lastes etter blaruss-refresh.css så denne overstyrer trygt.
+ */
+
+/* ---------- 1. Aldri horisontal scroll på root-nivå ---------- */
+html,
+body {
+  overflow-x: hidden;
+  -webkit-text-size-adjust: 100%;
+}
+
+/* iOS auto-zoom på inputs med font-size < 16px — påkrev minst 16px */
+@media (max-width: 900px) {
+  input,
+  select,
+  textarea,
+  .text-input {
+    font-size: max(16px, 1rem) !important;
+  }
+}
+
+/* ---------- 2. Touch-targets: alle interaktive elementer minst 44px ---------- */
+@media (max-width: 900px) {
+  button,
+  [role='button'],
+  a.button,
+  .icon-button,
+  .pill-button {
+    min-height: 44px;
+  }
+
+  /* Små "x"/"close"/ikon-knapper får eksplisitt min-bredde */
+  .icon-button,
+  .close-button,
+  [aria-label*='Lukk' i],
+  [aria-label*='close' i] {
+    min-width: 44px;
+    min-height: 44px;
+  }
+}
+
+/* ---------- 3. Kontrast: muted text er ofte for lys ---------- */
+@media (max-width: 900px) {
+  .app-theme p,
+  .app-theme .text-muted,
+  .app-theme .muted,
+  .app-theme small {
+    color: var(--text-soft);
+  }
+}
+
+/* ---------- 4. Modal full-skjerm fix på mobil ---------- */
+@media (max-width: 640px) {
+  .app-theme .modal,
+  .app-theme .settings-modal,
+  .app-theme .terms-modal,
+  .app-theme [role='dialog'] {
+    max-height: calc(100dvh - 16px);
+    max-width: calc(100vw - 16px);
+  }
+
+  /* Modal-innhold må kunne scrolle internt — ikke heile siden */
+  .app-theme .modal__body,
+  .app-theme .settings-modal__body,
+  .app-theme .terms-modal__body {
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior: contain;
+  }
+
+  /* Modal-overlay må respektere safe areas */
+  .app-theme .modal-overlay,
+  .app-theme .modal__overlay {
+    padding:
+      max(8px, env(safe-area-inset-top, 0px))
+      max(8px, env(safe-area-inset-right, 0px))
+      max(8px, env(safe-area-inset-bottom, 0px))
+      max(8px, env(safe-area-inset-left, 0px));
+  }
+}
+
+/* ---------- 5. Lange ord/URLer skal aldri sprenge layout ---------- */
+.app-theme .knot-card,
+.app-theme .feed-card,
+.app-theme .comment,
+.app-theme .profile-card,
+.app-theme .leaderboard-row {
+  min-width: 0;
+}
+
+.app-theme .knot-card *,
+.app-theme .feed-card *,
+.app-theme .comment * {
+  max-width: 100%;
+}
+
+/* Bilder/video skal aldri overskride parent */
+img,
+video,
+canvas,
+svg {
+  max-width: 100%;
+}
+
+.app-theme img,
+.app-theme video {
+  height: auto;
+}
+
+/* ---------- 6. Tap-feedback for å bekrefte trykk ---------- */
+@media (hover: none) {
+  .app-theme button:active,
+  .app-theme [role='button']:active {
+    opacity: 0.85;
+  }
+}
+
+/* ---------- 7. Bottom-nav over keyboard og innhold ---------- */
+@media (max-width: 900px) {
+  .bottom-swipe-nav {
+    z-index: 50;
+  }
+
+  /* Toast skal aldri legges over bottom-nav */
+  .toast,
+  .app-theme .toast {
+    bottom: calc(var(--mobile-bottom-nav-clearance, 96px) + 12px) !important;
+    left: 12px;
+    right: 12px;
+    max-width: calc(100vw - 24px);
+  }
+}
+
+/* ---------- 8. Sticky form-knapper unngår å dekke innhold ---------- */
+@media (max-width: 640px) {
+  .form-actions,
+  .modal-actions,
+  .sticky-actions {
+    padding-bottom: max(12px, env(safe-area-inset-bottom, 0px));
+  }
+}
+
+/* ---------- 9. Tabeller scroller horisontalt i wrapper, ikke siden ---------- */
+.app-theme .table-wrapper,
+.app-theme .scroll-x {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  max-width: 100%;
+}
+
+/* ---------- 10. Code/pre-blokker brytes ---------- */
+@media (max-width: 640px) {
+  pre,
+  code {
+    white-space: pre-wrap;
+    word-break: break-word;
+  }
+}
+
+/* ---------- 11. Trygg minimum font-size for body-tekst på mobil ---------- */
+@media (max-width: 414px) {
+  .app-theme p,
+  .app-theme li,
+  .app-theme .body-text {
+    font-size: max(0.92rem, 14px);
+    line-height: 1.5;
+  }
+}
+
+/* ---------- 12. Fjern uønskede :hover-effekter på touch-devices ---------- */
+@media (hover: none) {
+  .app-theme .sticker:hover,
+  .app-theme .nav-button:hover,
+  .app-theme .action-button:hover,
+  .app-theme .desktop-segmented-nav__button:hover,
+  .app-theme .bottom-swipe-nav__button:hover {
+    transform: none !important;
+  }
+}

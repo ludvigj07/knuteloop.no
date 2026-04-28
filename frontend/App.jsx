@@ -4,6 +4,7 @@ import { KnotIcon } from './components/KnotIcon.jsx';
 import './App.css';
 import './styles/blaruss-refresh.css';
 import './styles/admin-mobile.css';
+import './styles/mobile-polish.css';
 import { LiveOnboarding } from './components/LiveOnboarding.jsx';
 import { SettingsModal } from './components/SettingsModal.jsx';
 import { SwipeTabsShell } from './components/SwipeTabsShell.jsx';
