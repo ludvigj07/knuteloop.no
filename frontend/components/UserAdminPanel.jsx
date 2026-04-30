@@ -11,29 +11,82 @@ import {
 import { createRussNamePool } from '../utils/russNameGenerator.js';
 import { InvitePrintOverlay } from './InvitePrintOverlay.jsx';
 
+const BULK_RUSS_NAME_MAX_CHARS = 40;
+
+function splitBulkLine(line) {
+  if (line.includes('\t')) return line.split(/\t+/);
+  if (line.includes(';')) return line.split(';');
+  if (line.includes(',')) return line.split(',');
+  return [line];
+}
+
+function normalizeRussNameKey(value) {
+  return value.trim().replace(/\s+/g, ' ').toLowerCase();
+}
+
 function parseBulkLines(text) {
   return text
     .split('\n')
-    .map((line) => line.trim())
-    .filter(Boolean)
-    .map((line) => {
-      const commaIdx = line.lastIndexOf(',');
-      if (commaIdx > 0) {
+    .map((rawLine, index) => {
+      const line = rawLine.trim();
+      if (!line) return null;
+
+      const parts = splitBulkLine(line).map((part) => part.trim());
+      const emailIndex = parts.findIndex((part) => /@/.test(part));
+      if (emailIndex >= 0) {
         return {
-          name: line.slice(0, commaIdx).trim(),
-          email: line.slice(commaIdx + 1).trim(),
+          lineNumber: index + 1,
+          name: parts.slice(0, emailIndex).join(' ').trim(),
+          email: parts[emailIndex],
+          russName: parts.slice(emailIndex + 1).join(' ').trim(),
         };
       }
-      const tabParts = line.split(/\t/);
-      if (tabParts.length === 2) {
-        return { name: tabParts[0].trim(), email: tabParts[1].trim() };
-      }
-      if (/@/.test(line)) {
-        return { name: '', email: line };
-      }
+
       return null;
     })
     .filter((entry) => entry && /@/.test(entry.email));
+}
+
+function validateBulkRussNames(entries, existingUsers) {
+  const existingNames = new Set(
+    existingUsers
+      .map((user) => user.russName)
+      .filter(Boolean)
+      .map(normalizeRussNameKey),
+  );
+  const seen = new Map();
+  const errors = [];
+
+  for (const entry of entries) {
+    const russName = entry.russName?.trim();
+    if (!russName) continue;
+
+    if (russName.length > BULK_RUSS_NAME_MAX_CHARS) {
+      errors.push({
+        email: entry.email,
+        message: `Linje ${entry.lineNumber}: russenavnet er for langt (maks ${BULK_RUSS_NAME_MAX_CHARS} tegn).`,
+      });
+    }
+
+    const key = normalizeRussNameKey(russName);
+    if (existingNames.has(key)) {
+      errors.push({
+        email: entry.email,
+        message: `Linje ${entry.lineNumber}: russenavnet "${russName}" er allerede i bruk.`,
+      });
+    }
+
+    if (seen.has(key)) {
+      errors.push({
+        email: entry.email,
+        message: `Linje ${entry.lineNumber}: russenavnet "${russName}" er brukt flere ganger i samme bulk.`,
+      });
+    } else {
+      seen.set(key, entry.lineNumber);
+    }
+  }
+
+  return errors;
 }
 
 function buildShortHost() {
@@ -259,7 +312,7 @@ export function UserAdminPanel({ sessionToken }) {
 
     const entries = parseBulkLines(bulkText);
     if (entries.length === 0) {
-      setError('Fant ingen gyldige linjer. Format per linje: «Navn, e-post».');
+      setError('Fant ingen gyldige linjer. Format per linje: «Navn, e-post» eller «Navn, e-post, russenavn».');
       return;
     }
     if (!bulkClass.trim()) {
@@ -267,11 +320,22 @@ export function UserAdminPanel({ sessionToken }) {
       return;
     }
 
+    const validationErrors = validateBulkRussNames(entries, users);
+    if (validationErrors.length > 0) {
+      setBulkErrors(validationErrors);
+      setError('Rett opp russenavnene i bulk-listen før import.');
+      return;
+    }
+
     setBulkBusy(true);
     setBulkProgress({ done: 0, total: entries.length });
 
     const namePool = createRussNamePool();
-    const existingRussNames = users.map((u) => u.russName).filter(Boolean);
+    const providedRussNames = entries.map((entry) => entry.russName?.trim()).filter(Boolean);
+    const existingRussNames = [
+      ...users.map((u) => u.russName).filter(Boolean),
+      ...providedRussNames,
+    ];
     const newInvites = [];
     const errors = [];
     const shortHost = buildShortHost();
@@ -282,7 +346,8 @@ export function UserAdminPanel({ sessionToken }) {
         entry.name ||
         entry.email.split('@')[0].replace(/[._-]+/g, ' ').trim() ||
         'Russ';
-      const russName = namePool.take(existingRussNames);
+      const russName = entry.russName?.trim() || namePool.take(existingRussNames);
+      existingRussNames.push(russName);
 
       try {
         const result = await adminCreateUser(sessionToken, {
@@ -522,8 +587,12 @@ export function UserAdminPanel({ sessionToken }) {
       >
         <strong>Bulk-importer brukere fra liste</strong>
         <p style={{ margin: '0.25rem 0 0.5rem', fontSize: '0.85rem' }}>
-          Lim inn én elev per linje på formatet <code>Navn, e-post</code>. Dåpsnavn
-          genereres automatisk (kleine russenavn). Klasse og rolle gjelder for alle.
+          Lim inn én elev per linje på formatet <code>Navn, e-post</code>. Klasse og rolle
+          gjelder for alle.
+        </p>
+        <p style={{ margin: '-0.25rem 0 0.75rem', fontSize: '0.85rem' }}>
+          Du kan også legge til russenavn som tredje kolonne: <code>Navn, e-post, russenavn</code>.
+          Mangler russenavn, genereres et automatisk navn.
         </p>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
           <label className="field-group">
@@ -557,7 +626,7 @@ export function UserAdminPanel({ sessionToken }) {
             rows={8}
             value={bulkText}
             onChange={(event) => setBulkText(event.target.value)}
-            placeholder={'Ola Nordmann, ola@elev.skole.no\nKari Hansen, kari@elev.skole.no'}
+            placeholder={'Ola Nordmann, ola@elev.skole.no, Kongen\nKari Hansen, kari@elev.skole.no'}
             disabled={bulkBusy}
             style={{ fontFamily: 'ui-monospace, monospace', fontSize: '0.85rem' }}
           />
@@ -571,6 +640,27 @@ export function UserAdminPanel({ sessionToken }) {
           {bulkBusy ? 'Oppretter...' : 'Opprett alle og generer invitasjoner'}
         </button>
       </form>
+
+      {bulkInvites.length === 0 && bulkErrors.length > 0 ? (
+        <div
+          className="section-card"
+          style={{
+            background: 'var(--color-surface-raised, #fff4f4)',
+            padding: '1rem',
+            marginBottom: '1.5rem',
+            borderRadius: 8,
+          }}
+        >
+          <strong style={{ color: '#a33' }}>{bulkErrors.length} feilet:</strong>
+          <ul style={{ margin: '0.25rem 0 0 1rem', fontSize: '0.85rem' }}>
+            {bulkErrors.map((err) => (
+              <li key={`${err.email}-${err.message}`}>
+                <code>{err.email}</code>: {err.message}
+              </li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
 
       {bulkInvites.length > 0 ? (
         <div

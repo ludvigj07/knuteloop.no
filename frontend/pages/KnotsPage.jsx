@@ -4,14 +4,16 @@ import {
   ArrowDown,
   ArrowUp,
   ArrowUpDown,
-  Beer,
-  Circle,
-  Flame,
-  Heart,
   Layers,
-  Users,
 } from 'lucide-react';
 import { MobileVideo } from '../components/MobileVideo.jsx';
+import {
+  BeerBottleIcon,
+  HeteroSymbolIcon,
+  RampestrekerIcon,
+  SimpleKnotIcon,
+  TwoXIcon,
+} from '../components/KnotCategoryIcons.jsx';
 import { KNOT_FOLDERS, resolveKnotFolder } from '../data/knotFolders.js';
 
 const NOTE_MAX_CHARS = 150;
@@ -19,14 +21,15 @@ const NOTE_MAX_CHARS = 150;
 const MOBILE_BREAKPOINT = 900;
 const SHEET_DISMISS_THRESHOLD = 120;
 const ALL_KNOTS_FOLDER_ID = 'Alle knuter';
+const KNOT_TYPE_ICON_SIZE = 34;
 
 const KNOT_TYPE_FILTERS = [
   { id: ALL_KNOTS_FOLDER_ID, label: 'Alle knuter', Icon: Layers },
-  { id: 'Generelle', label: 'Generelle-knuter', Icon: Circle },
-  { id: 'Dobbelknuter', label: 'Dobbel-knuter', Icon: Users },
-  { id: 'Fordervett-knuter', label: 'Rampestrek-knuter', Icon: Flame },
-  { id: 'Alkoholknuter', label: 'Alkohol-knuter', Icon: Beer },
-  { id: 'Sexknuter', label: 'Sex-knuter', Icon: Heart },
+  { id: 'Generelle', label: 'Generelle-knuter', Icon: SimpleKnotIcon },
+  { id: 'Dobbelknuter', label: 'Dobbel-knuter', Icon: TwoXIcon },
+  { id: 'Fordervett-knuter', label: 'Rampestrek-knuter', Icon: RampestrekerIcon },
+  { id: 'Alkoholknuter', label: 'Alkohol-knuter', Icon: BeerBottleIcon },
+  { id: 'Sexknuter', label: 'Sex-knuter', Icon: HeteroSymbolIcon },
 ];
 
 const STATUS_FILTERS = [
@@ -333,7 +336,7 @@ function KnotTypeFilters({ filters, activeFilter, onChangeFilter }) {
           onClick={() => onChangeFilter(filter.id)}
         >
           <span className="knot-type-filter__icon" aria-hidden="true">
-            <filter.Icon size={20} strokeWidth={1.8} />
+            <filter.Icon size={KNOT_TYPE_ICON_SIZE} strokeWidth={2} />
           </span>
         </button>
       ))}
