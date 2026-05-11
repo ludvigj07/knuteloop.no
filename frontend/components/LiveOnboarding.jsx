@@ -24,8 +24,9 @@ const STEPS = [
     kind: 'spotlight',
     target: '[data-tour-id="first-knot"] .knot-row__take-btn',
     fallbackTarget: '[data-tour-id="first-knot"]',
+    disableScroll: true,
     title: 'Sånn tar du en knute',
-    body: 'Trykk "Ta knute" når du har gjort den — last opp bilde eller video som bevis og send inn.',
+    body: 'Trykk "Ta knute" for å se hva knuten går ut på og sende inn bevis (bilde eller video).',
     cta: 'Skjønner',
     requiresPage: 'knuter',
   },
@@ -34,7 +35,7 @@ const STEPS = [
     kind: 'spotlight',
     target: '[data-tour-id="tab-leaderboard"]',
     title: 'Topplista',
-    body: 'Se hvor du står i kullet. Hver knute løfter deg oppover — gull-knutene gir ekstra fart.',
+    body: 'Se hvor du står i kullet. Bytt mellom total, klasse og kjønn.',
     cta: 'Neste',
     requiresPage: 'leaderboard',
   },
@@ -43,7 +44,7 @@ const STEPS = [
     kind: 'spotlight',
     target: '[data-tour-id="tab-feed"]',
     title: 'Feeden',
-    body: 'Se hva andre russ har sendt inn. Gi stjerner, kommenter og hei på folk.',
+    body: 'Se hva andre russ har sendt inn. Gi stjerner og kommenter.',
     cta: 'Neste',
     requiresPage: 'feed',
   },
@@ -52,7 +53,7 @@ const STEPS = [
     kind: 'spotlight',
     target: '[data-tour-id="tab-profiler"]',
     title: 'Profilen din',
-    body: 'Sett opp bilde, russenavn og bio. Innstillinger ligger også på denne fanen.',
+    body: 'Bildet, bio og statistikken din ligger her. Innstillinger finner du også på denne fanen.',
     cta: 'Neste',
     requiresPage: 'profiler',
   },
@@ -342,6 +343,7 @@ export function LiveOnboarding({ isOpen, onComplete, currentPage, onChangePage }
     };
 
     const scrollTargetIntoView = (targetEl) => {
+      if (step.disableScroll) return;
       if (targetEl.closest('.bottom-swipe-nav')) return;
       const r = targetEl.getBoundingClientRect();
       const vh = window.innerHeight;
