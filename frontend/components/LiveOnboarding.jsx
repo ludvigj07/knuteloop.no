@@ -6,36 +6,36 @@ const STEPS = [
     id: 'welcome',
     kind: 'modal',
     icon: '🪢',
-    title: 'Heisann! Velkommen til Russeknute',
-    body: 'Vi tar en kjapp tur så du vet hvor det viktigste er. Det tar 20 sekunder.',
-    cta: 'Vis meg!',
+    title: 'Velkommen til Russeknute!',
+    body: 'Vi tar 30 sekunder på å vise deg det viktigste. Bare hopp inn.',
+    cta: 'Vis meg rundt!',
   },
   {
     id: 'tab-knuter',
     kind: 'spotlight',
     target: '[data-tour-id="tab-knuter"]',
-    title: 'Knutene dine',
-    body: 'Her er alle knutene du kan ta — bla i listen og velg den du vil prøve.',
-    cta: 'Skjønner!',
+    title: 'Knutene',
+    body: 'Her er alle knutene du kan ta — bla i lista og velg den du har lyst på.',
+    cta: 'Neste',
     requiresPage: 'knuter',
   },
   {
     id: 'first-knot-register',
     kind: 'spotlight',
-    target: '[data-tour-id="first-knot"] .knot-row__doc-btn',
+    target: '[data-tour-id="first-knot"] .knot-row__take-btn',
     fallbackTarget: '[data-tour-id="first-knot"]',
-    title: 'Sånn registrerer du',
-    body: 'Trykk på kamera-knappen for å laste opp bilde eller video som bevis. Det er alt.',
-    cta: 'Skjønner!',
+    title: 'Sånn tar du en knute',
+    body: 'Trykk "Ta knute" når du har gjort den — last opp bilde eller video som bevis og send inn.',
+    cta: 'Skjønner',
     requiresPage: 'knuter',
   },
   {
     id: 'tab-leaderboard',
     kind: 'spotlight',
     target: '[data-tour-id="tab-leaderboard"]',
-    title: 'Hvor står du?',
-    body: 'Sjekk topplisten for å se hvem som leder kullet. Hver knute gir deg et puff oppover — gull-knutene løfter litt ekstra.',
-    cta: 'Skjønner!',
+    title: 'Topplista',
+    body: 'Se hvor du står i kullet. Hver knute løfter deg oppover — gull-knutene gir ekstra fart.',
+    cta: 'Neste',
     requiresPage: 'leaderboard',
   },
   {
@@ -43,17 +43,26 @@ const STEPS = [
     kind: 'spotlight',
     target: '[data-tour-id="tab-feed"]',
     title: 'Feeden',
-    body: 'Her ser du innsendinger fra andre russ — gi stjerner og kommentarer.',
-    cta: 'Skjønner!',
+    body: 'Se hva andre russ har sendt inn. Gi stjerner, kommenter og hei på folk.',
+    cta: 'Neste',
     requiresPage: 'feed',
+  },
+  {
+    id: 'tab-profiler',
+    kind: 'spotlight',
+    target: '[data-tour-id="tab-profiler"]',
+    title: 'Profilen din',
+    body: 'Sett opp bilde, russenavn og bio. Innstillinger ligger også på denne fanen.',
+    cta: 'Neste',
+    requiresPage: 'profiler',
   },
   {
     id: 'done',
     kind: 'modal',
     icon: '🎉',
     title: 'Du er klar!',
-    body: 'Lykke til. Dagens knute finner du på hjem-siden — bare å gå i gang.',
-    cta: 'Kom i gang!',
+    body: 'Lykke til. Dagens knute finner du på Hjem-fanen — gå i gang.',
+    cta: 'La oss kjøre!',
   },
 ];
 
@@ -92,7 +101,7 @@ function ArrowPointer({ direction }) {
   );
 }
 
-function ModalView({ step, onAdvance, onSkip, isFirst }) {
+function ModalView({ step, onAdvance, onSkip, stepIndex, totalSteps, isLast }) {
   return (
     <div
       className="tour-backdrop tour-backdrop--modal"
@@ -102,8 +111,13 @@ function ModalView({ step, onAdvance, onSkip, isFirst }) {
       onClick={(event) => event.stopPropagation()}
     >
       <div className="tour-modal">
-        {!isFirst ? null : (
-          <button type="button" className="tour-skip" onClick={onSkip}>
+        {isLast ? null : (
+          <button
+            type="button"
+            className="tour-skip"
+            onClick={onSkip}
+            aria-label="Hopp over omvisningen"
+          >
             Hopp over
           </button>
         )}
@@ -114,6 +128,14 @@ function ModalView({ step, onAdvance, onSkip, isFirst }) {
           {step.title}
         </h2>
         <p className="tour-modal__body">{step.body}</p>
+        <div className="tour-tooltip__progress" aria-hidden="true">
+          {Array.from({ length: totalSteps }, (_, i) => (
+            <span
+              key={i}
+              className={`tour-tooltip__dot${i === stepIndex ? ' is-active' : ''}`}
+            />
+          ))}
+        </div>
         <button type="button" className="tour-cta" onClick={onAdvance}>
           {step.cta}
         </button>
@@ -256,7 +278,6 @@ export function LiveOnboarding({ isOpen, onComplete, currentPage, onChangePage }
 
   const step = STEPS[stepIndex];
   const isLast = stepIndex === STEPS.length - 1;
-  const isFirst = stepIndex === 0;
   const rect = measurement?.stepId === step.id ? measurement.rect : null;
 
   useEffect(() => {
@@ -417,7 +438,9 @@ export function LiveOnboarding({ isOpen, onComplete, currentPage, onChangePage }
         step={step}
         onAdvance={handleAdvance}
         onSkip={handleSkip}
-        isFirst={isFirst}
+        stepIndex={stepIndex}
+        totalSteps={STEPS.length}
+        isLast={isLast}
       />,
       document.body,
     );
