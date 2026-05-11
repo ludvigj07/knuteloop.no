@@ -490,6 +490,7 @@ function createSeedDatabase() {
       1: ['knot-1', 'knot-2', 'knot-5'],
     },
     knotFeedbackMessages: cloneKnotFeedbackMessages(),
+    russnamesRevealedAt: null,
     sessions: [],
   };
 }
@@ -2013,36 +2014,51 @@ function buildBootstrap(db, user) {
   const isAdminUser = assertAdmin(user);
   const currentUserId = user.id;
 
-  const leaderSeed = buildLeaderSeed(db);
-  const clientKnots = buildClientKnots(db, currentUserId);
-  const publicSubmissions = db.submissions.map((submission) =>
-    toPublicSubmission(db, submission, currentUserId),
+  // Pre-dåp blokade: hvis russnamesRevealedAt ikke er satt, strip russName
+  // ut av alle brukere i en arbeidskopi av db før vi bygger noe. Admin
+  // unntas — de må kunne dobbeltsjekke at folk fikk riktig navn før dåpen.
+  const russnamesRevealedAt = typeof db.russnamesRevealedAt === 'string' ? db.russnamesRevealedAt : null;
+  const russnamesRevealed = Boolean(russnamesRevealedAt);
+  const workingDb = (russnamesRevealed || isAdminUser)
+    ? db
+    : {
+        ...db,
+        users: db.users.map((entry) => ({
+          ...entry,
+          profile: { ...entry.profile, russName: null },
+        })),
+      };
+
+  const leaderSeed = buildLeaderSeed(workingDb);
+  const clientKnots = buildClientKnots(workingDb, currentUserId);
+  const publicSubmissions = workingDb.submissions.map((submission) =>
+    toPublicSubmission(workingDb, submission, currentUserId),
   );
   const ownSubmissions = isAdminUser
     ? publicSubmissions
     : publicSubmissions.filter((submission) => submission.leaderId === currentUserId);
   const visibleDuels = isAdminUser
-    ? db.duels
-    : db.duels.filter(
+    ? workingDb.duels
+    : workingDb.duels.filter(
         (duel) =>
           duel.challengerId === currentUserId || duel.opponentId === currentUserId,
       );
   const profileDetails = Object.fromEntries(
-    db.users.map((entry) => [entry.id, entry.profile]),
+    workingDb.users.map((entry) => [entry.id, entry.profile]),
   );
   const rawLeaderboard = buildLeaderboard(
     leaderSeed,
     publicSubmissions,
     clientKnots,
     currentUserId,
-    db.duels,
+    workingDb.duels,
   );
   const profilesRaw = buildProfiles(
     rawLeaderboard,
     currentUserId,
     clientKnots,
     publicSubmissions,
-    db.profileHistory,
+    workingDb.profileHistory,
     profileDetails,
   );
   const profiles = profilesRaw.map((profile) => ({
@@ -2073,8 +2089,8 @@ function buildBootstrap(db, user) {
   const knotTypeLeaderboard = buildKnotTypeLeaderboard(publicSubmissions, clientKnots);
   const genderLeaderboards = buildGenderLeaderboards(leaderboard);
   const dailyKnot = buildDailyKnot(clientKnots);
-  const duelAvailability = buildDuelAvailability(currentUserId, leaderboard, db.duels);
-  const duelHistory = buildDuelHistory(db.duels, leaderboard);
+  const duelAvailability = buildDuelAvailability(currentUserId, leaderboard, workingDb.duels);
+  const duelHistory = buildDuelHistory(workingDb.duels, leaderboard);
   const duelSummary = {
     stake: DUEL_STAKE,
     range: DUEL_RANGE,
@@ -2083,7 +2099,7 @@ function buildBootstrap(db, user) {
     currentUserDailyCount: duelAvailability.currentUserDailyCount ?? 0,
     currentUserRemaining: duelAvailability.currentUserRemaining ?? 0,
     thisDayTotal: duelAvailability.thisDayTotal ?? 0,
-    activeCount: db.duels.filter((duel) => duel.status === 'active').length,
+    activeCount: workingDb.duels.filter((duel) => duel.status === 'active').length,
   };
   const dashboardData = currentLeader
     ? buildDashboardData(currentUserId, leaderboard, achievements, activityLog, clientKnots)
@@ -2102,7 +2118,7 @@ function buildBootstrap(db, user) {
       };
 
   return {
-    school: db.schools[0],
+    school: workingDb.schools[0],
     currentUser: {
       leaderId: currentUserId,
       name: user.name,
@@ -2110,20 +2126,20 @@ function buildBootstrap(db, user) {
       group: user.group,
       role: user.role,
     },
-    currentUserStreak: getUserStreakSummary(db, currentUserId),
+    currentUserStreak: getUserStreakSummary(workingDb, currentUserId),
     leaders: leaderSeed,
     knots: clientKnots,
     submissions: ownSubmissions,
     duels: visibleDuels,
     reports: isAdminUser
-      ? (db.reports ?? []).map((report) => toPublicReport(db, report))
+      ? (workingDb.reports ?? []).map((report) => toPublicReport(workingDb, report))
       : [],
     bans: isAdminUser
-      ? (db.bans ?? [])
-          .map((ban) => toPublicBan(db, ban, nowMs))
+      ? (workingDb.bans ?? [])
+          .map((ban) => toPublicBan(workingDb, ban, nowMs))
           .sort((left, right) => Date.parse(right.expiresAt) - Date.parse(left.expiresAt))
       : [],
-    currentUserActiveBans: buildCurrentUserActiveBans(db, currentUserId, nowMs),
+    currentUserActiveBans: buildCurrentUserActiveBans(workingDb, currentUserId, nowMs),
     moderationPolicy: MODERATION_POLICY,
     leaderboard,
     profiles,
@@ -2137,8 +2153,10 @@ function buildBootstrap(db, user) {
     duelHistory,
     duelSummary,
     dashboardData,
-    knotFeedbackMessages: cloneKnotFeedbackMessages(db.knotFeedbackMessages),
-    commentsBySubmission: buildCommentsBySubmission(db, currentUserId),
+    knotFeedbackMessages: cloneKnotFeedbackMessages(workingDb.knotFeedbackMessages),
+    commentsBySubmission: buildCommentsBySubmission(workingDb, currentUserId),
+    russnamesRevealed,
+    russnamesRevealedAt,
   };
 }
 
@@ -3259,6 +3277,58 @@ async function handleUpdateKnotFeedbackMessages(request, response) {
   sendJson(response, 200, buildBootstrap(nextDb, user));
 }
 
+async function handleRevealRussnames(request, response) {
+  const db = await readDb();
+  const user = getAuthedUser(db, request);
+
+  if (!assertAdmin(user)) {
+    sendJson(response, 403, { error: 'Kun admin kan avsløre russenavn.' });
+    return;
+  }
+
+  // Idempotent: hvis russenavn allerede er avslørt, behold opprinnelig
+  // tidsstempel slik at vi ikke ved et uhell endrer historikk.
+  const alreadyRevealed =
+    typeof db.russnamesRevealedAt === 'string' && db.russnamesRevealedAt.length > 0;
+  const nextDb = alreadyRevealed
+    ? db
+    : { ...db, russnamesRevealedAt: nowIso() };
+
+  if (!alreadyRevealed) {
+    await writeDb(nextDb);
+    console.log(
+      `[reveal-russnames] Russenavn avslørt av admin ${user.id} (${user.email ?? 'ukjent e-post'}) ${nextDb.russnamesRevealedAt}`,
+    );
+  }
+
+  sendJson(response, 200, buildBootstrap(nextDb, user));
+}
+
+async function handleHideRussnames(request, response) {
+  const db = await readDb();
+  const user = getAuthedUser(db, request);
+
+  if (!assertAdmin(user)) {
+    sendJson(response, 403, { error: 'Kun admin kan reversere russenavn-avsløring.' });
+    return;
+  }
+
+  const wasRevealed =
+    typeof db.russnamesRevealedAt === 'string' && db.russnamesRevealedAt.length > 0;
+  const nextDb = wasRevealed
+    ? { ...db, russnamesRevealedAt: null }
+    : db;
+
+  if (wasRevealed) {
+    await writeDb(nextDb);
+    console.log(
+      `[reveal-russnames] Russenavn skjult igjen av admin ${user.id} (${user.email ?? 'ukjent e-post'}) ${nowIso()}`,
+    );
+  }
+
+  sendJson(response, 200, buildBootstrap(nextDb, user));
+}
+
 async function handleImportKnots(request, response) {
   const db = await readDb();
   const user = getAuthedUser(db, request);
@@ -3983,6 +4053,16 @@ const server = createServer(async (request, response) => {
 
     if (request.method === 'PATCH' && url.pathname === '/api/admin/knot-feedback-messages') {
       await handleUpdateKnotFeedbackMessages(request, response);
+      return;
+    }
+
+    if (request.method === 'PATCH' && url.pathname === '/api/admin/reveal-russnames') {
+      await handleRevealRussnames(request, response);
+      return;
+    }
+
+    if (request.method === 'DELETE' && url.pathname === '/api/admin/reveal-russnames') {
+      await handleHideRussnames(request, response);
       return;
     }
 

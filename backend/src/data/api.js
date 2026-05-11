@@ -371,6 +371,20 @@ export function updateKnotFeedbackMessages(token, messages) {
   });
 }
 
+export function revealRussnames(token) {
+  return apiRequest('/admin/reveal-russnames', {
+    method: 'PATCH',
+    token,
+  });
+}
+
+export function hideRussnames(token) {
+  return apiRequest('/admin/reveal-russnames', {
+    method: 'DELETE',
+    token,
+  });
+}
+
 export function removeBan(token, banId) {
   return apiRequest(`/admin/bans/${banId}`, {
     method: 'DELETE',
