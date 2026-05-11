@@ -305,24 +305,24 @@ export function InvitePage() {
                   required
                 />
               </label>
-              <label className="field-group">
-                <span>Klassen din</span>
-                <select
-                  className="text-input"
-                  value={className}
-                  onChange={(event) => setClassName(event.target.value)}
-                  required
-                >
-                  <option value="" disabled>
-                    Velg klasse
-                  </option>
+              <fieldset className="field-group invite-class-fieldset">
+                <legend>Klassen din</legend>
+                <div className="invite-class-grid">
                   {CLASS_OPTIONS.map((option) => (
-                    <option key={option} value={option}>
+                    <button
+                      key={option}
+                      type="button"
+                      className={`invite-class-chip${
+                        className === option ? ' is-active' : ''
+                      }`}
+                      onClick={() => setClassName(option)}
+                      aria-pressed={className === option}
+                    >
                       {option}
-                    </option>
+                    </button>
                   ))}
-                </select>
-              </label>
+                </div>
+              </fieldset>
               {error ? <p className="form-feedback form-feedback--error">{error}</p> : null}
               <button type="submit" className="action-button" disabled={busy}>
                 {busy ? 'Aktiverer...' : 'Aktiver konto og logg inn'}

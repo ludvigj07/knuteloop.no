@@ -1848,6 +1848,65 @@
   cursor: pointer;
 }
 
+/* --- Klasse-velger ved invitasjon ----------------------------------------- */
+
+.invite-class-fieldset {
+  border: 0;
+  padding: 0;
+  margin: 0;
+  display: grid;
+  gap: 8px;
+}
+
+.invite-class-fieldset legend {
+  padding: 0;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.invite-class-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+}
+
+@media (max-width: 380px) {
+  .invite-class-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+.invite-class-chip {
+  appearance: none;
+  min-height: 44px;
+  padding: 10px 8px;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
+  font-weight: 600;
+  font-size: 0.95rem;
+  font-family: inherit;
+  cursor: pointer;
+  transition: border-color 0.12s ease, background-color 0.12s ease,
+    color 0.12s ease, transform 0.06s ease;
+}
+
+.invite-class-chip:hover {
+  border-color: var(--primary);
+}
+
+.invite-class-chip:active {
+  transform: scale(0.96);
+}
+
+.invite-class-chip.is-active {
+  background: var(--primary);
+  color: var(--card);
+  border-color: var(--primary);
+}
+
 .dashboard-progress-grid,
 .dashboard-message-list,
 .dashboard-rival-list,
