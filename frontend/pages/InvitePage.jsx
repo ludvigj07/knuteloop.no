@@ -7,6 +7,11 @@ import {
 
 const SESSION_TOKEN_KEY = 'russ-session-token';
 
+const CLASS_OPTIONS = [
+  '3STA', '3STB', '3STC', '3STD', '3STE', '3STF', '3STG', '3STH',
+  '3IBA', '3IBB', '3IBC', '3IBD',
+];
+
 async function postJson(url, body) {
   const response = await fetch(url, {
     method: 'POST',
@@ -43,6 +48,7 @@ export function InvitePage() {
   const [code, setCode] = useState(initial.code);
   const [password, setPassword] = useState('');
   const [passwordConfirm, setPasswordConfirm] = useState('');
+  const [className, setClassName] = useState('');
   const [claimToken, setClaimToken] = useState('');
   const [displayName, setDisplayName] = useState('');
   const [error, setError] = useState('');
@@ -101,6 +107,10 @@ export function InvitePage() {
       setError('Passordene er ikke like.');
       return;
     }
+    if (!CLASS_OPTIONS.includes(className)) {
+      setError('Velg klassen din fra listen.');
+      return;
+    }
     if (!allAccepted) {
       setError('Du må godta vilkårene før kontoen kan aktiveres.');
       setStep('terms');
@@ -111,6 +121,9 @@ export function InvitePage() {
       const data = await postJson('/api/auth/invite/activate', {
         claimToken,
         password,
+        // Backend tar foreløpig ikke imot className her — vi sender med
+        // for fremtidig støtte og fanger den opp via PATCH /api/profile nedenfor.
+        className,
         // Disse feltene logges av backend som dokumentasjon på samtykket.
         // Backend-utvikler legger til håndtering — frontend sender alltid med.
         termsVersion: TERMS_VERSION,
@@ -121,6 +134,21 @@ export function InvitePage() {
       try {
         window.localStorage.setItem(SESSION_TOKEN_KEY, data.token);
       } catch {}
+      // Lagre klassen via PATCH /api/profile siden invite/activate ikke
+      // håndterer className enda. Feiler dette stille, kan brukeren rette
+      // i profilen senere.
+      try {
+        await fetch('/api/profile', {
+          method: 'PATCH',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${data.token}`,
+          },
+          body: JSON.stringify({ className }),
+        });
+      } catch {
+        // Feiler stille: brukeren får aktivert kontoen uansett.
+      }
       setDone(true);
     } catch (err) {
       setError(err.message);
@@ -276,6 +304,24 @@ export function InvitePage() {
                   minLength={8}
                   required
                 />
+              </label>
+              <label className="field-group">
+                <span>Klassen din</span>
+                <select
+                  className="text-input"
+                  value={className}
+                  onChange={(event) => setClassName(event.target.value)}
+                  required
+                >
+                  <option value="" disabled>
+                    Velg klasse
+                  </option>
+                  {CLASS_OPTIONS.map((option) => (
+                    <option key={option} value={option}>
+                      {option}
+                    </option>
+                  ))}
+                </select>
               </label>
               {error ? <p className="form-feedback form-feedback--error">{error}</p> : null}
               <button type="submit" className="action-button" disabled={busy}>
