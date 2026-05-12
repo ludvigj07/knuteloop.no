@@ -96,7 +96,6 @@
 .app-theme .admin-quick-card p {
   color: var(--text-muted) !important;
 }
-
 .app-theme .section-card,
 .app-theme .hero-panel,
 .app-theme .daily-knot-card,
@@ -119,8 +118,6 @@
 .app-theme .badge-card,
 .app-theme .profile-selector,
 .app-theme .profile-knot-row,
-.app-theme .duel-summary-bar,
-.app-theme .duel-history-row,
 .app-theme .inline-feedback,
 .app-theme .upload-field,
 .app-theme .evidence-card,

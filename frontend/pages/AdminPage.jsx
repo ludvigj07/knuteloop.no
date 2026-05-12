@@ -81,70 +81,6 @@ function parseStructuredKnotInput(text) {
   return { knots, errors };
 }
 
-function getDuelEvidence(duel, participant) {
-  if (participant === 'challenger') {
-    return {
-      note: duel.challengerNote ?? '',
-      imageName: duel.challengerImageName ?? '',
-      imagePreviewUrl: duel.challengerImagePreviewUrl ?? '',
-      videoName: duel.challengerVideoName ?? '',
-      videoPreviewUrl: duel.challengerVideoPreviewUrl ?? '',
-    };
-  }
-
-  return {
-    note: duel.opponentNote ?? '',
-    imageName: duel.opponentImageName ?? '',
-    imagePreviewUrl: duel.opponentImagePreviewUrl ?? '',
-    videoName: duel.opponentVideoName ?? '',
-    videoPreviewUrl: duel.opponentVideoPreviewUrl ?? '',
-  };
-}
-
-function DuelEvidencePanel({ title, evidence }) {
-  const hasEvidence =
-    evidence.note ||
-    evidence.imagePreviewUrl ||
-    evidence.videoPreviewUrl;
-
-  return (
-    <div className="duel-evidence-admin">
-      <strong>{title}</strong>
-      {hasEvidence ? (
-        <>
-          {evidence.note ? <p className="submission-note">{evidence.note}</p> : null}
-          {evidence.imagePreviewUrl || evidence.videoPreviewUrl ? (
-            <div className="submission-preview-grid">
-              {evidence.imagePreviewUrl ? (
-                <div className="evidence-card">
-                  <span>{evidence.imageName || 'Bildebevis'}</span>
-                  <img src={evidence.imagePreviewUrl} alt={title} />
-                </div>
-              ) : null}
-
-              {evidence.videoPreviewUrl ? (
-                <div className="evidence-card">
-                  <span>{evidence.videoName || 'Videobevis'}</span>
-                  <MobileVideo
-                    controls
-                    autoPlay
-                    muted
-                    loop
-                    playsInline
-                    src={evidence.videoPreviewUrl}
-                  />
-                </div>
-              ) : null}
-            </div>
-          ) : null}
-        </>
-      ) : (
-        <p className="submission-note">Ingen bevis lastet opp ennå.</p>
-      )}
-    </div>
-  );
-}
-
 function getSubmissionModeMeta(submissionMode) {
   if (submissionMode === 'anonymous-feed') {
     return {
@@ -180,7 +116,7 @@ function getSubmissionMode(submission) {
 
 const BAN_TYPE_OPTIONS = [
   { value: 'feed', label: 'Feed-ban (kun posting)' },
-  { value: 'submission', label: 'Innsendings-ban (knuter + knuteoff)' },
+  { value: 'submission', label: 'Innsendings-ban (knuter)' },
 ];
 
 const BAN_DURATION_OPTIONS = [
@@ -516,8 +452,6 @@ function SubmissionList({
 
 export function AdminPage({
   bans = [],
-  duelHistory,
-  duelSummary,
   knotFeedbackMessages = {},
   knots,
   leaders = [],
@@ -529,8 +463,6 @@ export function AdminPage({
   onUpdateKnotFeedbackMessages,
   onRemoveBan,
   onReviewReport,
-  onReviewDuelCompletion,
-  onResolveDuel,
   onReviewSubmission,
   onUpdateKnotPoints,
   reports = [],
@@ -564,7 +496,6 @@ export function AdminPage({
   );
   const [processingReportId, setProcessingReportId] = useState('');
   const [processingBanId, setProcessingBanId] = useState('');
-  const [expandedDuelId, setExpandedDuelId] = useState(null);
   const [knotSearch, setKnotSearch] = useState('');
   const [knotFolderFilter, setKnotFolderFilter] = useState('all');
   const [activeSubmissionId, setActiveSubmissionId] = useState('');
@@ -593,13 +524,9 @@ export function AdminPage({
   const resolvedSubmissions = submissions.filter(
     (submission) => submission.status !== 'Venter',
   );
-  const activeDuels = (duelHistory ?? []).filter((duel) => duel.status === 'active');
-  const resolvedDuels = (duelHistory ?? []).filter((duel) => duel.status === 'resolved');
 
   const pendingSubmissionCount = pendingSubmissions.length;
   const resolvedSubmissionCount = resolvedSubmissions.length;
-  const activeDuelCount = activeDuels.length;
-  const resolvedDuelCount = resolvedDuels.length;
   const totalKnotCount = knots.length;
   const reportQueue = buildOpenReportQueue(reports);
   const commentReportQueue = buildOpenCommentReportQueue(reports);
@@ -629,12 +556,6 @@ export function AdminPage({
       label: 'Knuter og sletting',
       count: totalKnotCount,
       note: 'Poeng + slett',
-    },
-    {
-      id: 'duels',
-      label: 'Knute-offs',
-      count: activeDuelCount,
-      note: 'Aktive',
     },
     {
       id: 'reports',
@@ -1065,30 +986,6 @@ export function AdminPage({
     }
   }
 
-  async function handleDuelCompletionReview(duel, participantId, approved) {
-    if (!onReviewDuelCompletion) {
-      return;
-    }
-
-    const participantLabel =
-      participantId === duel.challengerId ? duel.challengerName : duel.opponentName;
-
-    try {
-      await onReviewDuelCompletion(duel.id, participantId, approved);
-      setReviewFeedback(
-        approved
-          ? `${participantLabel} er godkjent igjen i knute-offen.`
-          : `${participantLabel} er reversert i knute-offen.`,
-      );
-    } catch (error) {
-      setReviewFeedback(
-        error instanceof Error
-          ? error.message
-          : 'Kunne ikke oppdatere duel-vurderingen.',
-      );
-    }
-  }
-
   async function handleReportAction(reportId, action) {
     if (!onReviewReport || !reportId) {
       return;
@@ -1193,13 +1090,6 @@ export function AdminPage({
                 onClick={() => setActiveAdminTask('overview')}
               >
                 Se oversikt
-              </button>
-              <button
-                type="button"
-                className="action-button action-button--ghost admin-shortcut"
-                onClick={() => setActiveAdminTask('duels')}
-              >
-                Aktive knute-offs
               </button>
             </div>
           </div>
@@ -1512,152 +1402,6 @@ export function AdminPage({
         </SectionCard>
       ) : null}
 
-      {activeAdminTask === 'duels' ? (
-        <SectionCard
-          title="Knute-offs"
-          description="Her styrer admin de små duellene som gir litt ekstra bevegelse i leaderboardet."
-        >
-          <div className="admin-section-toolbar">
-            <div>
-              <strong>{activeDuelCount} aktive knute-offs</strong>
-              <p>
-                Hver duel har {duelSummary?.stake ?? 10} poeng innsats og{' '}
-                {duelSummary?.deadlineHours ?? 24} timers frist.
-              </p>
-            </div>
-            <div className="admin-section-toolbar__actions">
-              <button
-                type="button"
-                className="action-button action-button--ghost admin-shortcut"
-                onClick={() => setActiveAdminTask('submissions')}
-              >
-                Til innsendinger
-              </button>
-            </div>
-          </div>
-
-          <div className="admin-task-panel">
-            <div className="admin-subsection">
-              <div className="section-card__header">
-                <h3>Aktive knute-offs</h3>
-                <p>Fullføringer er auto-godkjent. Reverser ved behov, og avgjør deretter utfallet.</p>
-              </div>
-
-              <div className="duel-history-list">
-                {activeDuels.length ? (
-                  activeDuels.map((duel) => (
-                    <article
-                      key={duel.id}
-                      className={`duel-history-row duel-history-row--active ${expandedDuelId === duel.id ? 'is-expanded' : ''}`}
-                    >
-                      <div>
-                        <strong>{duel.knotTitle}</strong>
-                        <p>
-                          {duel.challengerName} vs {duel.opponentName} | Frist {duel.deadlineLabel}
-                        </p>
-                        <p>
-                          Utfordrer: {duel.challengerStatusLabel} | Motstander:{' '}
-                          {duel.opponentStatusLabel}
-                        </p>
-                        <button
-                          type="button"
-                          className="action-button action-button--ghost"
-                          style={{ padding: '4px 10px', fontSize: '0.74rem', minHeight: 'auto', marginTop: 4 }}
-                          onClick={() =>
-                            setExpandedDuelId(expandedDuelId === duel.id ? null : duel.id)
-                          }
-                        >
-                          {expandedDuelId === duel.id ? 'Skjul bevis' : 'Vis bevis'}
-                        </button>
-                        <div className="duel-evidence-grid">
-                          <DuelEvidencePanel
-                            title={`Bevis fra ${duel.challengerName}`}
-                            evidence={getDuelEvidence(duel, 'challenger')}
-                          />
-                          <DuelEvidencePanel
-                            title={`Bevis fra ${duel.opponentName}`}
-                            evidence={getDuelEvidence(duel, 'opponent')}
-                          />
-                        </div>
-                      </div>
-                      <div className="duel-history-row__actions duel-history-row__actions--admin">
-                        <button
-                          type="button"
-                          className="action-button action-button--ghost"
-                          disabled={!duel.challengerCompletedAt}
-                          onClick={() =>
-                            handleDuelCompletionReview(
-                              duel,
-                              duel.challengerId,
-                              duel.challengerCompletionApproved === false,
-                            )
-                          }
-                        >
-                          {duel.challengerCompletionApproved === false
-                            ? 'Godkjenn utfordrer'
-                            : 'Reverser utfordrer'}
-                        </button>
-                        <button
-                          type="button"
-                          className="action-button action-button--ghost"
-                          disabled={!duel.opponentCompletedAt}
-                          onClick={() =>
-                            handleDuelCompletionReview(
-                              duel,
-                              duel.opponentId,
-                              duel.opponentCompletionApproved === false,
-                            )
-                          }
-                        >
-                          {duel.opponentCompletionApproved === false
-                            ? 'Godkjenn motstander'
-                            : 'Reverser motstander'}
-                        </button>
-                        <button
-                          type="button"
-                          className="action-button"
-                          onClick={() => onResolveDuel(duel.id)}
-                        >
-                          Avgjor knute-off
-                        </button>
-                      </div>
-                    </article>
-                  ))
-                ) : (
-                  <p className="folder-empty">Ingen aktive knute-offs akkurat nå.</p>
-                )}
-              </div>
-            </div>
-
-            <div className="admin-subsection">
-              <div className="section-card__header">
-                <h3>Historikk</h3>
-                <p>{resolvedDuelCount} avgjorte knute-offs er logget.</p>
-              </div>
-
-              <div className="duel-history-list">
-                {resolvedDuels.length ? (
-                  resolvedDuels.map((duel) => (
-                    <article key={duel.id} className="duel-history-row">
-                      <div>
-                        <strong>{duel.outcomeTitle}</strong>
-                        <p>
-                          {duel.challengerName} vs {duel.opponentName} | {duel.resolvedAtLabel}
-                        </p>
-                        <p>{duel.outcomeDetail}</p>
-                      </div>
-                      <span className="pill pill--warning">{duel.pointLabel}</span>
-                    </article>
-                  ))
-                ) : (
-                  <p className="folder-empty">Ingen knute-offs er registrert ennå.</p>
-                )}
-              </div>
-            </div>
-          </div>
-        </SectionCard>
-      ) : null}
-
       {activeAdminTask === 'reports' ? (
         <SectionCard
           title="Rapporter"
@@ -1906,7 +1650,7 @@ export function AdminPage({
                         <p>
                           {ban.type === 'feed'
                             ? 'Feed-ban (kun posting)'
-                            : 'Innsendings-ban (knuter + knuteoff)'}
+                            : 'Innsendings-ban (knuter)'}
                         </p>
                         <p>
                           Gjenstår {ban.remainingLabel} · Utløper {ban.expiresAtLabel}
@@ -2182,14 +1926,6 @@ export function AdminPage({
               >
                 <strong>Administrer knuter</strong>
                 <p>{totalKnotCount} knuter i katalogen</p>
-              </button>
-              <button
-                type="button"
-                className="admin-quick-card"
-                onClick={() => setActiveAdminTask('duels')}
-              >
-                <strong>Følg knute-offs</strong>
-                <p>{activeDuelCount} aktive akkurat nå</p>
               </button>
               <button
                 type="button"

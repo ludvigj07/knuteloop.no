@@ -19,7 +19,6 @@ import { playDing, playSwoosh, playTick, isSoundsMuted, setSoundsMuted } from '.
 import {
   assertVideoWithinLimits,
   changeOwnPassword,
-  completeDuel,
   createBan,
   createComment,
   deleteComment,
@@ -41,10 +40,7 @@ import {
   reportSubmission,
   revealRussnames,
   reviewReport,
-  reviewDuelCompletion,
-  resolveDuel,
   reviewSubmission,
-  startDuel,
   storeSessionToken,
   submitKnot,
   updateKnotFeedbackMessages,
@@ -107,7 +103,7 @@ const PAGE_CONFIG = {
     shortLabel: 'Status',
     icon: <Activity size={22} strokeWidth={1.8} />,
     title: 'Status',
-    description: 'Badges, feed og knute-off samlet i en enkel oversikt.',
+    description: 'Badges og feed samlet i en enkel oversikt.',
   },
   admin: {
     id: 'admin',
@@ -245,7 +241,6 @@ function App() {
   const currentUser = appData?.currentUser ?? null;
   const knots = appData?.knots ?? EMPTY_ARRAY;
   const submissions = appData?.submissions ?? EMPTY_ARRAY;
-  const duels = appData?.duels ?? EMPTY_ARRAY;
   const reports = appData?.reports ?? EMPTY_ARRAY;
   const bans = appData?.bans ?? EMPTY_ARRAY;
   const currentUserActiveBans = appData?.currentUserActiveBans ?? EMPTY_ARRAY;
@@ -394,23 +389,6 @@ function App() {
   const classLeaderboard = appData?.classLeaderboard ?? EMPTY_ARRAY;
   const genderLeaderboards = appData?.genderLeaderboards ?? EMPTY_OBJECT;
   const dailyKnot = appData?.dailyKnot ?? null;
-  const duelAvailability = appData?.duelAvailability ?? {
-    byLeaderId: {},
-    currentUserDailyCount: 0,
-    currentUserRemaining: 0,
-    thisDayTotal: 0,
-  };
-  const duelHistory = appData?.duelHistory ?? EMPTY_ARRAY;
-  const duelSummary = appData?.duelSummary ?? {
-    stake: 0,
-    range: 0,
-    deadlineHours: 0,
-    dailyLimit: 0,
-    currentUserDailyCount: 0,
-    currentUserRemaining: 0,
-    thisDayTotal: 0,
-    activeCount: 0,
-  };
   const knotFeedbackMessages = appData?.knotFeedbackMessages ?? EMPTY_OBJECT;
   const russnamesRevealed = appData?.russnamesRevealed === true;
   const russnamesRevealedAt = appData?.russnamesRevealedAt ?? null;
@@ -503,16 +481,6 @@ function App() {
       label: 'Venter behandling',
       value: pendingSubmissions,
       note: 'Oppdateres direkte fra lagret data',
-    },
-    {
-      label: 'Knute-offs i dag',
-      value: duelSummary.thisDayTotal,
-      note: `Fast innsats: ${duelSummary.stake} poeng`,
-    },
-    {
-      label: 'Aktive knute-offs',
-      value: duelSummary.activeCount,
-      note: `${duelSummary.deadlineHours} timers frist`,
     },
   ];
 
@@ -1012,95 +980,6 @@ function App() {
     setAppData(nextAppData);
   }
 
-  async function handleStartDuel(opponentId) {
-    try {
-      const nextAppData = await startDuel(sessionToken, opponentId);
-      const opponent = displayLeaders.find((leader) => leader.id === opponentId);
-      const activeDuel = nextAppData.duels[0];
-
-      setAppData(nextAppData);
-
-      return {
-        ok: true,
-        message: `Knute-off startet mot ${
-          opponent?.russName ?? opponent?.name ?? 'motstander'
-        }. Begge fikk "${activeDuel?.knotTitle ?? 'en knute'}".`,
-      };
-    } catch (error) {
-      return {
-        ok: false,
-        message: error.message,
-      };
-    }
-  }
-
-  async function handleMarkDuelCompleted(
-    duelId,
-    leaderId = currentUser?.leaderId,
-    evidence = {},
-  ) {
-    if (leaderId !== currentUser?.leaderId) {
-      return {
-        ok: false,
-        message: 'Du kan bare registrere fullføring for din egen knute-off.',
-      };
-    }
-
-    try {
-      const normalizedSubmissionMode =
-        evidence.submissionMode === 'anonymous-feed' ||
-        evidence.submissionMode === 'review'
-          ? evidence.submissionMode
-          : 'feed';
-      const nextAppData = await completeDuel(sessionToken, duelId, {
-        submissionMode: normalizedSubmissionMode,
-        note: evidence.note ?? '',
-        imageName: evidence.imageName ?? '',
-        imageDataUrl: evidence.imageFile
-          ? await readFileAsDataUrl(evidence.imageFile)
-          : '',
-        videoName: evidence.videoFile?.name ?? evidence.videoName ?? '',
-        videoDataUrl: evidence.videoFile
-          ? await readFileAsDataUrl(evidence.videoFile)
-          : '',
-      });
-
-      setAppData(nextAppData);
-      return {
-        ok: true,
-        message:
-          normalizedSubmissionMode === 'anonymous-feed'
-            ? 'Bevis registrert og lagt anonymt ut i feed med en gang.'
-            : normalizedSubmissionMode === 'review'
-              ? 'Bevis registrert med en gang. Admin kan fortsatt reversere ved behov.'
-              : 'Bevis registrert og lagt ut i feed med en gang.',
-      };
-    } catch (error) {
-      return {
-        ok: false,
-        message:
-          error instanceof Error
-            ? error.message
-            : 'Kunne ikke registrere knute-off akkurat nå.',
-      };
-    }
-  }
-
-  async function handleResolveDuel(duelId) {
-    const nextAppData = await resolveDuel(sessionToken, duelId);
-    setAppData(nextAppData);
-  }
-
-  async function handleReviewDuelCompletion(duelId, participantId, approved) {
-    const nextAppData = await reviewDuelCompletion(
-      sessionToken,
-      duelId,
-      participantId,
-      approved,
-    );
-    setAppData(nextAppData);
-  }
-
   async function handleRateSubmission(submissionId, rating) {
     if (!submissionId) {
       return;
@@ -1260,10 +1139,6 @@ function App() {
       currentUserStreak,
       dailyKnot,
       dashboard: dashboardData,
-      duelAvailability,
-      duelHistory,
-      duelSummary,
-      duels,
       focusedKnotId,
       focusedKnotScrollRequest,
       knuterSettledToken,
@@ -1278,18 +1153,14 @@ function App() {
       onCreateBan: handleCreateBan,
       onHideRussnames: handleHideRussnames,
       onImportKnots: handleImportKnots,
-      onMarkDuelCompleted: handleMarkDuelCompleted,
       onOpenDailyKnot: handleOpenDailyKnot,
       onOpenProfile: handleOpenProfile,
       onRemoveBan: handleRemoveBan,
       onReportSubmission: handleReportSubmission,
       onRevealRussnames: handleRevealRussnames,
       onReviewReport: handleReviewReport,
-      onReviewDuelCompletion: handleReviewDuelCompletion,
-      onResolveDuel: handleResolveDuel,
       onReviewSubmission: handleReviewSubmission,
       onSelectProfile: handleOpenProfile,
-      onStartDuel: handleStartDuel,
       onSubmitKnot: handleSubmitKnot,
       onUpdateKnotFeedbackMessages: handleUpdateKnotFeedbackMessages,
       onUpdateKnotPoints: handleUpdateKnotPoints,
@@ -1365,8 +1236,6 @@ function App() {
           achievements={achievements}
           activityLog={activityLog}
           currentUserId={currentUser.leaderId}
-          duelHistory={duelHistory}
-          duelSummary={duelSummary}
           onOpenFeed={() => handleChangePage('feed')}
           onOpenKnots={() => handleChangePage('knuter')}
           onOpenProfile={handleOpenProfile}

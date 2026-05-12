@@ -423,40 +423,6 @@ export function deleteKnot(token, knotId) {
   });
 }
 
-export function startDuel(token, opponentId) {
-  return apiRequest('/duels', {
-    method: 'POST',
-    token,
-    body: { opponentId },
-  });
-}
-
-export function completeDuel(token, duelId, payload) {
-  return apiRequest(`/duels/${duelId}/complete`, {
-    method: 'PATCH',
-    token,
-    body: payload,
-  });
-}
-
-export function reviewDuelCompletion(token, duelId, participantId, approved) {
-  return apiRequest(`/duels/${duelId}/review`, {
-    method: 'PATCH',
-    token,
-    body: {
-      participantId,
-      approved,
-    },
-  });
-}
-
-export function resolveDuel(token, duelId) {
-  return apiRequest(`/duels/${duelId}/resolve`, {
-    method: 'PATCH',
-    token,
-  });
-}
-
 export function createComment(token, submissionId, text, parentId = null) {
   return apiRequest(`/submissions/${submissionId}/comments`, {
     method: 'POST',

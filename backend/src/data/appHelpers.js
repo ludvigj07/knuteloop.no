@@ -1,10 +1,5 @@
 import { normalizeKnotFolder } from './knotFolders.js';
 
-export const DUEL_STAKE = 10;
-export const DUEL_RANGE = 5;
-export const DUEL_WINDOW_HOURS = 24;
-export const DUEL_DAILY_LIMIT = 1;
-export const DUEL_LIMITS_DISABLED = true;
 export const MODERATION_POLICY = Object.freeze({
   noLimits: true,
   noBotOrAntiSpamLogicNow: true,
@@ -89,95 +84,11 @@ export function getLeaderboardTitle(rank) {
   return 'Knutekatastrofen';
 }
 
-function getDuelAdjustmentMap(duels) {
-  return duels.reduce((accumulator, duel) => {
-    if (duel.status !== 'resolved') {
-      return accumulator;
-    }
-
-    const stake = duel.stake ?? DUEL_STAKE;
-    const challenger = accumulator[duel.challengerId] ?? {
-      points: 0,
-      wins: 0,
-      losses: 0,
-      splits: 0,
-      expiries: 0,
-    };
-    const opponent = accumulator[duel.opponentId] ?? {
-      points: 0,
-      wins: 0,
-      losses: 0,
-      splits: 0,
-      expiries: 0,
-    };
-
-    if (duel.result === 'challenger-wins') {
-      accumulator[duel.challengerId] = {
-        ...challenger,
-        points: challenger.points + stake,
-        wins: challenger.wins + 1,
-      };
-      accumulator[duel.opponentId] = {
-        ...opponent,
-        points: opponent.points - stake,
-        losses: opponent.losses + 1,
-      };
-      return accumulator;
-    }
-
-    if (duel.result === 'opponent-wins') {
-      accumulator[duel.challengerId] = {
-        ...challenger,
-        points: challenger.points - stake,
-        losses: challenger.losses + 1,
-      };
-      accumulator[duel.opponentId] = {
-        ...opponent,
-        points: opponent.points + stake,
-        wins: opponent.wins + 1,
-      };
-      return accumulator;
-    }
-
-    if (duel.result === 'split') {
-      const splitReward = stake / 2;
-      accumulator[duel.challengerId] = {
-        ...challenger,
-        points: challenger.points + splitReward,
-        splits: challenger.splits + 1,
-      };
-      accumulator[duel.opponentId] = {
-        ...opponent,
-        points: opponent.points + splitReward,
-        splits: opponent.splits + 1,
-      };
-      return accumulator;
-    }
-
-    if (duel.result === 'no-completion') {
-      const noCompletionPenalty = stake / 2;
-      accumulator[duel.challengerId] = {
-        ...challenger,
-        points: challenger.points - noCompletionPenalty,
-        expiries: challenger.expiries + 1,
-      };
-      accumulator[duel.opponentId] = {
-        ...opponent,
-        points: opponent.points - noCompletionPenalty,
-        expiries: opponent.expiries + 1,
-      };
-    }
-
-    return accumulator;
-  }, {});
-}
-
 export function buildLeaderboard(
   leaders,
   submissions,
   knots,
   currentUserId,
-  duels = [],
 ) {
   const bonusByLeader = submissions.reduce((accumulator, submission) => {
     if (
@@ -212,7 +123,6 @@ export function buildLeaderboard(
       .map((submission) => submission.knotId)
       .filter(Boolean),
   );
-  const duelAdjustments = getDuelAdjustmentMap(duels);
   const currentUserSubmissionPoints = currentUserApprovedSubmissions.reduce(
     (total, submission) => total + Number(submission.points ?? 0),
     0,
@@ -226,34 +136,19 @@ export function buildLeaderboard(
   return leaders
     .map((leader) => {
       const bonus = bonusByLeader[leader.id] ?? { points: 0, completedKnots: 0 };
-      const duelAdjustment = duelAdjustments[leader.id] ?? {
-        points: 0,
-        wins: 0,
-        losses: 0,
-      };
 
       if (leader.id === currentUserId) {
         return {
           ...leader,
-          points: leader.basePoints + currentUserPoints + duelAdjustment.points,
+          points: leader.basePoints + currentUserPoints,
           completedKnots: leader.baseCompletedKnots + currentUserCompletedKnots,
-          duelPointDelta: duelAdjustment.points,
-          duelWins: duelAdjustment.wins,
-          duelLosses: duelAdjustment.losses,
-          duelSplits: duelAdjustment.splits,
-          duelExpiries: duelAdjustment.expiries,
         };
       }
 
       return {
         ...leader,
-        points: leader.basePoints + bonus.points + duelAdjustment.points,
+        points: leader.basePoints + bonus.points,
         completedKnots: leader.baseCompletedKnots + bonus.completedKnots,
-        duelPointDelta: duelAdjustment.points,
-        duelWins: duelAdjustment.wins,
-        duelLosses: duelAdjustment.losses,
-        duelSplits: duelAdjustment.splits,
-        duelExpiries: duelAdjustment.expiries,
       };
     })
     .sort((left, right) => {
@@ -510,272 +405,6 @@ export function buildGenderLeaderboards(leaders = []) {
       participants.filter((entry) => entry.genderIdentity === GENDER_SEGMENTS.OTHER),
     ),
   };
-}
-
-function getStartOfDay(date = new Date()) {
-  const nextDate = new Date(date);
-  nextDate.setHours(0, 0, 0, 0);
-
-  return nextDate;
-}
-
-function getDuelEndDate(duel) {
-  return new Date(duel.resolvedAt ?? duel.deadlineAt ?? duel.createdAt);
-}
-
-function countDailyDuelsForLeader(duels, leaderId, now = new Date()) {
-  const dayStart = getStartOfDay(now);
-
-  return duels.filter((duel) => {
-    const createdAt = new Date(duel.createdAt);
-    const involvesLeader =
-      duel.challengerId === leaderId || duel.opponentId === leaderId;
-
-    return involvesLeader && createdAt >= dayStart;
-  }).length;
-}
-
-function getLatestPairDuel(duels, firstLeaderId, secondLeaderId) {
-  const pair = [firstLeaderId, secondLeaderId].sort((left, right) => left - right);
-
-  return duels
-    .filter((duel) => {
-      const duelPair = [duel.challengerId, duel.opponentId].sort(
-        (left, right) => left - right,
-      );
-
-      return duelPair[0] === pair[0] && duelPair[1] === pair[1];
-    })
-    .sort((left, right) => getDuelEndDate(right).getTime() - getDuelEndDate(left).getTime())[0];
-}
-
-function formatDuelDate(dateValue) {
-  return new Date(dateValue).toLocaleString('nb-NO', {
-    day: '2-digit',
-    month: 'short',
-    hour: '2-digit',
-    minute: '2-digit',
-  });
-}
-
-function formatCompletionStatus(dateValue, completionApproved) {
-  if (!dateValue) {
-    return 'Ikke fullført';
-  }
-
-  if (completionApproved === false) {
-    return `Underkjent av admin (${formatDuelDate(dateValue)})`;
-  }
-
-  if (completionApproved === true) {
-    return `Godkjent ${formatDuelDate(dateValue)}`;
-  }
-
-  return `Fullført ${formatDuelDate(dateValue)}`;
-}
-
-function buildDuelOutcomeMeta(duel, challengerName, opponentName) {
-  const stake = duel.stake ?? DUEL_STAKE;
-  const splitReward = stake / 2;
-  const noCompletionPenalty = stake / 2;
-
-  if (duel.result === 'challenger-wins') {
-    return {
-      title: `${challengerName} vant hele potten`,
-      detail: `${challengerName} fullførte før ${opponentName}.`,
-      pointLabel: `+${stake} / -${stake}`,
-    };
-  }
-
-  if (duel.result === 'opponent-wins') {
-    return {
-      title: `${opponentName} vant hele potten`,
-      detail: `${opponentName} fullførte før ${challengerName}.`,
-      pointLabel: `+${stake} / -${stake}`,
-    };
-  }
-
-  if (duel.result === 'split') {
-    return {
-      title: 'Begge fullførte knuten',
-      detail: 'Begge fikk halv pott for fullført knute-off.',
-      pointLabel: `+${splitReward} / +${splitReward}`,
-    };
-  }
-
-  return {
-    title: 'Ingen godkjent fullføring',
-    detail: 'Begge taper halv innsats i denne knute-offen.',
-    pointLabel: `-${noCompletionPenalty} / -${noCompletionPenalty}`,
-  };
-}
-
-export function pickDuelKnot(knots, duels) {
-  const activeKnotIds = new Set(
-    duels
-      .filter((duel) => duel.status === 'active')
-      .map((duel) => duel.knotId),
-  );
-  const availableKnots = knots
-    .filter(
-      (knot) =>
-        (knot.status === 'Tilgjengelig' || knot.status === 'Avslått') &&
-        !activeKnotIds.has(knot.id),
-    )
-    .sort((left, right) => {
-      if (right.points !== left.points) {
-        return right.points - left.points;
-      }
-
-      return (
-        getDifficultyWeight(left.difficulty) -
-        getDifficultyWeight(right.difficulty)
-      );
-    });
-
-  return availableKnots[0] ?? null;
-}
-
-export function buildDuelAvailability(
-  currentUserId,
-  leaders,
-  duels,
-  now = new Date(),
-) {
-  const currentLeader = leaders.find((leader) => leader.id === currentUserId);
-  const currentUserDailyCount = countDailyDuelsForLeader(
-    duels,
-    currentUserId,
-    now,
-  );
-  const availabilityByLeaderId = {};
-  const dayStart = getStartOfDay(now);
-  const thisDayTotal = duels.filter(
-    (duel) => new Date(duel.createdAt) >= dayStart,
-  ).length;
-  const activeDuelForCurrentUser = duels.find(
-    (duel) =>
-      duel.status === 'active' &&
-      (duel.challengerId === currentUserId || duel.opponentId === currentUserId),
-  );
-
-  leaders.forEach((leader) => {
-    if (leader.id === currentUserId) {
-      availabilityByLeaderId[leader.id] = {
-        canChallenge: false,
-        reason: 'Dette er deg',
-      };
-      return;
-    }
-
-    const rankGap = Math.abs((currentLeader?.rank ?? 0) - leader.rank);
-    const opponentDailyCount = countDailyDuelsForLeader(duels, leader.id, now);
-    const activeDuelForOpponent = duels.find(
-      (duel) =>
-        duel.status === 'active' &&
-        (duel.challengerId === leader.id || duel.opponentId === leader.id),
-    );
-    const activePairDuel = duels.find((duel) => {
-      const pair = [duel.challengerId, duel.opponentId].sort(
-        (left, right) => left - right,
-      );
-      const currentPair = [currentUserId, leader.id].sort(
-        (left, right) => left - right,
-      );
-
-      return (
-        duel.status === 'active' &&
-        pair[0] === currentPair[0] &&
-        pair[1] === currentPair[1]
-      );
-    });
-
-    let reason = `Fast innsats: ${DUEL_STAKE} poeng`;
-    let canChallenge = true;
-
-    if (rankGap > DUEL_RANGE) {
-      canChallenge = false;
-      reason = 'Kan bare utfordre brukere innenfor 5 plasser.';
-    } else if (!DUEL_LIMITS_DISABLED && activePairDuel) {
-      canChallenge = false;
-      reason = 'Dere har allerede en aktiv knute-off.';
-    } else if (!DUEL_LIMITS_DISABLED && activeDuelForCurrentUser) {
-      canChallenge = false;
-      reason = 'Du har allerede en aktiv knute-off.';
-    } else if (!DUEL_LIMITS_DISABLED && activeDuelForOpponent) {
-      canChallenge = false;
-      reason = `${leader.russName ?? leader.name} er allerede i en aktiv knute-off.`;
-    } else if (!DUEL_LIMITS_DISABLED && currentUserDailyCount >= DUEL_DAILY_LIMIT) {
-      canChallenge = false;
-      reason = 'Du har brukt dagens knute-off.';
-    } else if (!DUEL_LIMITS_DISABLED && opponentDailyCount >= DUEL_DAILY_LIMIT) {
-      canChallenge = false;
-      reason = `${leader.russName ?? leader.name} har brukt dagens knute-off.`;
-    }
-
-    availabilityByLeaderId[leader.id] = {
-      canChallenge,
-      reason,
-      activeDuelId: activePairDuel?.id ?? null,
-      rankGap,
-      opponentDailyCount,
-    };
-  });
-
-  return {
-    byLeaderId: availabilityByLeaderId,
-    currentUserDailyCount,
-    currentUserRemaining: DUEL_LIMITS_DISABLED
-      ? Number.MAX_SAFE_INTEGER
-      : Math.max(DUEL_DAILY_LIMIT - currentUserDailyCount, 0),
-    thisDayTotal,
-    currentUserWeeklyCount: currentUserDailyCount,
-    thisWeekTotal: thisDayTotal,
-  };
-}
-
-export function buildDuelHistory(duels, leaders) {
-  const leaderById = leaders.reduce((accumulator, leader) => {
-    accumulator[leader.id] = leader;
-    return accumulator;
-  }, {});
-
-  return [...duels]
-    .sort(
-      (left, right) => getDuelEndDate(right).getTime() - getDuelEndDate(left).getTime(),
-    )
-    .map((duel) => {
-      const challenger = leaderById[duel.challengerId];
-      const opponent = leaderById[duel.opponentId];
-      const challengerName = challenger?.russName ?? challenger?.name ?? 'Ukjent';
-      const opponentName = opponent?.russName ?? opponent?.name ?? 'Ukjent';
-      const outcomeMeta =
-        duel.status === 'resolved'
-          ? buildDuelOutcomeMeta(duel, challengerName, opponentName)
-          : null;
-
-      return {
-        ...duel,
-        challengerName,
-        opponentName,
-        challengerStatusLabel: formatCompletionStatus(
-          duel.challengerCompletedAt,
-          duel.challengerCompletionApproved,
-        ),
-        opponentStatusLabel: formatCompletionStatus(
-          duel.opponentCompletedAt,
-          duel.opponentCompletionApproved,
-        ),
-        createdAtLabel: formatDuelDate(duel.createdAt),
-        deadlineLabel: formatDuelDate(duel.deadlineAt),
-        resolvedAtLabel: duel.resolvedAt ? formatDuelDate(duel.resolvedAt) : '',
-        outcomeTitle: outcomeMeta?.title ?? 'Aktiv knute-off',
-        outcomeDetail:
-          outcomeMeta?.detail ??
-          'Venter på fullføring eller avgjøring i admin-prototypen.',
-        pointLabel: outcomeMeta?.pointLabel ?? `Potten er ${duel.stake * 2} poeng`,
-      };
-    });
 }
 
 export function buildImportedKnots(

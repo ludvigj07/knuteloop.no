@@ -14,18 +14,11 @@ import {
   buildClassLeaderboard,
   buildDailyKnot,
   buildDashboardData,
-  buildDuelAvailability,
-  buildDuelHistory,
   buildGenderLeaderboards,
   buildImportedKnots,
   buildKnotTypeLeaderboard,
   buildLeaderboard,
   buildProfiles,
-  DUEL_DAILY_LIMIT,
-  DUEL_LIMITS_DISABLED,
-  DUEL_RANGE,
-  DUEL_STAKE,
-  DUEL_WINDOW_HOURS,
   limitNoteWords,
   MODERATION_POLICY,
 } from './backend/src/data/appHelpers.js';
@@ -54,7 +47,6 @@ import {
   setAuthBridge,
 } from './backend/src/auth/handlers.mjs';
 import {
-  initialDuels,
   initialKnots,
   initialLeaders,
   initialProfileHistory,
@@ -459,33 +451,6 @@ function createSeedDatabase() {
     comments: [],
     reports: [],
     bans: [],
-    duels: initialDuels.map((duel) => ({
-      ...duel,
-      challengerNote: duel.challengerNote ?? '',
-      challengerImageName: duel.challengerImageName ?? '',
-      challengerImagePreviewUrl: duel.challengerImagePreviewUrl ?? '',
-      challengerVideoName: duel.challengerVideoName ?? '',
-      challengerVideoPreviewUrl: duel.challengerVideoPreviewUrl ?? '',
-      challengerCompletionApproved:
-        typeof duel.challengerCompletionApproved === 'boolean'
-          ? duel.challengerCompletionApproved
-          : duel.challengerCompletedAt
-            ? true
-            : null,
-      opponentNote: duel.opponentNote ?? '',
-      opponentImageName: duel.opponentImageName ?? '',
-      opponentImagePreviewUrl: duel.opponentImagePreviewUrl ?? '',
-      opponentVideoName: duel.opponentVideoName ?? '',
-      opponentVideoPreviewUrl: duel.opponentVideoPreviewUrl ?? '',
-      opponentCompletionApproved:
-        typeof duel.opponentCompletionApproved === 'boolean'
-          ? duel.opponentCompletionApproved
-          : duel.opponentCompletedAt
-            ? true
-            : null,
-      challengerSubmissionId: duel.challengerSubmissionId ?? null,
-      opponentSubmissionId: duel.opponentSubmissionId ?? null,
-    })),
     profileHistory: initialProfileHistory,
     legacyApprovedKnotIdsByUser: {
       1: ['knot-1', 'knot-2', 'knot-5'],
@@ -509,8 +474,7 @@ async function readDb() {
   const db = JSON.parse(raw);
   const migratedVideoDb = await migrateLegacyVideoUploads(db);
   const migratedRatingsDb = await migrateSubmissionRatings(migratedVideoDb);
-  const migratedDuelApprovalsDb = await migrateDuelCompletionApprovals(migratedRatingsDb);
-  const migratedModerationDb = await migrateModerationData(migratedDuelApprovalsDb);
+  const migratedModerationDb = await migrateModerationData(migratedRatingsDb);
   const migratedFeedFlagsDb = await migrateSubmissionFeedFlags(migratedModerationDb);
   const migratedProfileGenderDb = await migrateProfileGenderData(migratedFeedFlagsDb);
   const migratedStreakDb = await migrateSubmissionStreakData(migratedProfileGenderDb);
@@ -668,41 +632,6 @@ async function migrateLegacyVideoUploads(db) {
     }),
   );
 
-  const duels = await Promise.all(
-    db.duels.map(async (duel) => {
-      const challengerVideoPreviewUrl = await maybeMigrateStoredVideo(
-        duel.challengerVideoPreviewUrl,
-        'duel-video',
-      );
-      const opponentVideoPreviewUrl = await maybeMigrateStoredVideo(
-        duel.opponentVideoPreviewUrl,
-        'duel-video',
-      );
-
-      if (
-        challengerVideoPreviewUrl === duel.challengerVideoPreviewUrl &&
-        opponentVideoPreviewUrl === duel.opponentVideoPreviewUrl
-      ) {
-        return duel;
-      }
-
-      changed = true;
-      return {
-        ...duel,
-        challengerVideoPreviewUrl,
-        challengerVideoName:
-          challengerVideoPreviewUrl !== duel.challengerVideoPreviewUrl
-            ? normalizeVideoNameToMp4(duel.challengerVideoName)
-            : duel.challengerVideoName,
-        opponentVideoPreviewUrl,
-        opponentVideoName:
-          opponentVideoPreviewUrl !== duel.opponentVideoPreviewUrl
-            ? normalizeVideoNameToMp4(duel.opponentVideoName)
-            : duel.opponentVideoName,
-      };
-    }),
-  );
-
   if (!changed) {
     return db;
   }
@@ -710,7 +639,6 @@ async function migrateLegacyVideoUploads(db) {
   const nextDb = {
     ...db,
     submissions,
-    duels,
   };
 
   await writeDb(nextDb);
@@ -1084,73 +1012,6 @@ async function migrateSubmissionRatings(db) {
   const nextDb = {
     ...db,
     submissions,
-  };
-
-  await writeDb(nextDb);
-  return nextDb;
-}
-
-function normalizeCompletionApproval(completedAt, approvedValue) {
-  if (!completedAt) {
-    return null;
-  }
-
-  if (approvedValue === false) {
-    return false;
-  }
-
-  return true;
-}
-
-async function migrateDuelCompletionApprovals(db) {
-  let changed = false;
-
-  const duels = (db.duels ?? []).map((duel) => {
-    const stakeValue = Number(duel.stake);
-    const normalizedStake = duel.status === 'active'
-      ? DUEL_STAKE
-      : Number.isFinite(stakeValue)
-        ? stakeValue
-        : DUEL_STAKE;
-    const challengerCompletionApproved = normalizeCompletionApproval(
-      duel.challengerCompletedAt,
-      duel.challengerCompletionApproved,
-    );
-    const opponentCompletionApproved = normalizeCompletionApproval(
-      duel.opponentCompletedAt,
-      duel.opponentCompletionApproved,
-    );
-    const challengerSubmissionId = duel.challengerSubmissionId ?? null;
-    const opponentSubmissionId = duel.opponentSubmissionId ?? null;
-
-    if (
-      normalizedStake === duel.stake &&
-      challengerCompletionApproved === duel.challengerCompletionApproved &&
-      opponentCompletionApproved === duel.opponentCompletionApproved &&
-      challengerSubmissionId === duel.challengerSubmissionId &&
-      opponentSubmissionId === duel.opponentSubmissionId
-    ) {
-      return duel;
-    }
-
-    changed = true;
-    return {
-      ...duel,
-      stake: normalizedStake,
-      challengerCompletionApproved,
-      opponentCompletionApproved,
-      challengerSubmissionId,
-      opponentSubmissionId,
-    };
-  });
-
-  if (!changed) {
-    return db;
-  }
-
-  const nextDb = {
-    ...db,
-    duels,
   };
 
   await writeDb(nextDb);
@@ -1973,43 +1834,6 @@ function buildClientKnots(db, userId) {
     }));
 }
 
-function canUseKnotInDuel(db, knot, challengerId, opponentId, activeKnotIds) {
-  if (knot.isActive === false || knot.duelEnabled === false) {
-    return false;
-  }
-
-  if (activeKnotIds.has(knot.id)) {
-    return false;
-  }
-
-  const challengerStatus = getKnotStatusForUser(db, challengerId, knot.id);
-  const opponentStatus = getKnotStatusForUser(db, opponentId, knot.id);
-
-  return challengerStatus !== 'Godkjent' && opponentStatus !== 'Godkjent';
-}
-
-function pickDuelKnotForPair(db, challengerId, opponentId) {
-  const activeKnotIds = new Set(
-    db.duels
-      .filter((duel) => duel.status === 'active')
-      .map((duel) => duel.knotId),
-  );
-
-  const candidates = db.knots
-    .filter((knot) =>
-      canUseKnotInDuel(db, knot, challengerId, opponentId, activeKnotIds),
-    )
-    .sort((left, right) => {
-      if ((right.points ?? 0) !== (left.points ?? 0)) {
-        return (right.points ?? 0) - (left.points ?? 0);
-      }
-
-      return left.id.localeCompare(right.id, 'nb');
-    });
-
-  return candidates[0] ?? null;
-}
-
 function buildBootstrap(db, user) {
   const nowMs = Date.now();
   const isAdminUser = assertAdmin(user);
@@ -2038,12 +1862,6 @@ function buildBootstrap(db, user) {
   const ownSubmissions = isAdminUser
     ? publicSubmissions
     : publicSubmissions.filter((submission) => submission.leaderId === currentUserId);
-  const visibleDuels = isAdminUser
-    ? workingDb.duels
-    : workingDb.duels.filter(
-        (duel) =>
-          duel.challengerId === currentUserId || duel.opponentId === currentUserId,
-      );
   const profileDetails = Object.fromEntries(
     workingDb.users.map((entry) => [entry.id, entry.profile]),
   );
@@ -2052,7 +1870,6 @@ function buildBootstrap(db, user) {
     publicSubmissions,
     clientKnots,
     currentUserId,
-    workingDb.duels,
   );
   const profilesRaw = buildProfiles(
     rawLeaderboard,
@@ -2090,18 +1907,6 @@ function buildBootstrap(db, user) {
   const knotTypeLeaderboard = buildKnotTypeLeaderboard(publicSubmissions, clientKnots);
   const genderLeaderboards = buildGenderLeaderboards(leaderboard);
   const dailyKnot = buildDailyKnot(clientKnots);
-  const duelAvailability = buildDuelAvailability(currentUserId, leaderboard, workingDb.duels);
-  const duelHistory = buildDuelHistory(workingDb.duels, leaderboard);
-  const duelSummary = {
-    stake: DUEL_STAKE,
-    range: DUEL_RANGE,
-    deadlineHours: DUEL_WINDOW_HOURS,
-    dailyLimit: DUEL_LIMITS_DISABLED ? 'Ingen (testmodus)' : DUEL_DAILY_LIMIT,
-    currentUserDailyCount: duelAvailability.currentUserDailyCount ?? 0,
-    currentUserRemaining: duelAvailability.currentUserRemaining ?? 0,
-    thisDayTotal: duelAvailability.thisDayTotal ?? 0,
-    activeCount: workingDb.duels.filter((duel) => duel.status === 'active').length,
-  };
   const dashboardData = currentLeader
     ? buildDashboardData(currentUserId, leaderboard, achievements, activityLog, clientKnots)
     : {
@@ -2131,7 +1936,6 @@ function buildBootstrap(db, user) {
     leaders: leaderSeed,
     knots: clientKnots,
     submissions: ownSubmissions,
-    duels: visibleDuels,
     reports: isAdminUser
       ? (workingDb.reports ?? []).map((report) => toPublicReport(workingDb, report))
       : [],
@@ -2150,9 +1954,6 @@ function buildBootstrap(db, user) {
     knotTypeLeaderboard,
     genderLeaderboards,
     dailyKnot,
-    duelAvailability,
-    duelHistory,
-    duelSummary,
     dashboardData,
     knotFeedbackMessages: cloneKnotFeedbackMessages(workingDb.knotFeedbackMessages),
     commentsBySubmission: buildCommentsBySubmission(workingDb, currentUserId),
@@ -2239,13 +2040,6 @@ async function cleanupSubmissionAssets(submission) {
   await deleteLocalUploadIfNeeded(submission?.videoPreviewUrl);
 }
 
-async function cleanupDuelAssets(duel) {
-  await deleteLocalUploadIfNeeded(duel?.challengerImagePreviewUrl);
-  await deleteLocalUploadIfNeeded(duel?.challengerVideoPreviewUrl);
-  await deleteLocalUploadIfNeeded(duel?.opponentImagePreviewUrl);
-  await deleteLocalUploadIfNeeded(duel?.opponentVideoPreviewUrl);
-}
-
 function buildDisplayLeaders(db, currentUserId) {
   const leaders = buildLeaderboard(
     buildLeaderSeed(db),
@@ -2254,7 +2048,6 @@ function buildDisplayLeaders(db, currentUserId) {
     ),
     buildClientKnots(db, currentUserId),
     currentUserId,
-    db.duels,
   );
   const profileDetails = Object.fromEntries(db.users.map((user) => [user.id, user.profile]));
 
@@ -3420,19 +3213,16 @@ async function handleDeleteKnot(request, response, knotId) {
   }
 
   const removedSubmissions = db.submissions.filter((submission) => submission.knotId === knotId);
-  const removedDuels = db.duels.filter((duel) => duel.knotId === knotId);
   const affectedUserIds = [...new Set(
     removedSubmissions.map((submission) => submission.leaderId),
   )];
 
   await Promise.all(removedSubmissions.map((submission) => cleanupSubmissionAssets(submission)));
-  await Promise.all(removedDuels.map((duel) => cleanupDuelAssets(duel)));
 
   const nextDb = {
     ...db,
     knots: db.knots.filter((knot) => knot.id !== knotId),
     submissions: db.submissions.filter((submission) => submission.knotId !== knotId),
-    duels: db.duels.filter((duel) => duel.knotId !== knotId),
   };
 
   const recalculated = applyStreakRecalculation(nextDb, affectedUserIds);
@@ -3442,403 +3232,6 @@ async function handleDeleteKnot(request, response, knotId) {
   sendJson(response, 200, buildBootstrap(finalDb, user));
 }
 
-async function handleStartDuel(request, response) {
-  const db = await readDb();
-  const user = getAuthedUser(db, request);
-
-  if (!user) {
-    sendJson(response, 401, { error: 'Ikke logget inn.' });
-    return;
-  }
-
-  const body = await readJsonBody(request);
-  const opponentId = Number(body.opponentId);
-
-  if (!Number.isInteger(opponentId)) {
-    sendJson(response, 400, { error: 'Ugyldig motstander.' });
-    return;
-  }
-
-  const currentLeaders = buildDisplayLeaders(db, user.id);
-  const duelAvailability = buildDuelAvailability(user.id, currentLeaders, db.duels);
-  const availability = duelAvailability.byLeaderId[opponentId];
-  const duelKnot = pickDuelKnotForPair(db, user.id, opponentId);
-
-  if (!availability?.canChallenge) {
-    sendJson(response, 400, { error: availability?.reason ?? 'Knute-off er ikke tilgjengelig.' });
-    return;
-  }
-
-  if (!duelKnot) {
-    sendJson(response, 400, { error: 'Fant ingen ledig knute til knute-off.' });
-    return;
-  }
-
-  const createdAt = nowIso();
-  const deadlineAt = new Date(
-    Date.now() + DUEL_WINDOW_HOURS * 60 * 60 * 1000,
-  ).toISOString();
-
-  const nextDb = {
-    ...db,
-    duels: [
-      {
-        id: `duel-${Date.now()}`,
-        challengerId: user.id,
-        opponentId,
-        knotId: duelKnot.id,
-        knotTitle: duelKnot.title,
-        stake: DUEL_STAKE,
-        createdAt,
-        deadlineAt,
-        challengerCompletedAt: null,
-        opponentCompletedAt: null,
-        challengerCompletionApproved: null,
-        opponentCompletionApproved: null,
-        challengerSubmissionId: null,
-        opponentSubmissionId: null,
-        status: 'active',
-        result: null,
-        resolvedAt: null,
-        challengerNote: '',
-        challengerImageName: '',
-        challengerImagePreviewUrl: '',
-        challengerVideoName: '',
-        challengerVideoPreviewUrl: '',
-        opponentNote: '',
-        opponentImageName: '',
-        opponentImagePreviewUrl: '',
-        opponentVideoName: '',
-        opponentVideoPreviewUrl: '',
-      },
-      ...db.duels,
-    ],
-  };
-
-  await writeDb(nextDb);
-  sendJson(response, 200, buildBootstrap(nextDb, user));
-}
-
-async function handleCompleteDuel(request, response, duelId) {
-  const db = await readDb();
-  const user = getAuthedUser(db, request);
-
-  if (!user) {
-    sendJson(response, 401, { error: 'Ikke logget inn.' });
-    return;
-  }
-
-  const activeSubmissionBan = getActiveBanByType(
-    db,
-    user.id,
-    BAN_TYPES.SUBMISSION,
-  );
-
-  if (activeSubmissionBan) {
-    sendJson(response, 403, {
-      error: getBanBlockMessage(BAN_TYPES.SUBMISSION, activeSubmissionBan),
-    });
-    return;
-  }
-
-  const body = await readJsonBody(request);
-  const duel = db.duels.find((item) => item.id === duelId);
-
-  if (!duel || duel.status !== 'active') {
-    sendJson(response, 404, { error: 'Fant ikke aktiv knute-off.' });
-    return;
-  }
-
-  if (user.id !== duel.challengerId && user.id !== duel.opponentId) {
-    sendJson(response, 403, { error: 'Du er ikke med i denne knute-offen.' });
-    return;
-  }
-
-  const isChallenger = user.id === duel.challengerId;
-  const now = Date.now();
-  const deadlineTime = new Date(duel.deadlineAt).getTime();
-
-  if (Number.isFinite(deadlineTime) && now > deadlineTime) {
-    sendJson(response, 400, {
-      error: 'Fristen er passert. Du kan ikke sende inn knute-off etter deadline.',
-    });
-    return;
-  }
-
-  if ((isChallenger && duel.challengerCompletedAt) || (!isChallenger && duel.opponentCompletedAt)) {
-    sendJson(response, 400, { error: 'Fullføring er allerede registrert.' });
-    return;
-  }
-
-  const imagePreviewUrl = await saveUploadedAsset(
-    body.imageDataUrl,
-    body.imageName,
-    'duel-image',
-  );
-  const videoPreviewUrl = await saveUploadedAsset(
-    body.videoDataUrl,
-    body.videoName,
-    'duel-video',
-  );
-  const knot = db.knots.find((item) => item.id === duel.knotId && item.isActive !== false);
-
-  if (!knot) {
-    sendJson(response, 404, { error: 'Fant ikke knuten for denne knute-offen.' });
-    return;
-  }
-
-  const note = limitNoteWords(body.note);
-  const requestedSubmissionMode = normalizeSubmissionMode(
-    body.submissionMode,
-    body.isAnonymousFeed === true ? 'anonymous-feed' : body.postToFeed === false ? 'review' : 'feed',
-  );
-  const activeFeedBan = getActiveBanByType(db, user.id, BAN_TYPES.FEED);
-  const submissionMode =
-    activeFeedBan &&
-    (requestedSubmissionMode === 'feed' || requestedSubmissionMode === 'anonymous-feed')
-      ? 'review'
-      : requestedSubmissionMode;
-  const isAnonymousFeed = submissionMode === 'anonymous-feed';
-  const completedAt = nowIso();
-  const duelSubmissionId = `submission-duel-${Date.now()}-${randomUUID().slice(0, 8)}`;
-  const staleSubmissions = db.submissions.filter(
-    (submission) =>
-      !(
-        submission.knotId === knot.id &&
-        submission.leaderId === user.id &&
-        submission.status !== 'Godkjent'
-      ),
-  );
-  const removedSubmissions = db.submissions.filter(
-    (submission) =>
-      submission.knotId === knot.id &&
-      submission.leaderId === user.id &&
-      submission.status !== 'Godkjent',
-  );
-
-  await Promise.all(removedSubmissions.map((submission) => cleanupSubmissionAssets(submission)));
-
-  const duelSubmission = {
-    id: duelSubmissionId,
-    knotId: knot.id,
-    knotTitle: knot.title,
-    knotCategory: knot.category ?? 'Ukjent',
-    student: user.name,
-    leaderId: user.id,
-    submittedAtRaw: completedAt,
-    status: 'Godkjent',
-    points: knot.points,
-    basePoints: knot.points,
-    streakBonusPoints: 0,
-    streakQualified: false,
-    streakDay: null,
-    streakDayKey: null,
-    note,
-    imageName: body.imageName ?? '',
-    imagePreviewUrl,
-    videoName: body.videoName ?? '',
-    videoPreviewUrl,
-    isAnonymousFeed,
-    submissionMode,
-    ratings: {},
-    reviewedAtRaw: completedAt,
-    reviewedBy: null,
-    profileHidden: false,
-  };
-
-  const nextDb = {
-    ...db,
-    submissions: [duelSubmission, ...staleSubmissions],
-    duels: db.duels.map((item) => {
-      if (item.id !== duelId) {
-        return item;
-      }
-
-      if (isChallenger) {
-        return {
-          ...item,
-          challengerCompletedAt: completedAt,
-          challengerCompletionApproved: true,
-          challengerSubmissionId: duelSubmissionId,
-          challengerNote: note,
-          challengerImageName: body.imageName ?? '',
-          challengerImagePreviewUrl: imagePreviewUrl,
-          challengerVideoName: body.videoName ?? '',
-          challengerVideoPreviewUrl: videoPreviewUrl,
-        };
-      }
-
-      return {
-        ...item,
-        opponentCompletedAt: completedAt,
-        opponentCompletionApproved: true,
-        opponentSubmissionId: duelSubmissionId,
-        opponentNote: note,
-        opponentImageName: body.imageName ?? '',
-        opponentImagePreviewUrl: imagePreviewUrl,
-        opponentVideoName: body.videoName ?? '',
-        opponentVideoPreviewUrl: videoPreviewUrl,
-      };
-    }),
-  };
-
-  const recalculated = applyStreakRecalculation(nextDb, [user.id]);
-  const finalDb = recalculated.db;
-
-  await writeDb(finalDb);
-  sendJson(response, 200, buildBootstrap(finalDb, user));
-}
-
-async function handleReviewDuelCompletion(request, response, duelId) {
-  const db = await readDb();
-  const user = getAuthedUser(db, request);
-
-  if (!assertAdmin(user)) {
-    sendJson(response, 403, { error: 'Kun admin kan reversere knute-off fullforinger.' });
-    return;
-  }
-
-  const body = await readJsonBody(request);
-  const participantId = Number(body?.participantId);
-  const approved = body?.approved;
-  const duel = db.duels.find((item) => item.id === duelId);
-
-  if (!duel || duel.status !== 'active') {
-    sendJson(response, 404, { error: 'Fant ikke aktiv knute-off.' });
-    return;
-  }
-
-  if (!Number.isInteger(participantId)) {
-    sendJson(response, 400, { error: 'Ugyldig deltaker for admin-vurdering.' });
-    return;
-  }
-
-  if (typeof approved !== 'boolean') {
-    sendJson(response, 400, { error: 'Send approved som true eller false.' });
-    return;
-  }
-
-  const isChallenger = participantId === duel.challengerId;
-  const isOpponent = participantId === duel.opponentId;
-
-  if (!isChallenger && !isOpponent) {
-    sendJson(response, 400, { error: 'Deltakeren finnes ikke i denne knute-offen.' });
-    return;
-  }
-
-  if (isChallenger && !duel.challengerCompletedAt) {
-    sendJson(response, 400, { error: 'Utfordrer har ikke sendt inn fullforing enda.' });
-    return;
-  }
-
-  if (isOpponent && !duel.opponentCompletedAt) {
-    sendJson(response, 400, { error: 'Motstander har ikke sendt inn fullforing enda.' });
-    return;
-  }
-
-  const submissionId = isChallenger
-    ? duel.challengerSubmissionId
-    : duel.opponentSubmissionId;
-  const linkedSubmission = submissionId
-    ? db.submissions.find((item) => item.id === submissionId)
-    : null;
-
-  if (submissionId && !linkedSubmission) {
-    sendJson(response, 404, { error: 'Fant ikke innsendingen koblet til denne duellen.' });
-    return;
-  }
-
-  const reviewedAtRaw = nowIso();
-
-  const nextDb = {
-    ...db,
-    submissions: submissionId
-      ? db.submissions.map((item) =>
-          item.id === submissionId
-            ? {
-                ...item,
-                status: approved ? 'Godkjent' : 'Avslått',
-                reviewedAtRaw,
-                reviewedBy: user.id,
-              }
-            : item,
-        )
-      : db.submissions,
-    duels: db.duels.map((item) => {
-      if (item.id !== duelId) {
-        return item;
-      }
-
-      if (isChallenger) {
-        return {
-          ...item,
-          challengerCompletionApproved: approved,
-        };
-      }
-
-      return {
-        ...item,
-        opponentCompletionApproved: approved,
-      };
-    }),
-  };
-
-  const recalculated = applyStreakRecalculation(nextDb, [participantId]);
-  const finalDb = recalculated.db;
-
-  await writeDb(finalDb);
-  sendJson(response, 200, buildBootstrap(finalDb, user));
-}
-
-async function handleResolveDuel(request, response, duelId) {
-  const db = await readDb();
-  const user = getAuthedUser(db, request);
-
-  if (!assertAdmin(user)) {
-    sendJson(response, 403, { error: 'Kun admin kan avgjøre knute-offs.' });
-    return;
-  }
-
-  const duel = db.duels.find((item) => item.id === duelId);
-
-  if (!duel || duel.status !== 'active') {
-    sendJson(response, 404, { error: 'Fant ikke aktiv knute-off.' });
-    return;
-  }
-
-  const challengerCompletedAndApproved =
-    Boolean(duel.challengerCompletedAt) &&
-    duel.challengerCompletionApproved !== false;
-  const opponentCompletedAndApproved =
-    Boolean(duel.opponentCompletedAt) &&
-    duel.opponentCompletionApproved !== false;
-  let result = 'no-completion';
-
-  if (challengerCompletedAndApproved && opponentCompletedAndApproved) {
-    result = 'split';
-  } else if (challengerCompletedAndApproved) {
-    result = 'challenger-wins';
-  } else if (opponentCompletedAndApproved) {
-    result = 'opponent-wins';
-  }
-
-  const nextDb = {
-    ...db,
-    duels: db.duels.map((item) =>
-      item.id === duelId
-        ? {
-            ...item,
-            status: 'resolved',
-            result,
-            resolvedAt: nowIso(),
-          }
-        : item,
-    ),
-  };
-
-  await writeDb(nextDb);
-  sendJson(response, 200, buildBootstrap(nextDb, user));
-}
 
 function getContentType(filePath) {
   if (filePath.endsWith('.png')) {
@@ -4096,38 +3489,6 @@ const server = createServer(async (request, response) => {
       return;
     }
 
-    if (request.method === 'POST' && url.pathname === '/api/duels') {
-      await handleStartDuel(request, response);
-      return;
-    }
-
-    if (
-      request.method === 'PATCH' &&
-      /^\/api\/duels\/[^/]+\/complete$/.test(url.pathname)
-    ) {
-      const duelId = url.pathname.split('/')[3];
-      await handleCompleteDuel(request, response, duelId);
-      return;
-    }
-
-    if (
-      request.method === 'PATCH' &&
-      /^\/api\/duels\/[^/]+\/review$/.test(url.pathname)
-    ) {
-      const duelId = url.pathname.split('/')[3];
-      await handleReviewDuelCompletion(request, response, duelId);
-      return;
-    }
-
-    if (
-      request.method === 'PATCH' &&
-      /^\/api\/duels\/[^/]+\/resolve$/.test(url.pathname)
-    ) {
-      const duelId = url.pathname.split('/')[3];
-      await handleResolveDuel(request, response, duelId);
-      return;
-    }
-
     if (request.method === 'GET' && url.pathname.startsWith('/uploads/')) {
       const fileName = url.pathname.replace('/uploads/', '');
       const filePath = path.join(UPLOADS_DIR, fileName);
@@ -4237,11 +3598,6 @@ await seedFirstAdminIfEmpty();
 
 server.listen(PORT, () => {
   console.log(`Russeknute backend klar på http://localhost:${PORT}`);
-  console.log(
-    `Knute-off regler: +/-${DUEL_RANGE} plasser, ${DUEL_STAKE}p innsats, ${DUEL_WINDOW_HOURS}t frist, ${
-      DUEL_LIMITS_DISABLED ? 'ingen daglig grense (testmodus)' : `${DUEL_DAILY_LIMIT} per dag`
-    }.`,
-  );
   console.log(
     `Moderering MVP: noLimits=${MODERATION_POLICY.noLimits}, manualFeedModerationFirst=${MODERATION_POLICY.manualFeedModerationFirst}.`,
   );
