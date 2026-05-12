@@ -10802,13 +10802,11 @@ textarea.text-input:focus {
 }
 
 .toast__message {
-  white-space: normal;
-  overflow-wrap: anywhere;
+  white-space: nowrap;
   line-height: 1.35;
-  display: -webkit-box;
-  -webkit-line-clamp: 3;
-  -webkit-box-orient: vertical;
   overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
 }
 
 @media (min-width: 901px) {
