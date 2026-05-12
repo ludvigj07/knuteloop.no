@@ -1,3 +1,4 @@
+import './backend/src/env/loadEnv.mjs';
 import { createServer } from 'node:http';
 import { randomUUID } from 'node:crypto';
 import sharp from 'sharp';
