@@ -293,6 +293,8 @@ export function UserAdminPanel({ sessionToken }) {
         name: invite.name,
         code: invite.code,
         link: invite.link,
+        emailSent: result.emailSent === true,
+        emailError: result.emailError ?? '',
       });
       logInviteHistory('single-create', [invite]);
       setForm(emptyForm());
@@ -449,6 +451,8 @@ export function UserAdminPanel({ sessionToken }) {
         name: invite.name,
         code: invite.code,
         link: invite.link,
+        emailSent: result.emailSent === true,
+        emailError: result.emailError ?? '',
       });
       logInviteHistory('single-regenerate', [invite]);
       await refresh();
@@ -525,7 +529,21 @@ export function UserAdminPanel({ sessionToken }) {
           }}
         >
           <strong>Invitasjon klar for {lastInvite.name}</strong>
-          <p style={{ margin: '0.5rem 0' }}>Kopier disse og send til brukeren — koden vises bare én gang.</p>
+          <p
+            style={{
+              margin: '0.5rem 0',
+              padding: '0.5rem 0.75rem',
+              borderRadius: '6px',
+              background: lastInvite.emailSent ? '#e6f7e6' : '#fde8e8',
+              color: lastInvite.emailSent ? '#1f5e1f' : '#8a1f1f',
+              fontSize: '0.95rem',
+            }}
+          >
+            {lastInvite.emailSent
+              ? `✓ E-post sendt til ${lastInvite.email}`
+              : `⚠ E-post ble IKKE sendt${lastInvite.emailError ? `: ${lastInvite.emailError}` : ''}. Lever koden manuelt under.`}
+          </p>
+          <p style={{ margin: '0.5rem 0' }}>Koden vises bare én gang — kopier hvis du må sende manuelt.</p>
           <dl style={{ display: 'grid', gridTemplateColumns: 'auto 1fr', gap: '0.25rem 0.75rem', margin: 0 }}>
             <dt>E-post:</dt>
             <dd style={{ margin: 0, fontFamily: 'monospace' }}>{lastInvite.email}</dd>
