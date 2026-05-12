@@ -175,6 +175,28 @@ export const MobileVideo = forwardRef(function MobileVideo(
     return () => observer.disconnect();
   }, [src]);
 
+  // Pause videoen når appen backgrounded (PWA minimeres, hjem-knapp, fane
+  // bytter). Uten dette fortsetter lyden å spille selv om brukeren har
+  // lukket appen, fordi <video>-elementet ikke pauses automatisk.
+  useEffect(() => {
+    if (typeof document === 'undefined') {
+      return undefined;
+    }
+
+    const handleVisibilityChange = () => {
+      const videoElement = videoRef.current;
+      if (!videoElement) return;
+      if (document.visibilityState === 'hidden' && !videoElement.paused) {
+        videoElement.pause();
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, []);
+
   return (
     <video
       key={src}

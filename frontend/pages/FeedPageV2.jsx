@@ -124,11 +124,13 @@ function FeedLightbox({ entry, onClose }) {
         onClick={(event) => event.stopPropagation()}
       >
         {isVideo ? (
-          <video
+          <MobileVideo
             className="feed-lightbox__video"
             src={entry.videoPreviewUrl}
             controls
             autoPlay
+            muted={false}
+            loop={false}
             playsInline
           />
         ) : (
