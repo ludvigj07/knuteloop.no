@@ -329,7 +329,9 @@ export async function handleAdminCreateUser(request, response) {
     name: user.name,
     code: inviteCode,
   });
-  if (!emailResult.ok) {
+  if (emailResult.ok) {
+    console.log(`[invite-email] Invitasjon sendt til ${user.email}`);
+  } else {
     console.warn(`[invite-email] Kunne ikke sende invitasjon til ${user.email}:`, emailResult.error);
   }
 
@@ -375,7 +377,9 @@ export async function handleAdminRegenerateInvite(request, response, userIdParam
     name: fresh.name,
     code: inviteCode,
   });
-  if (!emailResult.ok) {
+  if (emailResult.ok) {
+    console.log(`[invite-email] Invitasjon (regenerert) sendt til ${fresh.email}`);
+  } else {
     console.warn(`[invite-email] Kunne ikke sende invitasjon til ${fresh.email}:`, emailResult.error);
   }
 
