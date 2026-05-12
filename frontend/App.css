@@ -433,14 +433,16 @@
 }
 
 .pill--rank {
-background: var(--accent-bg);
+  background: var(--accent-bg);
   color: var(--accent-strong);
 }
 
 .leaderboard-list,
 .submission-list,
 .config-list,
-.activity-log-list {
+.activity-log-list,
+.duel-history-list,
+.duel-admin-meta {
   display: grid;
   gap: 12px;
 }
@@ -2131,12 +2133,14 @@ background: var(--accent-bg);
 }
 
 .leaderboard-row__details {
-display: grid;
+  display: grid;
   gap: 10px;
   text-align: right;
 }
 
-.leaderboard-row__actions {
+.leaderboard-row__actions,
+.duel-summary-bar,
+.duel-summary-bar__stats {
   display: flex;
   gap: 10px;
   flex-wrap: wrap;
@@ -2144,6 +2148,79 @@ display: grid;
 
 .leaderboard-row__actions {
   justify-content: flex-end;
+}
+
+.duel-summary-bar {
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+  padding: 16px 18px;
+  border-radius: 20px;
+  border: 1px solid var(--accent-border);
+  background: #fff6fb;
+}
+
+.duel-summary-bar strong,
+.duel-history-row strong {
+  color: var(--text-strong);
+}
+
+.duel-summary-bar p,
+.duel-history-row p,
+.leaderboard-row__duel-hint,
+.leaderboard-row__duel-note {
+  margin: 0;
+  color: var(--text-muted);
+}
+
+.duel-summary-bar__stats {
+  justify-content: flex-end;
+}
+
+.duel-summary-bar__stats span,
+.leaderboard-row__duel-note {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  padding: 6px 12px;
+  background: var(--accent-bg);
+  color: var(--accent-strong);
+  font-size: 0.82rem;
+  font-weight: 700;
+}
+
+.duel-history-block {
+  display: grid;
+  gap: 12px;
+  margin-top: 20px;
+}
+
+.duel-history-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 16px 18px;
+  border-radius: 18px;
+  border: 1px solid var(--border);
+  background: rgba(255, 255, 255, 0.8);
+}
+
+.duel-history-row--active {
+  border-color: var(--accent-border);
+  background: #fff6fb;
+}
+
+.duel-history-row__actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.duel-history-row__actions--admin {
+  max-width: 360px;
 }
 
 .activity-log-row__content {
@@ -2263,10 +2340,14 @@ display: grid;
   }
 
   .dashboard-rival-row__meta {
-justify-content: flex-start;
+    justify-content: flex-start;
   }
 
-  .leaderboard-row__actions {
+  .leaderboard-row__actions,
+  .duel-summary-bar,
+  .duel-summary-bar__stats,
+  .duel-history-row,
+  .duel-history-row__actions {
     justify-content: flex-start;
   }
 
@@ -2558,7 +2639,7 @@ justify-content: flex-start;
 }
 
 .section-card__header h3 {
-font-size: 1.28rem;
+  font-size: 1.28rem;
   letter-spacing: -0.02em;
   color: var(--text-strong);
 }
@@ -2568,6 +2649,7 @@ font-size: 1.28rem;
 .leaderboard-row,
 .submission-row,
 .config-row,
+.duel-history-row,
 .profile-detail-card,
 .upload-field,
 .evidence-card,
@@ -2733,25 +2815,15 @@ font-size: 1.28rem;
 .folder-button.is-active,
 .admin-task-button.is-active,
 .profile-selector.is-active {
-border-color: rgba(255,
-46,
-99,
-0.34);
-  background: linear-gradient(135deg,
-rgba(255,
-46,
-99,
-0.2),
-rgba(162,
-89,
-255,
-0.18));
-  box-shadow: var(--glow-primary),
-var(--glow-secondary);
+  border-color: rgba(255, 46, 99, 0.34);
+  background: linear-gradient(135deg, rgba(255, 46, 99, 0.2), rgba(162, 89, 255, 0.18));
+  box-shadow: var(--glow-primary), var(--glow-secondary);
 }
 
 .folder-count,
-.admin-task-button__badge {
+.admin-task-button__badge,
+.duel-summary-bar__stats span,
+.leaderboard-row__duel-note {
   background: linear-gradient(135deg, rgba(255, 46, 99, 0.18), rgba(162, 89, 255, 0.16));
   color: var(--text-strong);
   border: 1px solid rgba(255, 255, 255, 0.08);
@@ -2802,10 +2874,11 @@ var(--glow-secondary);
 .dashboard-rival-row__meta strong,
 .activity-log-row__meta strong,
 .dashboard-recommendation-card strong {
-color: var(--accent);
+  color: var(--accent);
 }
 
-.dashboard-progress-card__caption {
+.dashboard-progress-card__caption,
+.leaderboard-row__duel-hint {
   color: var(--text-muted);
 }
 
@@ -2842,6 +2915,12 @@ color: var(--accent);
   color: var(--gold);
   border-color: rgba(255, 215, 0, 0.24);
   box-shadow: 0 0 18px rgba(255, 215, 0, 0.14);
+}
+
+.duel-summary-bar,
+.duel-history-row--active {
+  background: linear-gradient(140deg, rgba(77, 33, 96, 0.96), rgba(50, 24, 67, 0.96));
+  border-color: rgba(255, 46, 99, 0.26);
 }
 
 .badge-summary-card {
@@ -3020,7 +3099,7 @@ color: var(--accent);
   }
 
   50% {
-transform: none;
+    transform: none;
   }
 }
 
@@ -3035,6 +3114,7 @@ transform: none;
 .dashboard-message-card,
 .dashboard-rival-row,
 .dashboard-activity-row,
+.duel-history-row,
 .profile-knot-row,
 .profile-detail-card,
 .badge-summary-card,
@@ -3055,6 +3135,8 @@ transform: none;
 .knot-status-card,
 .dashboard-hero__stat,
 .daily-knot-card,
+.duel-summary-bar,
+.duel-history-row--active,
 .folder-empty,
 .filter-empty-state,
 .inline-feedback,
@@ -3091,7 +3173,7 @@ transform: none;
 
 .hero-panel::after,
 .daily-knot-card::before {
-display: none !important;
+  display: none !important;
 }
 
 .nav-button,
@@ -3106,6 +3188,8 @@ display: none !important;
 .leaderboard-row__rank--top,
 .folder-count,
 .admin-task-button__badge,
+.duel-summary-bar__stats span,
+.leaderboard-row__duel-note,
 .pill--soft,
 .pill--rank,
 .pill--gold {
@@ -3158,7 +3242,7 @@ display: none !important;
 }
 
 .action-button--danger {
-background: #ef4444;
+  background: #ef4444;
   border-color: #ef4444;
   color: #ffffff;
   box-shadow: var(--shadow-soft);
@@ -3179,6 +3263,10 @@ background: #ef4444;
 .admin-task-button__content span,
 .admin-quick-card p,
 .admin-section-toolbar p,
+.duel-summary-bar p,
+.duel-history-row p,
+.leaderboard-row__duel-hint,
+.leaderboard-row__duel-note,
 .word-counter,
 .upload-field small,
 .evidence-card span {
@@ -3208,7 +3296,7 @@ background: #ef4444;
 .profile-identity__meta .profile-class-badge,
 .pill--soft,
 .pill--rank {
-color: var(--accent) !important;
+  color: var(--accent) !important;
 }
 
 .hero-chip--accent,
@@ -3216,7 +3304,9 @@ color: var(--accent) !important;
 .admin-task-button.is-active,
 .profile-selector.is-active,
 .folder-count,
-.admin-task-button__badge {
+.admin-task-button__badge,
+.duel-summary-bar__stats span,
+.leaderboard-row__duel-note {
   background: var(--badge-soft) !important;
   color: var(--accent) !important;
   border-color: var(--accent-border) !important;
@@ -3302,7 +3392,7 @@ color: var(--accent) !important;
 }
 
 .daily-knot-card .eyebrow {
-font-size: 1.2rem;
+  font-size: 1.2rem;
   font-weight: 900;
   letter-spacing: 0.02em;
   line-height: 1.1;
@@ -3310,6 +3400,8 @@ font-size: 1.2rem;
 
 .folder-count,
 .admin-task-button__badge,
+.duel-summary-bar__stats span,
+.leaderboard-row__duel-note,
 .leaderboard-row__rank,
 .dashboard-progress-card strong,
 .dashboard-recommendation-card strong,
@@ -3417,8 +3509,87 @@ font-size: 1.2rem;
   .settings-account-grid {
     grid-template-columns: 1fr;
   }
+}
+
+.duel-page-list,
+.duel-evidence-grid {
+  display: grid;
+  gap: 14px;
+}
+
+.duel-focus-card,
+.duel-evidence-admin,
+.duel-status-card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 22px;
+  box-shadow: var(--shadow-soft);
+}
+
+.duel-focus-card {
+  padding: 18px;
+  display: grid;
+  gap: 16px;
+}
+
+.duel-focus-card__header,
+.duel-focus-card__status,
+.duel-focus-card__meta {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.duel-focus-card__body {
+  display: grid;
+  grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr);
+  gap: 16px;
+}
+
+.duel-focus-card__challenge,
+.duel-focus-card__evidence {
+  display: grid;
+  gap: 12px;
+}
+
+.duel-focus-card__challenge h3,
+.duel-focus-card__evidence h3,
+.duel-evidence-admin strong,
+.duel-status-card strong {
+  color: var(--text-strong);
+}
+
+.duel-focus-card__challenge p,
+.duel-evidence-admin p,
+.duel-status-card span {
+  margin: 0;
+  color: var(--text-muted);
+}
+
+.duel-status-card {
+  padding: 14px 16px;
+  min-width: 200px;
+  display: grid;
+  gap: 6px;
+}
+
+.duel-evidence-admin {
+  padding: 14px;
+  display: grid;
+  gap: 10px;
+}
+
+.duel-evidence-preview {
+  display: grid;
+  gap: 12px;
+}
 
 @media (max-width: 900px) {
+  .duel-focus-card__body {
+    grid-template-columns: 1fr;
+  }
 }
 
 .swipe-tabs-shell {
@@ -4594,8 +4765,7 @@ font-size: 1.2rem;
 }
 
 .app-shell {
-width: min(1120px,
-calc(100% - 20px));
+  width: min(1120px, calc(100% - 20px));
   margin: 0 auto;
   padding: 20px 0 44px;
 }
@@ -4622,6 +4792,8 @@ calc(100% - 20px));
 .badge-card,
 .profile-selector,
 .profile-knot-row,
+.duel-summary-bar,
+.duel-history-row,
 .inline-feedback,
 .upload-field,
 .evidence-card,
@@ -4932,6 +5104,14 @@ textarea.text-input:focus {
 .leaderboard-row--podium-1,
 .leaderboard-row--podium-2,
 .leaderboard-row--podium-3 {
+  background: #fff !important;
+  border-color: var(--border) !important;
+  box-shadow: var(--shadow-soft) !important;
+}
+
+.duel-summary-bar--friendly,
+.duel-history-row--friendly,
+.duel-history-row--active {
   background: #fff !important;
   border-color: var(--border) !important;
   box-shadow: var(--shadow-soft) !important;
@@ -10063,7 +10243,7 @@ textarea.text-input:focus {
   }
 
   .feed-rating__summary--overlay {
-margin-bottom: 6px;
+    margin-bottom: 6px;
   }
 }
 
@@ -10071,6 +10251,7 @@ margin-bottom: 6px;
 .info-card,
 .stat-card,
 .config-row,
+.duel-history-row,
 .dashboard-message-card,
 .dashboard-rival-row,
 .dashboard-activity-row,
@@ -10093,6 +10274,7 @@ margin-bottom: 6px;
 .inline-feedback,
 .admin-live-strip,
 .daily-knot-card,
+.duel-summary-bar,
 .knot-status-card {
   border-color: transparent !important;
 }
@@ -10163,7 +10345,9 @@ margin-bottom: 6px;
 .admin-page .admin-section-toolbar__actions .action-button {
   flex: 1 1 160px;
 }
+
 .admin-page .config-row,
+.admin-page .duel-history-row,
 .admin-page .admin-quick-card {
   border: 0 !important;
   background: transparent !important;
@@ -10179,6 +10363,7 @@ margin-bottom: 6px;
 .admin-page .submission-row.is-active {
   border-color: var(--accent-border) !important;
 }
+
 .admin-page .admin-task-shell,
 .admin-page .admin-submissions-workspace,
 .admin-page .admin-task-panel,
@@ -10192,6 +10377,7 @@ margin-bottom: 6px;
 .admin-page .filter-empty-state,
 .admin-page .inline-feedback,
 .admin-page .evidence-card,
+.admin-page .duel-evidence-admin,
 .admin-page .upload-field {
   border: 0 !important;
   background: transparent !important;
@@ -10540,6 +10726,15 @@ margin-bottom: 6px;
 
   .submission-row__actions .action-button,
   .config-row__actions .action-button {
+    flex: 1 1 calc(50% - 3px);
+    min-width: 0;
+    padding-inline: 10px;
+  }
+
+  /* Duel-evidence panel mindre tett */
+  .duel-evidence-grid {
+    gap: 10px;
+  }
 
   /* Admin-subsection padding på mobil */
   .admin-subsection {
@@ -13603,6 +13798,14 @@ button[type="button"]:not(.no-ripple):not(.action-button):not(.bottom-swipe-nav_
 
   .submission-row__actions .action-button,
   .config-row__actions .action-button {
+    flex: 1 1 calc(50% - 3px);
+    min-width: 0;
+    padding-inline: 10px;
+  }
+
+  .duel-evidence-grid {
+    gap: 10px;
+  }
 
   .admin-subsection {
     gap: 10px;
