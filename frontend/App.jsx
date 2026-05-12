@@ -31,6 +31,7 @@ import {
   setKnotVisibility,
   fetchBootstrap,
   getStoredSessionToken,
+  hideRussnames,
   importKnots,
   loginWithEmailPassword,
   logout,
@@ -38,6 +39,7 @@ import {
   rateSubmission,
   removeBan,
   reportSubmission,
+  revealRussnames,
   reviewReport,
   reviewDuelCompletion,
   resolveDuel,
@@ -410,6 +412,8 @@ function App() {
     activeCount: 0,
   };
   const knotFeedbackMessages = appData?.knotFeedbackMessages ?? EMPTY_OBJECT;
+  const russnamesRevealed = appData?.russnamesRevealed === true;
+  const russnamesRevealedAt = appData?.russnamesRevealedAt ?? null;
   const baseDashboardData = appData?.dashboardData ?? {
     stats: [],
     messages: [],
@@ -1191,6 +1195,22 @@ function App() {
     return nextAppData;
   }
 
+  async function handleRevealRussnames() {
+    const nextAppData = await revealRussnames(sessionToken);
+    setAppData(nextAppData);
+    showToast('Russenavn er avslørt!');
+    setConfettiTrigger((current) => current + 1);
+    playDing();
+    return nextAppData;
+  }
+
+  async function handleHideRussnames() {
+    const nextAppData = await hideRussnames(sessionToken);
+    setAppData(nextAppData);
+    showToast('Russenavn er skjult igjen.', 'info');
+    return nextAppData;
+  }
+
   function renderHeroPanel() {
     const leaderAbove = displayLeaders.find(
       (leader) => leader.rank === (currentLeader?.rank ?? 0) - 1,
@@ -1256,12 +1276,14 @@ function App() {
       onDeleteKnot: handleDeleteKnot,
       onDeleteSubmission: handleDeleteSubmission,
       onCreateBan: handleCreateBan,
+      onHideRussnames: handleHideRussnames,
       onImportKnots: handleImportKnots,
       onMarkDuelCompleted: handleMarkDuelCompleted,
       onOpenDailyKnot: handleOpenDailyKnot,
       onOpenProfile: handleOpenProfile,
       onRemoveBan: handleRemoveBan,
       onReportSubmission: handleReportSubmission,
+      onRevealRussnames: handleRevealRussnames,
       onReviewReport: handleReviewReport,
       onReviewDuelCompletion: handleReviewDuelCompletion,
       onResolveDuel: handleResolveDuel,
@@ -1273,6 +1295,8 @@ function App() {
       onUpdateKnotPoints: handleUpdateKnotPoints,
       onUpdateProfile: handleUpdateProfile,
       knotFeedbackMessages,
+      russnamesRevealed,
+      russnamesRevealedAt,
       profiles,
       reports,
       currentUserActiveBans,

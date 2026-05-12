@@ -523,7 +523,9 @@ export function AdminPage({
   leaders = [],
   onDeleteKnot,
   onCreateBan,
+  onHideRussnames,
   onImportKnots,
+  onRevealRussnames,
   onUpdateKnotFeedbackMessages,
   onRemoveBan,
   onReviewReport,
@@ -532,6 +534,8 @@ export function AdminPage({
   onReviewSubmission,
   onUpdateKnotPoints,
   reports = [],
+  russnamesRevealed = false,
+  russnamesRevealedAt = null,
   stats,
   submissions,
   sessionToken,
@@ -571,6 +575,8 @@ export function AdminPage({
   const [feedbackSettingsMessage, setFeedbackSettingsMessage] = useState('');
   const [isSavingFeedbackSettings, setIsSavingFeedbackSettings] = useState(false);
   const [rareFeedbackPreview, setRareFeedbackPreview] = useState('');
+  const [revealRussnamesBusy, setRevealRussnamesBusy] = useState(false);
+  const [revealRussnamesError, setRevealRussnamesError] = useState('');
 
   const pendingSubmissions = submissions.filter(
     (submission) => submission.status === 'Venter',
@@ -653,6 +659,12 @@ export function AdminPage({
       label: 'Brukere',
       count: Math.max(leaders.length - 1, 0),
       note: 'Kontoer',
+    },
+    {
+      id: 'dap-reveal',
+      label: 'Dåp / russenavn',
+      count: russnamesRevealed ? 1 : 0,
+      note: russnamesRevealed ? 'Avslørt' : 'Hemmelig',
     },
     {
       id: 'overview',
@@ -1991,6 +2003,127 @@ export function AdminPage({
 
       {activeAdminTask === 'users' ? (
         <UserAdminPanel sessionToken={sessionToken} />
+      ) : null}
+
+      {activeAdminTask === 'dap-reveal' ? (
+        <SectionCard
+          title="Avsløring av russenavn"
+          description={
+            russnamesRevealed
+              ? 'Russenavnene er synlige i appen.'
+              : 'Russenavnene er skjult helt til admin trykker på avsløring-knappen.'
+          }
+        >
+          <div className="admin-task-panel">
+            {russnamesRevealed ? (
+              <>
+                <div className="section-card" style={{ background: '#eef7ee' }}>
+                  <strong>✓ Russenavnene ble avslørt</strong>
+                  <p style={{ marginTop: 4 }}>
+                    {russnamesRevealedAt
+                      ? new Date(russnamesRevealedAt).toLocaleString('nb-NO', {
+                          weekday: 'long',
+                          day: '2-digit',
+                          month: 'long',
+                          hour: '2-digit',
+                          minute: '2-digit',
+                        })
+                      : 'Tidspunkt ukjent'}
+                  </p>
+                  <p>Alle russer kan nå se hverandres russenavn i feed, toppliste og profiler.</p>
+                </div>
+
+                <div style={{ marginTop: '1.5rem' }}>
+                  <strong>Skjul russenavn igjen?</strong>
+                  <p style={{ fontSize: '0.9rem', opacity: 0.8 }}>
+                    Bruk denne hvis du trykket avslør for tidlig. Russenavnene forsvinner ut av
+                    appen umiddelbart, og ekte navn vises i stedet.
+                  </p>
+                  <button
+                    type="button"
+                    className="action-button action-button--ghost"
+                    disabled={revealRussnamesBusy}
+                    onClick={async () => {
+                      const ok = window.confirm(
+                        'Sikker på at du vil skjule russenavnene igjen? Alle russer mister tilgang til russenavn-visning umiddelbart.',
+                      );
+                      if (!ok) return;
+                      setRevealRussnamesBusy(true);
+                      setRevealRussnamesError('');
+                      try {
+                        await onHideRussnames();
+                      } catch (error) {
+                        setRevealRussnamesError(
+                          error instanceof Error ? error.message : 'Kunne ikke skjule russenavn.',
+                        );
+                      } finally {
+                        setRevealRussnamesBusy(false);
+                      }
+                    }}
+                  >
+                    {revealRussnamesBusy ? 'Skjuler…' : 'Skjul russenavn igjen'}
+                  </button>
+                </div>
+              </>
+            ) : (
+              <>
+                <div className="section-card" style={{ background: '#fff7ed' }}>
+                  <strong>🔒 Russenavn er hemmelig</strong>
+                  <p style={{ marginTop: 4 }}>
+                    Ingen — ikke engang den enkelte russen selv — kan se russenavn i appen
+                    før du trykker avsløring-knappen.
+                  </p>
+                  <p>
+                    Russenavnene ligger trygt i databasen og strippes ut av API-responsen
+                    inntil avsløringen skjer.
+                  </p>
+                </div>
+
+                <div style={{ marginTop: '1.5rem' }}>
+                  <strong>Avslør alle russenavn nå</strong>
+                  <p style={{ fontSize: '0.9rem', opacity: 0.8 }}>
+                    Trykk når dåpsseremonien er ferdig. Alle russer ser russenavn umiddelbart,
+                    overalt i appen.
+                  </p>
+                  <button
+                    type="button"
+                    className="action-button"
+                    disabled={revealRussnamesBusy}
+                    onClick={async () => {
+                      const ok = window.confirm(
+                        'Sikker på at du vil avsløre alle russenavn nå? Dette er synlig for alle russer umiddelbart.',
+                      );
+                      if (!ok) return;
+                      setRevealRussnamesBusy(true);
+                      setRevealRussnamesError('');
+                      try {
+                        await onRevealRussnames();
+                      } catch (error) {
+                        setRevealRussnamesError(
+                          error instanceof Error ? error.message : 'Kunne ikke avsløre russenavn.',
+                        );
+                      } finally {
+                        setRevealRussnamesBusy(false);
+                      }
+                    }}
+                    style={{
+                      fontSize: '1.1rem',
+                      padding: '0.9rem 1.5rem',
+                      marginTop: '0.5rem',
+                    }}
+                  >
+                    {revealRussnamesBusy ? 'Avslører…' : '🎭 Avslør alle russenavn'}
+                  </button>
+                </div>
+              </>
+            )}
+            {revealRussnamesError ? (
+              <p className="form-feedback form-feedback--error" style={{ marginTop: '1rem' }}>
+                {revealRussnamesError}
+              </p>
+            ) : null}
+          </div>
+        </SectionCard>
       ) : null}
 
       {activeAdminTask === 'overview' ? (

@@ -82,7 +82,7 @@ function ProfileCard({ canEdit, onEdit, profile, roleLabel }) {
 
       <div className="mobile-profile-card__identity">
         <div className="mobile-profile-card__name-row">
-          <h2>{profile.russName}</h2>
+          <h2>{profile.russName ?? profile.realName ?? 'Russ'}</h2>
         </div>
         <p>{roleLabel}</p>
         <div className="mobile-profile-card__chips">
@@ -578,7 +578,7 @@ export function ProfilesPage({
                 <div className="profile-selector__top">
                   <ProfilePhoto profile={profile} size="small" />
                   <div className="profile-selector__identity">
-                    <strong>{profile.russName}</strong>
+                    <strong>{profile.russName ?? profile.realName ?? 'Russ'}</strong>
                     <span>{profile.realName}</span>
                     <span className="pill pill--rank">
                       {profile.leaderboardTitle}
