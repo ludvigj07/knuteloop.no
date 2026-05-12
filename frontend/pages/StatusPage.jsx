@@ -31,9 +31,6 @@ function ProfileThumb({ person }) {
 export function StatusPage({
   achievements,
   activityLog,
-  currentUserId,
-  duelHistory,
-  duelSummary,
   onOpenFeed,
   onOpenProfile,
   onOpenKnots,
@@ -62,23 +59,6 @@ export function StatusPage({
         })[0] ?? null,
     [achievements],
   );
-  const myActiveDuels = useMemo(
-    () =>
-      (duelHistory ?? []).filter(
-        (duel) =>
-          duel.status === 'active' &&
-          (duel.challengerId === currentUserId || duel.opponentId === currentUserId),
-      ),
-    [currentUserId, duelHistory],
-  );
-  const myRecentDuels = useMemo(
-    () =>
-      (duelHistory ?? []).filter(
-        (duel) =>
-          duel.challengerId === currentUserId || duel.opponentId === currentUserId,
-      ),
-    [currentUserId, duelHistory],
-  );
   const recentActivity = useMemo(() => (activityLog ?? []).slice(0, 5), [activityLog]);
 
   function toggleSection(sectionId) {
@@ -91,7 +71,7 @@ export function StatusPage({
     <div className="stack-layout">
       <SectionCard
         title="Status"
-        description="Merker, knute-off og feed samlet i ett rolig overblikk."
+        description="Merker og feed samlet i ett rolig overblikk."
       >
         <div className="status-hub-grid">
           <article className="status-hub-card">
@@ -112,23 +92,6 @@ export function StatusPage({
               onClick={() => toggleSection('badges')}
             >
               {expandedSection === 'badges' ? 'Skjul merker' : 'Se merker'}
-            </button>
-          </article>
-
-          <article className="status-hub-card">
-            <span className="status-hub-card__kicker">Knute-off</span>
-            <strong>{myActiveDuels.length}</strong>
-            <p>
-              {myActiveDuels.length > 0
-                ? `${duelSummary?.stake ?? 10}p innsats, ${duelSummary?.deadlineHours ?? 24}t frist og ${duelSummary?.dailyLimit ?? 1} per dag`
-                : 'Ingen aktive knute-offer akkurat nå'}
-            </p>
-            <button
-              type="button"
-              className="action-button action-button--ghost action-button--compact"
-              onClick={() => toggleSection('duels')}
-            >
-              {expandedSection === 'duels' ? 'Skjul knute-off' : 'Se knute-off'}
             </button>
           </article>
 
@@ -199,46 +162,6 @@ export function StatusPage({
             ))}
           </div>
         )}
-      </SectionCard>
-
-      <SectionCard
-        title="Knute-off status"
-        description="Oversikt uten stress."
-      >
-        <div className="status-section-toolbar">
-          <p>
-            {myActiveDuels.length > 0
-              ? `${myActiveDuels.length} aktiv${myActiveDuels.length > 1 ? 'e' : ''} knute-off akkurat nå.`
-              : 'Ingen aktive knute-offer akkurat nå.'}
-          </p>
-          <button
-            type="button"
-            className="action-button action-button--ghost action-button--compact"
-            onClick={() => toggleSection('duels')}
-          >
-            {expandedSection === 'duels' ? 'Vis mindre' : 'Vis detaljer'}
-          </button>
-        </div>
-
-        <div className="status-compact-list">
-          {(expandedSection === 'duels' ? myRecentDuels : myActiveDuels).slice(0, 3).map((duel) => (
-            <article key={duel.id} className="status-list-row">
-              <div>
-                <strong>{duel.knotTitle}</strong>
-                <p>
-                  {duel.challengerName} vs {duel.opponentName}
-                </p>
-              </div>
-              <span className="pill pill--warning">
-                {duel.status === 'active' ? duel.deadlineLabel : duel.outcomeTitle}
-              </span>
-            </article>
-          ))}
-
-          {(expandedSection === 'duels' ? myRecentDuels : myActiveDuels).length === 0 ? (
-            <p className="folder-empty">Ingen knute-offer å vise akkurat nå.</p>
-          ) : null}
-        </div>
       </SectionCard>
 
       <SectionCard

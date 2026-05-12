@@ -1,5 +1,4 @@
-﻿import { useEffect, useMemo, useRef, useState } from 'react';
-import { MobileVideo } from '../components/MobileVideo.jsx';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { SectionCard } from '../components/SectionCard.jsx';
 
 function getRankDisplay(rank) {
@@ -38,12 +37,6 @@ function getPodiumRowClass(rank) {
   return '';
 }
 
-const MAX_DUEL_NOTE_WORDS = 100;
-const SUBMISSION_MODE = {
-  REVIEW: 'review',
-  FEED: 'feed',
-  ANONYMOUS_FEED: 'anonymous-feed',
-};
 const GENDER_FILTER_LABELS = {
   girl: 'Jenter',
   boy: 'Gutter',
@@ -68,36 +61,6 @@ const CLASS_INDIVIDUAL_FILTER_OPTIONS = [
   { value: 'ibc', label: 'IBC' },
   { value: 'ibd', label: 'IBD' },
 ];
-
-function getWordCount(text) {
-  const trimmedText = text.trim();
-
-  if (!trimmedText) {
-    return 0;
-  }
-
-  return trimmedText.split(/\s+/).length;
-}
-
-function normalizeSubmissionMode(value) {
-  if (
-    value === SUBMISSION_MODE.REVIEW ||
-    value === SUBMISSION_MODE.FEED ||
-    value === SUBMISSION_MODE.ANONYMOUS_FEED
-  ) {
-    return value;
-  }
-
-  return SUBMISSION_MODE.FEED;
-}
-
-function revokeObjectUrl(url) {
-  if (!url || typeof URL === 'undefined') {
-    return;
-  }
-
-  URL.revokeObjectURL(url);
-}
 
 function normalizeClassFilterValue(value) {
   const normalizedValue = String(value ?? '')
@@ -203,17 +166,6 @@ function buildHotMoverIdSet(leaders = [], activityLog = []) {
     momentumByLeader.set(studentId, (momentumByLeader.get(studentId) ?? 0) + score);
   });
 
-  (leaders ?? []).forEach((leader) => {
-    const duelDelta = Number(leader?.duelPointDelta ?? 0);
-
-    if (duelDelta > 0) {
-      momentumByLeader.set(
-        leader.id,
-        (momentumByLeader.get(leader.id) ?? 0) + duelDelta * 0.6,
-      );
-    }
-  });
-
   const ranked = [...momentumByLeader.entries()].sort((left, right) => right[1] - left[1]);
   const threshold = ranked.length > 0 ? Math.max(12, ranked[0][1] * 0.45) : Infinity;
 
@@ -229,32 +181,14 @@ export function LeaderboardPage({
   classLeaderboard = [],
   currentUserId,
   currentUserClassName = '',
-  currentUserActiveBans = [],
-  duelAvailability,
-  duelHistory,
-  duelSummary,
   genderLeaderboards = {},
   leaders,
-  onMarkDuelCompleted,
   onOpenProfile,
-  onStartDuel,
 }) {
-  const [activeView, setActiveView] = useState('leaderboard');
   const [leaderboardScope, setLeaderboardScope] = useState('school');
   const [genderFilter, setGenderFilter] = useState('girl');
   const [classIndividualFilter, setClassIndividualFilter] = useState('sta');
-  const [duelFeedback, setDuelFeedback] = useState('');
-  const [drafts, setDrafts] = useState({});
-  const [expandedSubmissionDuelId, setExpandedSubmissionDuelId] = useState(null);
   const currentLeaderRef = useRef(null);
-  const draftsRef = useRef(drafts);
-  const activeFeedBan =
-    currentUserActiveBans.find((ban) => ban.type === 'feed') ?? null;
-  const activeSubmissionBan =
-    currentUserActiveBans.find((ban) => ban.type === 'submission') ?? null;
-  const activeDuels = (duelHistory ?? []).filter((duel) => duel.status === 'active');
-  const recentDuels = (duelHistory ?? []).filter((duel) => duel.status === 'resolved');
-  const challengeLeaders = (leaders ?? []).filter((leader) => leader.id !== currentUserId);
   const genderFilterOptions = ['girl', 'boy'];
   const selectedGenderLeaderboard = genderLeaderboards[genderFilter] ?? [];
   const hotMoverIds = buildHotMoverIdSet(leaders ?? [], activityLog);
@@ -267,130 +201,12 @@ export function LeaderboardPage({
       ?.label ?? classIndividualFilter.toUpperCase();
 
   useEffect(() => {
-    draftsRef.current = drafts;
-  }, [drafts]);
-
-  useEffect(() => {
     const normalizedCurrentUserClass = normalizeClassFilterValue(currentUserClassName);
 
     if (normalizedCurrentUserClass) {
       setClassIndividualFilter(normalizedCurrentUserClass);
     }
   }, [currentUserClassName]);
-
-  useEffect(
-    () => () => {
-      Object.values(draftsRef.current).forEach((draft) => {
-        revokeObjectUrl(draft.imagePreviewUrl);
-        revokeObjectUrl(draft.videoPreviewUrl);
-      });
-    },
-    [],
-  );
-
-  async function handleStartDuel(opponentId) {
-    const result = await onStartDuel?.(opponentId);
-
-    if (result?.message) {
-      setDuelFeedback(result.message);
-    }
-  }
-
-  function updateDraftNote(duelId, note) {
-    setDrafts((currentDrafts) => ({
-      ...currentDrafts,
-      [duelId]: {
-        ...currentDrafts[duelId],
-        note,
-      },
-    }));
-  }
-
-  function updateDraftSubmissionMode(duelId, submissionMode) {
-    setDrafts((currentDrafts) => ({
-      ...currentDrafts,
-      [duelId]: {
-        ...currentDrafts[duelId],
-        submissionMode: normalizeSubmissionMode(submissionMode),
-      },
-    }));
-  }
-
-  function updateDraftFile(duelId, type, file) {
-    if (!file || typeof URL === 'undefined') {
-      return;
-    }
-
-    const previewField = type === 'image' ? 'imagePreviewUrl' : 'videoPreviewUrl';
-    const nameField = type === 'image' ? 'imageName' : 'videoName';
-    const fileField = type === 'image' ? 'imageFile' : 'videoFile';
-    const nextPreviewUrl = URL.createObjectURL(file);
-
-    setDrafts((currentDrafts) => {
-      const currentDraft = currentDrafts[duelId] ?? {};
-      revokeObjectUrl(currentDraft[previewField]);
-
-      return {
-        ...currentDrafts,
-        [duelId]: {
-          ...currentDraft,
-          [nameField]: file.name,
-          [fileField]: file,
-          [previewField]: nextPreviewUrl,
-        },
-      };
-    });
-  }
-
-  function clearDraft(duelId) {
-    setDrafts((currentDrafts) => {
-      const currentDraft = currentDrafts[duelId] ?? {};
-      revokeObjectUrl(currentDraft.imagePreviewUrl);
-      revokeObjectUrl(currentDraft.videoPreviewUrl);
-      const nextDrafts = { ...currentDrafts };
-      delete nextDrafts[duelId];
-      return nextDrafts;
-    });
-  }
-
-  async function handleCompleteDuel(duel, evidence = {}) {
-    const wordCount = getWordCount(evidence.note ?? '');
-
-    if (wordCount > MAX_DUEL_NOTE_WORDS) {
-      setDuelFeedback(`Hold notatet under ${MAX_DUEL_NOTE_WORDS} ord.`);
-      return;
-    }
-
-    if (activeSubmissionBan) {
-      setDuelFeedback(
-        `Du har innsendings-ban i ${activeSubmissionBan.remainingLabel}. Du kan ikke registrere knute-off nå.`,
-      );
-      return;
-    }
-
-    const normalizedSubmissionMode = normalizeSubmissionMode(evidence.submissionMode);
-    const effectiveSubmissionMode = activeFeedBan
-      ? SUBMISSION_MODE.REVIEW
-      : normalizedSubmissionMode;
-    const result = await onMarkDuelCompleted?.(duel.id, currentUserId, {
-      ...evidence,
-      submissionMode: effectiveSubmissionMode,
-    });
-
-    if (result?.ok) {
-      clearDraft(duel.id);
-      setExpandedSubmissionDuelId((current) => (current === duel.id ? null : current));
-      setDuelFeedback(
-        result.message ??
-          'Fullføring er registrert og auto-godkjent. Admin kan reversere hvis beviset ikke holder.',
-      );
-      return;
-    }
-
-    if (result?.message) {
-      setDuelFeedback(result.message);
-    }
-  }
 
   function handleJumpToCurrentUser() {
     if (!currentLeaderRef.current) {
@@ -408,28 +224,7 @@ export function LeaderboardPage({
       title="Toppliste"
       description="En vennlig oversikt over aktivitet og deltakelse i kullet."
     >
-      <div className="leaderboard-switch" role="tablist" aria-label="Velg visning i toppliste">
-        <button
-          type="button"
-          className={`leaderboard-switch__button ${
-            activeView === 'leaderboard' ? 'is-active' : ''
-          }`}
-          onClick={() => setActiveView('leaderboard')}
-        >
-          Toppliste
-        </button>
-        <button
-          type="button"
-          className={`leaderboard-switch__button ${activeView === 'duel' ? 'is-active' : ''}`}
-          onClick={() => setActiveView('duel')}
-        >
-          Knute-off
-        </button>
-      </div>
-
-      {activeView === 'leaderboard' ? (
-        <>
-          <div className="leaderboard-scope-switch">
+      <div className="leaderboard-scope-switch">
             <label className="leaderboard-scope-switch__label" htmlFor="leaderboard-scope-select">
               Statistikktype
             </label>
@@ -733,341 +528,6 @@ export function LeaderboardPage({
               </div>
             </>
           ) : null}
-        </>
-      ) : (
-        <div className="stack-layout">
-          <div className="duel-summary-bar duel-summary-bar--friendly">
-            <div>
-              <strong>Knute-off</strong>
-              <p>
-                Knute-off er en frivillig ekstraaktivitet. Du kan utfordre innenfor
-                {` ${duelSummary?.range ?? 5} `}
-                plasseringer, med
-                {` ${duelSummary?.stake ?? 10} `}
-                poeng i innsats og
-                {` ${duelSummary?.deadlineHours ?? 24} `}
-                timers frist. Maks {duelSummary?.dailyLimit ?? 1} per dag.
-              </p>
-            </div>
-            <div className="duel-summary-bar__stats">
-              <span>{duelSummary?.currentUserDailyCount ?? 0}/1 i dag</span>
-              <span>{duelSummary?.currentUserRemaining ?? 0} igjen</span>
-            </div>
-          </div>
-
-          {duelFeedback ? (
-            <div className="inline-feedback">
-              <p>{duelFeedback}</p>
-              <button
-                type="button"
-                className="action-button action-button--ghost action-button--compact"
-                onClick={() => setDuelFeedback('')}
-              >
-                Lukk
-              </button>
-            </div>
-          ) : null}
-          {activeSubmissionBan ? (
-            <div className="inline-feedback">
-              <p>
-                Innsendings-ban aktiv i {activeSubmissionBan.remainingLabel}. Knuteoff kan ikke
-                registreres akkurat nå.
-              </p>
-            </div>
-          ) : null}
-          {activeFeedBan ? (
-            <div className="inline-feedback">
-              <p>
-                Feed-ban aktiv i {activeFeedBan.remainingLabel}. Knuteoff registreres uten
-                feed-post i perioden.
-              </p>
-            </div>
-          ) : null}
-
-          <div className="duel-history-block">
-            <div className="section-card__header">
-              <h3>Aktive knute-offer</h3>
-              <p>Dere får samme knute og kan levere når det passer.</p>
-            </div>
-
-            <div className="duel-history-list">
-              {activeDuels.length > 0 ? (
-                activeDuels.map((duel) => {
-                  const isChallenger = duel.challengerId === currentUserId;
-                  const isOpponent = duel.opponentId === currentUserId;
-                  const isParticipant = isChallenger || isOpponent;
-                  const currentUserCompleted = isChallenger
-                    ? Boolean(duel.challengerCompletedAt)
-                    : isOpponent
-                      ? Boolean(duel.opponentCompletedAt)
-                      : false;
-                  const draft = drafts[duel.id] ?? {};
-                  const noteValue = draft.note ?? '';
-                  const noteWordCount = getWordCount(noteValue);
-                  const isOverWordLimit = noteWordCount > MAX_DUEL_NOTE_WORDS;
-                  const submissionMode = normalizeSubmissionMode(draft.submissionMode);
-                  const effectiveSubmissionMode = activeFeedBan
-                    ? SUBMISSION_MODE.REVIEW
-                    : submissionMode;
-                  const shareToFeed = effectiveSubmissionMode === SUBMISSION_MODE.FEED;
-                  const shareToAnonymousFeed =
-                    effectiveSubmissionMode === SUBMISSION_MODE.ANONYMOUS_FEED;
-                  const isSubmissionOpen = expandedSubmissionDuelId === duel.id;
-
-                  return (
-                    <article key={duel.id} className="duel-history-row duel-history-row--active duel-history-row--friendly">
-                      <div>
-                        <strong>{duel.knotTitle}</strong>
-                        <p>
-                          {duel.challengerName} vs {duel.opponentName} · Frist {duel.deadlineLabel}
-                        </p>
-                        <p>
-                          Utfordrer: {duel.challengerStatusLabel} · Motstander: {duel.opponentStatusLabel}
-                        </p>
-                      </div>
-                      <div className="duel-history-row__actions">
-                        <span className="pill pill--warning">Potten er {duel.stake * 2} poeng</span>
-                        {isParticipant ? (
-                          <button
-                            type="button"
-                            className="action-button"
-                            disabled={currentUserCompleted || Boolean(activeSubmissionBan)}
-                            onClick={() =>
-                              setExpandedSubmissionDuelId((current) =>
-                                current === duel.id ? null : duel.id,
-                              )
-                            }
-                          >
-                            {currentUserCompleted
-                              ? 'Registrert'
-                              : isSubmissionOpen
-                                ? 'Skjul registrering'
-                                : 'Åpne registrering'}
-                          </button>
-                        ) : null}
-                      </div>
-
-                      {isParticipant && !currentUserCompleted && isSubmissionOpen ? (
-                        <div className="submission-form">
-                          <label className="field-group">
-                            <span>Kort notat</span>
-                            <textarea
-                              className="text-input text-input--area"
-                              placeholder="Hva gjorde du, og hva bør admin se etter?"
-                              value={noteValue}
-                              onChange={(event) => updateDraftNote(duel.id, event.target.value)}
-                            />
-                          </label>
-
-                          <div className="submission-form__meta">
-                            <span
-                              className={`word-counter ${isOverWordLimit ? 'is-invalid' : ''}`}
-                            >
-                              {noteWordCount}/{MAX_DUEL_NOTE_WORDS} ord
-                            </span>
-                          </div>
-
-                          <div className="submission-mode-options">
-                            <label className="submission-mode-option">
-                              <input
-                                type="checkbox"
-                                checked={shareToFeed}
-                                disabled={Boolean(activeFeedBan)}
-                                onChange={(event) =>
-                                  updateDraftSubmissionMode(
-                                    duel.id,
-                                    event.target.checked
-                                      ? SUBMISSION_MODE.FEED
-                                      : SUBMISSION_MODE.REVIEW,
-                                  )
-                                }
-                              />
-                              <span>Del i feed</span>
-                            </label>
-                            <label className="submission-mode-option">
-                              <input
-                                type="checkbox"
-                                checked={shareToAnonymousFeed}
-                                disabled={Boolean(activeFeedBan)}
-                                onChange={(event) =>
-                                  updateDraftSubmissionMode(
-                                    duel.id,
-                                    event.target.checked
-                                      ? SUBMISSION_MODE.ANONYMOUS_FEED
-                                      : SUBMISSION_MODE.REVIEW,
-                                  )
-                                }
-                              />
-                              <span>Post anonymt i feed</span>
-                            </label>
-                          </div>
-                          <p className="submission-mode-hint">
-                            {activeFeedBan
-                              ? `Feed-posting er blokkert i ${activeFeedBan.remainingLabel}. Knuteoff registreres uten feed-post.`
-                              : 'Lar du begge stå av, registreres knuteoff uten feed-post.'}
-                          </p>
-
-                          <div className="submission-upload-grid">
-                            <label className="upload-field">
-                              <span>Last opp bilde</span>
-                              <input
-                                type="file"
-                                accept="image/*"
-                                onChange={(event) => {
-                                  updateDraftFile(duel.id, 'image', event.target.files?.[0]);
-                                  event.target.value = '';
-                                }}
-                              />
-                              <small>{draft.imageName || 'Valgfritt bildebevis'}</small>
-                            </label>
-
-                            <label className="upload-field">
-                              <span>Last opp video</span>
-                              <input
-                                type="file"
-                                accept="video/mp4,video/quicktime,video/x-m4v,video/*"
-                                capture="environment"
-                                onChange={(event) => {
-                                  updateDraftFile(duel.id, 'video', event.target.files?.[0]);
-                                  event.target.value = '';
-                                }}
-                              />
-                              <small>{draft.videoName || 'Valgfritt videobevis'}</small>
-                            </label>
-                          </div>
-
-                          {draft.imagePreviewUrl || draft.videoPreviewUrl ? (
-                            <div className="submission-preview-grid">
-                              {draft.imagePreviewUrl ? (
-                                <div className="evidence-card">
-                                  <span>{draft.imageName || 'Bildebevis'}</span>
-                                  <img src={draft.imagePreviewUrl} alt="Valgt duelbilde" />
-                                </div>
-                              ) : null}
-                              {draft.videoPreviewUrl ? (
-                                <div className="evidence-card">
-                                  <span>{draft.videoName || 'Videobevis'}</span>
-                                  <MobileVideo
-                                    controls
-                                    autoPlay
-                                    muted
-                                    loop
-                                    src={draft.videoPreviewUrl}
-                                  />
-                                </div>
-                              ) : null}
-                            </div>
-                          ) : null}
-
-                          <div className="submission-form__actions">
-                            <button
-                              type="button"
-                              className="action-button"
-                              disabled={isOverWordLimit || Boolean(activeSubmissionBan)}
-                              onClick={() => handleCompleteDuel(duel, draft)}
-                            >
-                              Registrer fullført
-                            </button>
-                          </div>
-                        </div>
-                      ) : null}
-                    </article>
-                  );
-                })
-              ) : (
-                <p className="folder-empty">Ingen aktive knute-offer akkurat nå.</p>
-              )}
-            </div>
-          </div>
-
-          <div className="duel-history-block">
-            <div className="section-card__header">
-              <h3>Utfordre en venn</h3>
-              <p>Vises bare når utfordringen er tilgjengelig og innenfor rammene.</p>
-            </div>
-
-            <div className="leaderboard-list">
-              {challengeLeaders.map((leader) => {
-                const duelState = duelAvailability?.byLeaderId?.[leader.id];
-
-                return (
-                  <article key={leader.id} className="leaderboard-row">
-                    <div
-                      className={`leaderboard-row__rank ${getRankToneClass(leader.rank)}`}
-                    >
-                      #{leader.rank}
-                    </div>
-                    <div className="leaderboard-row__person">
-                      {leader.photoUrl ? (
-                        <div className="profile-photo profile-photo--small">
-                          <img
-                            src={leader.photoThumbUrl || leader.photoUrl}
-                            alt={`${leader.russName ?? leader.name} profilbilde`}
-                            loading="lazy"
-                            decoding="async"
-                          />
-                        </div>
-                      ) : (
-                        <div className="profile-avatar profile-avatar--small">{leader.icon}</div>
-                      )}
-                      <div className="leaderboard-row__person-text">
-                        <h3>{leader.russName ?? leader.name}</h3>
-                        <p>
-                          #{leader.rank} · {leader.points} poeng
-                        </p>
-                      </div>
-                    </div>
-                    <div className="leaderboard-row__details">
-                      <p className="leaderboard-row__duel-hint">
-                        {duelState?.reason ?? 'Knute-off er ikke tilgjengelig akkurat nå.'}
-                      </p>
-                      <div className="leaderboard-row__actions">
-                        <button
-                          type="button"
-                          className="action-button action-button--ghost"
-                          onClick={() => onOpenProfile(leader.id)}
-                        >
-                          Se profil
-                        </button>
-                        <button
-                          type="button"
-                          className="action-button"
-                          disabled={!duelState?.canChallenge}
-                          onClick={() => handleStartDuel(leader.id)}
-                        >
-                          Send utfordring
-                        </button>
-                      </div>
-                    </div>
-                  </article>
-                );
-              })}
-            </div>
-          </div>
-
-          <div className="duel-history-block">
-            <div className="section-card__header">
-              <h3>Siste knute-offer</h3>
-              <p>Avsluttede dueller vises her som historikk.</p>
-            </div>
-
-            <div className="duel-history-list">
-              {recentDuels.slice(0, 5).map((duel) => (
-                <article key={duel.id} className="duel-history-row duel-history-row--friendly">
-                  <div>
-                    <strong>{duel.outcomeTitle}</strong>
-                    <p>
-                      {duel.challengerName} vs {duel.opponentName} · {duel.resolvedAtLabel}
-                    </p>
-                    <p>{duel.outcomeDetail}</p>
-                  </div>
-                  <span className="pill pill--warning">{duel.pointLabel}</span>
-                </article>
-              ))}
-            </div>
-          </div>
-        </div>
-      )}
     </SectionCard>
   );
 }
