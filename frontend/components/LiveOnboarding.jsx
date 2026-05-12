@@ -35,7 +35,7 @@ const STEPS = [
     kind: 'spotlight',
     target: '[data-tour-id="tab-leaderboard"]',
     title: 'Topplista',
-    body: 'Se hvor du står i kullet. Bytt mellom total, klasse og kjønn.',
+    body: 'Se hvor du står i kullet. Bytt mellom total og klasse.',
     cta: 'Neste',
     requiresPage: 'leaderboard',
   },

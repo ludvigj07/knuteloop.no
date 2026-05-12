@@ -37,15 +37,10 @@ function getPodiumRowClass(rank) {
   return '';
 }
 
-const GENDER_FILTER_LABELS = {
-  girl: 'Jenter',
-  boy: 'Gutter',
-};
 const LEADERBOARD_SCOPE_OPTIONS = [
   { value: 'school', label: 'Skole' },
   { value: 'class', label: 'Klasse kamp' },
   { value: 'class-individuals', label: 'Klassens beste' },
-  { value: 'gender', label: 'Kjønn' },
 ];
 const CLASS_INDIVIDUAL_FILTER_OPTIONS = [
   { value: 'sta', label: 'STA' },
@@ -181,16 +176,12 @@ export function LeaderboardPage({
   classLeaderboard = [],
   currentUserId,
   currentUserClassName = '',
-  genderLeaderboards = {},
   leaders,
   onOpenProfile,
 }) {
   const [leaderboardScope, setLeaderboardScope] = useState('school');
-  const [genderFilter, setGenderFilter] = useState('girl');
   const [classIndividualFilter, setClassIndividualFilter] = useState('sta');
   const currentLeaderRef = useRef(null);
-  const genderFilterOptions = ['girl', 'boy'];
-  const selectedGenderLeaderboard = genderLeaderboards[genderFilter] ?? [];
   const hotMoverIds = buildHotMoverIdSet(leaders ?? [], activityLog);
   const selectedClassIndividualEntries = useMemo(
     () => rankClassIndividuals(leaders ?? [], classIndividualFilter),
@@ -439,90 +430,6 @@ export function LeaderboardPage({
                 ) : (
                   <p className="folder-empty">
                     Ingen synlige elever i klasse «{selectedClassLabel}» ennå.
-                  </p>
-                )}
-              </div>
-            </>
-          ) : null}
-          {leaderboardScope === 'gender' ? (
-            <>
-              <div className="leaderboard-gender-filter" role="tablist" aria-label="Filtrer kjønnsstatistikk">
-                {genderFilterOptions.map((option) => (
-                  <button
-                    key={option}
-                    type="button"
-                    className={`leaderboard-gender-filter__button ${
-                      genderFilter === option ? 'is-active' : ''
-                    }`}
-                    onClick={() => setGenderFilter(option)}
-                  >
-                    {GENDER_FILTER_LABELS[option]}
-                  </button>
-                ))}
-              </div>
-
-              <p className="leaderboard-gender-filter__hint">
-                Gutter og jenter vises i hver sin toppliste.
-              </p>
-
-              <div className="leaderboard-list leaderboard-list--compact leaderboard-list--friendly">
-                {selectedGenderLeaderboard.length > 0 ? (
-                  selectedGenderLeaderboard.map((leader) => (
-                    <article
-                      key={leader.id}
-                      className={`leaderboard-row leaderboard-row--player ${getPodiumRowClass(
-                        leader.rank,
-                      )} ${
-                        leader.id === currentUserId ? 'leaderboard-row--self' : ''
-                      }`}
-                    >
-                      <div
-                        className={`leaderboard-row__rank ${getRankToneClass(leader.rank)}`}
-                      >
-                        {getRankDisplay(leader.rank)}
-                      </div>
-                      <div className="leaderboard-row__person">
-                        {leader.photoUrl ? (
-                          <div className="profile-photo profile-photo--small">
-                            <img
-                              src={leader.photoThumbUrl || leader.photoUrl}
-                              alt={`${leader.russName ?? leader.name} profilbilde`}
-                              loading="lazy"
-                              decoding="async"
-                            />
-                          </div>
-                        ) : (
-                          <div className="profile-avatar profile-avatar--small">{leader.icon}</div>
-                        )}
-                        <div className="leaderboard-row__person-text leaderboard-row__person-text--player">
-                          <div className="leaderboard-row__name-line">
-                            <h3>{leader.russName ?? leader.name}</h3>
-                            {hotMoverIds.has(leader.id) ? (
-                              <span className="leaderboard-row__hot-mover" title="Mest opp i det siste">
-                                🔥
-                              </span>
-                            ) : null}
-                          </div>
-                          <p className="leaderboard-row__subtitle">
-                            <span className="leaderboard-row__title-pill">
-                              {leader.leaderboardTitle}
-                            </span>
-                          </p>
-                        </div>
-                      </div>
-                      <div className="leaderboard-row__details leaderboard-row__details--player">
-                        <span className="leaderboard-row__points-box" aria-label={`${leader.points} poeng`}>
-                          <span className="leaderboard-row__points-value">{leader.points}</span>
-                          <span className="leaderboard-row__points-icon" aria-hidden="true">
-                            p
-                          </span>
-                        </span>
-                      </div>
-                    </article>
-                  ))
-                ) : (
-                  <p className="folder-empty">
-                    Ingen synlige deltakere i «{GENDER_FILTER_LABELS[genderFilter]}» ennå.
                   </p>
                 )}
               </div>

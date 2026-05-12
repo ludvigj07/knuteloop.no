@@ -18,7 +18,6 @@ function createProfileDraft(profile) {
     signatureKnot: profile?.signatureKnot ?? '',
     favoriteCategory: profile?.favoriteCategory ?? '',
     russType: profile?.russType ?? 'blue',
-    genderIdentity: profile?.genderIdentity ?? 'other',
   };
 }
 
@@ -354,7 +353,6 @@ export function ProfilesPage({
           draft.signatureKnot.trim() || 'Ingen signaturknute valgt.',
         favoriteCategory: draft.favoriteCategory.trim() || 'Ikke valgt',
         russType: selectedProfile.russType ?? 'blue',
-        genderIdentity: draft.genderIdentity ?? 'other',
         photoFile: draft.photoFile ?? null,
         photoName: draft.photoName ?? '',
       });
@@ -446,21 +444,6 @@ export function ProfilesPage({
                     handleFieldChange('className', event.target.value)
                   }
                 />
-              </label>
-
-              <label className="field-group field-group--small">
-                <span>Kjønnsidentitet</span>
-                <select
-                  className="text-input"
-                  value={draft.genderIdentity}
-                  onChange={(event) =>
-                    handleFieldChange('genderIdentity', event.target.value)
-                  }
-                >
-                  <option value="girl">Jente</option>
-                  <option value="boy">Gutt</option>
-                  <option value="other">Annet</option>
-                </select>
               </label>
 
               <label className="field-group">

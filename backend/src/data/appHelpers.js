@@ -6,31 +6,6 @@ export const MODERATION_POLICY = Object.freeze({
   manualFeedModerationFirst: true,
   addMinimalCooldownOnlyIfAbuseAppears: true,
 });
-export const GENDER_SEGMENTS = Object.freeze({
-  GIRL: 'girl',
-  BOY: 'boy',
-  OTHER: 'other',
-});
-
-const GENDER_IDENTITY_ALIASES = Object.freeze({
-  girl: GENDER_SEGMENTS.GIRL,
-  jente: GENDER_SEGMENTS.GIRL,
-  female: GENDER_SEGMENTS.GIRL,
-  boy: GENDER_SEGMENTS.BOY,
-  gutt: GENDER_SEGMENTS.BOY,
-  male: GENDER_SEGMENTS.BOY,
-  other: GENDER_SEGMENTS.OTHER,
-  annet: GENDER_SEGMENTS.OTHER,
-});
-
-function normalizeGenderIdentity(value) {
-  if (typeof value !== 'string') {
-    return GENDER_SEGMENTS.OTHER;
-  }
-
-  const normalizedValue = value.trim().toLowerCase();
-  return GENDER_IDENTITY_ALIASES[normalizedValue] ?? GENDER_SEGMENTS.OTHER;
-}
 
 export function getLeaderboardTitle(rank) {
   if (!Number.isFinite(rank) || rank < 1) {
@@ -365,48 +340,6 @@ export function buildKnotTypeLeaderboard(submissions = [], knots = []) {
     }));
 }
 
-export function buildGenderLeaderboards(leaders = []) {
-  const participants = leaders
-    .map((leader) => ({
-      ...leader,
-      genderIdentity: normalizeGenderIdentity(leader?.genderIdentity),
-    }));
-
-  function rankEntries(filteredLeaders) {
-    return [...filteredLeaders]
-      .sort((left, right) => {
-        if ((right.points ?? 0) !== (left.points ?? 0)) {
-          return (right.points ?? 0) - (left.points ?? 0);
-        }
-
-        if ((right.completedKnots ?? 0) !== (left.completedKnots ?? 0)) {
-          return (right.completedKnots ?? 0) - (left.completedKnots ?? 0);
-        }
-
-        return (left.russName ?? left.name ?? '').localeCompare(
-          right.russName ?? right.name ?? '',
-          'nb',
-        );
-      })
-      .map((entry, index) => ({
-        ...entry,
-        rank: index + 1,
-      }));
-  }
-
-  return {
-    [GENDER_SEGMENTS.GIRL]: rankEntries(
-      participants.filter((entry) => entry.genderIdentity === GENDER_SEGMENTS.GIRL),
-    ),
-    [GENDER_SEGMENTS.BOY]: rankEntries(
-      participants.filter((entry) => entry.genderIdentity === GENDER_SEGMENTS.BOY),
-    ),
-    [GENDER_SEGMENTS.OTHER]: rankEntries(
-      participants.filter((entry) => entry.genderIdentity === GENDER_SEGMENTS.OTHER),
-    ),
-  };
-}
-
 export function buildImportedKnots(
   rawText,
   defaultPoints,
@@ -541,7 +474,6 @@ export function buildProfiles(
       signatureKnot: details.signatureKnot ?? 'Ingen signaturknute valgt.',
       favoriteCategory: details.favoriteCategory ?? 'Ikke valgt',
       russType: details.russType ?? 'blue',
-      genderIdentity: normalizeGenderIdentity(details.genderIdentity),
       knots: visibleKnots,
     };
   });
