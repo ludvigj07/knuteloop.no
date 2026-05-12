@@ -12644,6 +12644,20 @@ textarea.text-input:focus {
   transition: background 0.15s, color 0.15s;
 }
 
+.knot-type-filter__icon {
+  width: 34px;
+  height: 34px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.knot-type-filter__icon svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
 .knot-type-filter.is-active {
   background: #1a2540;
   color: #fff;
