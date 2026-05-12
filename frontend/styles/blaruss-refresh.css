@@ -394,10 +394,14 @@
 }
 
 /* Små mini-avatarer på hjem-siden får oval-effekt av offset-skyggen,
-   så vi nuller den ut og bruker en symmetrisk ring i stedet. */
+   så vi nuller den ut og bruker en symmetrisk ring i stedet. Vi pinner
+   også width/height fordi mobile-polish.css setter `.app-theme img {
+   height: auto }` som ellers strekker bildet etter aspektforholdet. */
 .app-theme .db-mini-avatar {
   border-width: 1px;
   box-shadow: none;
+  width: 28px;
+  height: 28px;
 }
 
 .app-theme .feed-rating-star {
