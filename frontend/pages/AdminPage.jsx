@@ -130,79 +130,8 @@ const REVIEW_FILTER = {
   FEED: 'feed',
   REVIEWED: 'reviewed',
 };
-const FEEDBACK_FIELD_CONFIG = Object.freeze([
-  {
-    key: 'standard',
-    label: 'Standard innsending',
-    description: 'Brukes ved forste innsending.',
-  },
-  {
-    key: 'resubmission',
-    label: 'Oppdatert innsending',
-    description: 'Brukes nar bruker sender pa nytt.',
-  },
-  {
-    key: 'feed',
-    label: 'Feed-innsending',
-    description: 'Brukes nar innsending sendes med vanlig feed.',
-  },
-  {
-    key: 'anonymousFeed',
-    label: 'Anonym feed-innsending',
-    description: 'Brukes nar innsending sendes anonymt.',
-  },
-  {
-    key: 'streak',
-    label: 'Streak-melding',
-    description: 'Brukes nar dagens streak trigges.',
-  },
-  {
-    key: 'rare',
-    label: 'Rare (sykt sjelden)',
-    description: 'Kan trigges pa tvers av alle kategorier med veldig lav sjanse.',
-  },
-]);
-
 function toSubmissionKey(id) {
   return String(id ?? '');
-}
-
-function feedbackListToTextareaText(entries) {
-  if (!Array.isArray(entries) || entries.length === 0) {
-    return '';
-  }
-
-  return entries.filter((entry) => typeof entry === 'string' && entry.trim()).join('\n');
-}
-
-function feedbackTextareaTextToList(value) {
-  return String(value ?? '')
-    .split(/\r?\n/gu)
-    .map((line) => line.trim())
-    .filter(Boolean);
-}
-
-function feedbackTextareaTextToListByField(fieldKey, value) {
-  if (fieldKey === 'rare') {
-    const fullText = String(value ?? '')
-      .replace(/\r\n/gu, '\n')
-      .replace(/\n{3,}/gu, '\n\n')
-      .trim();
-
-    return fullText ? [fullText] : [];
-  }
-
-  return feedbackTextareaTextToList(value);
-}
-
-function buildFeedbackDraftFromMessages(messages) {
-  const draft = {};
-
-  FEEDBACK_FIELD_CONFIG.forEach((field) => {
-    draft[field.key] = feedbackListToTextareaText(messages?.[field.key]);
-  });
-
-  return draft;
 }
 
 function isFormLikeTarget(target) {
@@ -452,7 +381,6 @@ function SubmissionList({
 
 export function AdminPage({
   bans = [],
-  knotFeedbackMessages = {},
   knots,
   leaders = [],
   onDeleteKnot,
@@ -460,7 +388,6 @@ export function AdminPage({
   onHideRussnames,
   onImportKnots,
   onRevealRussnames,
-  onUpdateKnotFeedbackMessages,
   onRemoveBan,
   onReviewReport,
   onReviewSubmission,
@@ -500,12 +427,6 @@ export function AdminPage({
   const [knotFolderFilter, setKnotFolderFilter] = useState('all');
   const [activeSubmissionId, setActiveSubmissionId] = useState('');
   const [reviewingSubmissionIds, setReviewingSubmissionIds] = useState({});
-  const [feedbackDraft, setFeedbackDraft] = useState(() =>
-    buildFeedbackDraftFromMessages(knotFeedbackMessages),
-  );
-  const [feedbackSettingsMessage, setFeedbackSettingsMessage] = useState('');
-  const [isSavingFeedbackSettings, setIsSavingFeedbackSettings] = useState(false);
-  const [rareFeedbackPreview, setRareFeedbackPreview] = useState('');
   const [revealRussnamesBusy, setRevealRussnamesBusy] = useState(false);
   const [revealRussnamesError, setRevealRussnamesError] = useState('');
 
@@ -537,11 +458,6 @@ export function AdminPage({
   const openReportCount = reportQueue.length + commentReportQueue.length;
   const activeBans = (bans ?? []).filter((ban) => ban.active);
   const activeBanCount = activeBans.length;
-  const customFeedbackLineCount = FEEDBACK_FIELD_CONFIG.reduce(
-    (total, field) =>
-      total + feedbackTextareaTextToListByField(field.key, feedbackDraft[field.key]).length,
-    0,
-  );
   const banCandidates = (leaders ?? []).filter((leader) => leader.id !== 1);
 
   const adminTasks = [
@@ -568,12 +484,6 @@ export function AdminPage({
       label: 'Bans',
       count: activeBanCount,
       note: 'Aktive',
-    },
-    {
-      id: 'feedback',
-      label: 'Knute-feedback',
-      count: customFeedbackLineCount,
-      note: 'Egne tekster',
     },
     {
       id: 'users',
@@ -679,10 +589,6 @@ export function AdminPage({
       setActiveSubmissionId(toSubmissionKey(reviewQueueSubmissions[0].id));
     }
   }, [activeSubmissionId, canReviewCurrentFilter, reviewQueueSubmissions]);
-
-  useEffect(() => {
-    setFeedbackDraft(buildFeedbackDraftFromMessages(knotFeedbackMessages));
-  }, [knotFeedbackMessages]);
 
   useEffect(() => {
     if (
@@ -867,71 +773,6 @@ export function AdminPage({
           ? [`Slettet ${deleted} knuter`, ...errors]
           : [`Slettet alle ${deleted} knuter`],
     });
-  }
-
-  function handleFeedbackDraftChange(fieldKey, value) {
-    setFeedbackDraft((current) => ({
-      ...current,
-      [fieldKey]: value,
-    }));
-  }
-
-  function handleResetFeedbackDraft() {
-    setFeedbackDraft(buildFeedbackDraftFromMessages(knotFeedbackMessages));
-    setFeedbackSettingsMessage('Utkast nullstilt til sist lagrede verdier.');
-    setRareFeedbackPreview('');
-  }
-
-  async function handleSaveFeedbackMessages() {
-    if (!onUpdateKnotFeedbackMessages) {
-      return;
-    }
-
-    const nextMessages = FEEDBACK_FIELD_CONFIG.reduce((accumulator, field) => {
-      accumulator[field.key] = feedbackTextareaTextToListByField(
-        field.key,
-        feedbackDraft[field.key],
-      );
-      return accumulator;
-    }, {});
-    const hasAnyMessage = FEEDBACK_FIELD_CONFIG.some(
-      (field) => nextMessages[field.key].length > 0,
-    );
-
-    if (!hasAnyMessage) {
-      setFeedbackSettingsMessage('Legg inn minst en linje for a lagre.');
-      return;
-    }
-
-    setIsSavingFeedbackSettings(true);
-    setFeedbackSettingsMessage('');
-
-    try {
-      await onUpdateKnotFeedbackMessages(nextMessages);
-      setFeedbackSettingsMessage('Feedback-tekstene er lagret.');
-    } catch (error) {
-      setFeedbackSettingsMessage(
-        error instanceof Error ? error.message : 'Kunne ikke lagre feedback-tekstene.',
-      );
-    } finally {
-      setIsSavingFeedbackSettings(false);
-    }
-  }
-
-  function handleTestRareFeedback() {
-    const rareMessages = feedbackTextareaTextToListByField('rare', feedbackDraft.rare ?? '');
-
-    if (rareMessages.length === 0) {
-      setRareFeedbackPreview('');
-      setFeedbackSettingsMessage('Legg inn en rare-melding for a teste.');
-      return;
-    }
-
-    const candidate =
-      rareMessages[Math.floor(Math.random() * rareMessages.length)] ?? rareMessages[0];
-
-    setRareFeedbackPreview(candidate);
-    setFeedbackSettingsMessage('Viser test av rare-melding under.');
   }
 
   async function handleReviewAction(submission, nextStatus, options = {}) {
@@ -1672,74 +1513,6 @@ export function AdminPage({
                   <p className="folder-empty">Ingen aktive bans akkurat nå.</p>
                 )}
               </div>
-            </div>
-          </div>
-        </SectionCard>
-      ) : null}
-
-      {activeAdminTask === 'feedback' ? (
-        <SectionCard
-          title="Knute-feedback"
-          description="Tilpass korte meldinger som vises etter innsendinger."
-        >
-          <div className="admin-section-toolbar">
-            <div>
-              <strong>{customFeedbackLineCount} aktive feedback-tekster</strong>
-              <p>Én melding per linje. Rare kan være en lengre tekst.</p>
-            </div>
-            <div className="admin-section-toolbar__actions">
-              <button
-                type="button"
-                className="action-button action-button--ghost admin-shortcut"
-                onClick={handleResetFeedbackDraft}
-              >
-                Nullstill
-              </button>
-              <button
-                type="button"
-                className="action-button admin-shortcut"
-                disabled={isSavingFeedbackSettings}
-                onClick={handleSaveFeedbackMessages}
-              >
-                {isSavingFeedbackSettings ? 'Lagrer...' : 'Lagre tekster'}
-              </button>
-            </div>
-          </div>
-
-          <div className="admin-task-panel">
-            <div className="admin-subsection">
-              <div className="feedback-settings-grid">
-                {FEEDBACK_FIELD_CONFIG.map((field) => (
-                  <label key={field.key} className="field-group">
-                    <span>{field.label}</span>
-                    <textarea
-                      className="text-input text-input--area"
-                      value={feedbackDraft[field.key] ?? ''}
-                      onChange={(event) =>
-                        handleFeedbackDraftChange(field.key, event.target.value)
-                      }
-                    />
-                    <small>{field.description}</small>
-                  </label>
-                ))}
-              </div>
-              <div className="admin-section-toolbar__actions">
-                <button
-                  type="button"
-                  className="action-button action-button--ghost admin-shortcut"
-                  onClick={handleTestRareFeedback}
-                >
-                  Test rare
-                </button>
-              </div>
-              {rareFeedbackPreview ? (
-                <p className="inline-feedback inline-feedback--rare-preview">
-                  {rareFeedbackPreview}
-                </p>
-              ) : null}
-              {feedbackSettingsMessage ? (
-                <p className="form-feedback">{feedbackSettingsMessage}</p>
-              ) : null}
             </div>
           </div>
         </SectionCard>

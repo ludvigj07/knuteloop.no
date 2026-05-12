@@ -43,7 +43,6 @@ import {
   reviewSubmission,
   storeSessionToken,
   submitKnot,
-  updateKnotFeedbackMessages,
   updateKnotPoints,
   updateProfile,
 } from './data/api.js';
@@ -388,7 +387,6 @@ function App() {
     latestFeedEntryAt > lastVisitedFeedAt;
   const classLeaderboard = appData?.classLeaderboard ?? EMPTY_ARRAY;
   const dailyKnot = appData?.dailyKnot ?? null;
-  const knotFeedbackMessages = appData?.knotFeedbackMessages ?? EMPTY_OBJECT;
   const russnamesRevealed = appData?.russnamesRevealed === true;
   const russnamesRevealedAt = appData?.russnamesRevealedAt ?? null;
   const baseDashboardData = appData?.dashboardData ?? {
@@ -1067,12 +1065,6 @@ function App() {
     setAppData(nextAppData);
   }
 
-  async function handleUpdateKnotFeedbackMessages(messages) {
-    const nextAppData = await updateKnotFeedbackMessages(sessionToken, messages);
-    setAppData(nextAppData);
-    return nextAppData;
-  }
-
   async function handleRevealRussnames() {
     const nextAppData = await revealRussnames(sessionToken);
     setAppData(nextAppData);
@@ -1160,10 +1152,8 @@ function App() {
       onReviewSubmission: handleReviewSubmission,
       onSelectProfile: handleOpenProfile,
       onSubmitKnot: handleSubmitKnot,
-      onUpdateKnotFeedbackMessages: handleUpdateKnotFeedbackMessages,
       onUpdateKnotPoints: handleUpdateKnotPoints,
       onUpdateProfile: handleUpdateProfile,
-      knotFeedbackMessages,
       russnamesRevealed,
       russnamesRevealedAt,
       profiles,
