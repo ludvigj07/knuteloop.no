@@ -39,10 +39,12 @@ import {
   handleInviteActivate,
   handleAdminListUsers,
   handleAdminCreateUser,
+  handleAdminDeleteUser,
   handleAdminRegenerateInvite,
   handleAdminResetPassword,
   handleAdminSetActive,
   handleAdminSetRussName,
+  isSuperAdminEmail,
   setAuthBridge,
 } from './backend/src/auth/handlers.mjs';
 import {
@@ -1864,6 +1866,7 @@ function buildBootstrap(db, user) {
       email: user.email ?? '',
       group: user.group,
       role: user.role,
+      isSuperAdmin: isSuperAdminEmail(user.email),
     },
     currentUserStreak: getUserStreakSummary(workingDb, currentUserId),
     leaders: leaderSeed,
@@ -3260,6 +3263,10 @@ const server = createServer(async (request, response) => {
         await handleAdminSetRussName(request, response, m[1]);
         return;
       }
+      if ((m = url.pathname.match(/^\/api\/admin\/users\/(\d+)$/)) && request.method === 'DELETE') {
+        await handleAdminDeleteUser(request, response, m[1]);
+        return;
+      }
     }
 
     if (request.method === 'GET' && url.pathname === '/api/bootstrap') {
@@ -3501,7 +3508,21 @@ async function ensureJsonUserForAuth(authUser) {
   await writeDb(db);
 }
 
-setAuthBridge({ ensureJsonUser: ensureJsonUserForAuth });
+async function removeJsonUserForAuth(authUser) {
+  if (!authUser?.email) return;
+  const db = await readDb();
+  const emailLower = authUser.email.toLowerCase();
+  const nextUsers = db.users.filter(
+    (u) => !u.email || u.email.toLowerCase() !== emailLower,
+  );
+  if (nextUsers.length === db.users.length) return;
+  await writeDb({ ...db, users: nextUsers });
+}
+
+setAuthBridge({
+  ensureJsonUser: ensureJsonUserForAuth,
+  removeJsonUser: removeJsonUserForAuth,
+});
 
 async function seedFirstAdminIfEmpty() {
   const existing = listUsers();

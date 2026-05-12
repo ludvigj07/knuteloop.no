@@ -381,6 +381,8 @@ function SubmissionList({
 
 export function AdminPage({
   bans = [],
+  currentUserId,
+  currentUserIsSuperAdmin = false,
   knots,
   leaders = [],
   onDeleteKnot,
@@ -1519,7 +1521,11 @@ export function AdminPage({
       ) : null}
 
       {activeAdminTask === 'users' ? (
-        <UserAdminPanel sessionToken={sessionToken} />
+        <UserAdminPanel
+          sessionToken={sessionToken}
+          currentUserId={currentUserId}
+          currentUserIsSuperAdmin={currentUserIsSuperAdmin}
+        />
       ) : null}
 
       {activeAdminTask === 'dap-reveal' ? (

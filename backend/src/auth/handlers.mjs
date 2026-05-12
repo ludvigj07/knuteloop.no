@@ -6,6 +6,7 @@ import {
   createSession,
   deleteSession,
   deleteSessionsForUser,
+  deleteUserById,
   getSession,
   getUserByEmail,
   getUserById,
@@ -32,10 +33,27 @@ const RATE_LIMIT_MAX = 5;
 const GENERIC_LOGIN_ERROR = 'Ugyldig e-post eller passord.';
 const GENERIC_INVITE_ERROR = 'Ugyldig e-post eller kode.';
 
-let bridge = { ensureJsonUser: async () => {} };
+const DEFAULT_SUPER_ADMIN_EMAIL = 'ingve@kampsporthuset.no';
+
+function getSuperAdminEmail() {
+  return (process.env.BOOTSTRAP_ADMIN_EMAIL ?? DEFAULT_SUPER_ADMIN_EMAIL).toLowerCase();
+}
+
+export function isSuperAdminEmail(email) {
+  return typeof email === 'string' && email.toLowerCase() === getSuperAdminEmail();
+}
+
+let bridge = {
+  ensureJsonUser: async () => {},
+  removeJsonUser: async () => {},
+};
 
 export function setAuthBridge(next) {
-  bridge = { ensureJsonUser: async () => {}, ...next };
+  bridge = {
+    ensureJsonUser: async () => {},
+    removeJsonUser: async () => {},
+    ...next,
+  };
 }
 
 const MAX_REQUEST_BODY_BYTES = 50 * 1024 * 1024;
@@ -425,4 +443,41 @@ export async function handleAdminSetActive(request, response, userIdParam) {
   setUserActive(userId, active);
   if (!active) deleteSessionsForUser(userId);
   sendJson(response, 200, { user: userPublicShape(getUserById(userId)) });
+}
+
+export async function handleAdminDeleteUser(request, response, userIdParam) {
+  const requester = requireAdmin(request, response);
+  if (!requester) return;
+
+  if (!isSuperAdminEmail(requester.email)) {
+    sendJson(response, 403, { error: 'Kun super-admin kan slette brukere.' });
+    return;
+  }
+
+  const userId = Number(userIdParam);
+  const target = getUserById(userId);
+  if (!target) {
+    sendJson(response, 404, { error: 'Fant ikke brukeren.' });
+    return;
+  }
+
+  if (target.id === requester.id) {
+    sendJson(response, 400, { error: 'Du kan ikke slette din egen konto.' });
+    return;
+  }
+
+  if (isSuperAdminEmail(target.email)) {
+    sendJson(response, 400, { error: 'Super-admin-kontoen kan ikke slettes.' });
+    return;
+  }
+
+  deleteSessionsForUser(userId);
+  await bridge.removeJsonUser(target);
+  deleteUserById(userId);
+
+  console.log(
+    `[admin] Slettet bruker id=${userId} email=${target.email} (slettet av ${requester.email})`,
+  );
+
+  sendJson(response, 200, { ok: true, deletedUserId: userId });
 }
