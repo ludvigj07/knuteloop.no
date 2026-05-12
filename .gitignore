@@ -151,3 +151,4 @@ backend/backups/
 
 # Produksjons-tarball fra deploy-prosedyren
 release.tgz
+.claude/settings.local.json
