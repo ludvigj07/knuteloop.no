@@ -12392,6 +12392,11 @@ textarea.text-input:focus {
   right: 8px;
 }
 
+.tour-modal .tour-tooltip__progress {
+  justify-content: center;
+  margin: 0 auto;
+}
+
 .tour-mask {
   position: fixed;
   background: rgba(3, 7, 18, 0.68);
