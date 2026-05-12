@@ -105,6 +105,13 @@ export function adminSetUserActive(token, userId, active) {
   });
 }
 
+export function adminDeleteUser(token, userId) {
+  return apiRequest(`/admin/users/${userId}`, {
+    method: 'DELETE',
+    token,
+  });
+}
+
 export function adminSetUserRussName(token, userId, russName) {
   return apiRequest(`/admin/users/${userId}/russ-name`, {
     method: 'PATCH',

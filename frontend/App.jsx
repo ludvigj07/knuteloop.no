@@ -1126,6 +1126,7 @@ function App() {
       currentUserId: currentUser.leaderId,
       currentUserRole: currentUser.role,
       currentUserName: currentUser.name,
+      currentUserIsSuperAdmin: currentUser.isSuperAdmin === true,
       currentUserPoints: currentLeader?.points ?? 0,
       currentUserStreak,
       dailyKnot,

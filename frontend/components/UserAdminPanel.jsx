@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { SectionCard } from './SectionCard.jsx';
 import {
   adminCreateUser,
+  adminDeleteUser,
   adminListUsers,
   adminRegenerateInvite,
   adminResetPassword,
@@ -168,7 +169,7 @@ function emptyForm() {
   return { email: '', name: '', class: '', role: 'user', russName: '' };
 }
 
-export function UserAdminPanel({ sessionToken }) {
+export function UserAdminPanel({ sessionToken, currentUserId, currentUserIsSuperAdmin = false }) {
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -504,6 +505,26 @@ export function UserAdminPanel({ sessionToken }) {
     setError('');
     try {
       await adminSetUserActive(sessionToken, user.id, !user.active);
+      await refresh();
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setRowBusyId(null);
+    }
+  }
+
+  async function handleDeleteUser(user) {
+    const confirmed = window.confirm(
+      `Slett ${user.name} (${user.email})?\n\n` +
+        'Brukeren fjernes fra både innlogging og app-data. ' +
+        'Innsendinger og kommentarer blir liggende som "Slettet bruker".\n\n' +
+        'Dette kan ikke angres.',
+    );
+    if (!confirmed) return;
+    setRowBusyId(user.id);
+    setError('');
+    try {
+      await adminDeleteUser(sessionToken, user.id);
       await refresh();
     } catch (err) {
       setError(err.message);
@@ -1015,6 +1036,17 @@ export function UserAdminPanel({ sessionToken }) {
                     >
                       {user.active ? 'Deaktivér' : 'Aktivér'}
                     </button>
+                    {currentUserIsSuperAdmin && user.id !== currentUserId ? (
+                      <button
+                        type="button"
+                        className="action-button action-button--ghost"
+                        style={{ color: '#b91c1c', borderColor: '#b91c1c' }}
+                        disabled={busyRow}
+                        onClick={() => handleDeleteUser(user)}
+                      >
+                        Slett
+                      </button>
+                    ) : null}
                   </td>
                 </tr>
               );

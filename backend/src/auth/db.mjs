@@ -168,6 +168,10 @@ export function deleteSessionsForUser(userId) {
   db.prepare('DELETE FROM sessions WHERE user_id = ?').run(userId);
 }
 
+export function deleteUserById(userId) {
+  db.prepare('DELETE FROM users WHERE id = ?').run(userId);
+}
+
 export function createClaimToken(userId, tokenId) {
   const now = Date.now();
   db.prepare(
