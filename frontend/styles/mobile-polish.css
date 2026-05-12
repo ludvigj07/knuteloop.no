@@ -126,8 +126,6 @@ svg {
   .toast,
   .app-theme .toast {
     bottom: calc(var(--mobile-bottom-nav-clearance, 96px) + 12px) !important;
-    left: 12px;
-    right: 12px;
     max-width: calc(100vw - 24px);
   }
 }
