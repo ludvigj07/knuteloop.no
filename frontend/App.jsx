@@ -387,7 +387,6 @@ function App() {
     latestFeedEntryAt > 0 &&
     latestFeedEntryAt > lastVisitedFeedAt;
   const classLeaderboard = appData?.classLeaderboard ?? EMPTY_ARRAY;
-  const genderLeaderboards = appData?.genderLeaderboards ?? EMPTY_OBJECT;
   const dailyKnot = appData?.dailyKnot ?? null;
   const knotFeedbackMessages = appData?.knotFeedbackMessages ?? EMPTY_OBJECT;
   const russnamesRevealed = appData?.russnamesRevealed === true;
@@ -1146,7 +1145,6 @@ function App() {
       knots,
       leaders: displayLeaders,
       classLeaderboard,
-      genderLeaderboards,
       currentUserClassName: currentProfile?.className ?? currentUser?.group ?? 'Ukjent klasse',
       onDeleteKnot: handleDeleteKnot,
       onDeleteSubmission: handleDeleteSubmission,

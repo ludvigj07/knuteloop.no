@@ -14,7 +14,6 @@ import {
   buildClassLeaderboard,
   buildDailyKnot,
   buildDashboardData,
-  buildGenderLeaderboards,
   buildImportedKnots,
   buildKnotTypeLeaderboard,
   buildLeaderboard,
@@ -171,17 +170,6 @@ const OSLO_DAY_FORMATTER = new Intl.DateTimeFormat('en-CA', {
   month: '2-digit',
   day: '2-digit',
 });
-const GENDER_IDENTITY_ALIASES = Object.freeze({
-  girl: 'girl',
-  jente: 'girl',
-  female: 'girl',
-  boy: 'boy',
-  gutt: 'boy',
-  male: 'boy',
-  other: 'other',
-  annet: 'other',
-});
-
 const NORWEGIAN_TEXT_REPLACEMENTS = [
   [/\bM\?te\b/gu, 'Møte'],
   [/\bM\?t\b/gu, 'Møt'],
@@ -410,7 +398,6 @@ function createSeedDatabase() {
         signatureKnot: profile.signatureKnot ?? '',
         favoriteCategory: profile.favoriteCategory ?? '',
         russType: profile.russType ?? 'blue',
-        genderIdentity: normalizeGenderIdentity(profile.genderIdentity),
       },
     };
   });
@@ -476,8 +463,7 @@ async function readDb() {
   const migratedRatingsDb = await migrateSubmissionRatings(migratedVideoDb);
   const migratedModerationDb = await migrateModerationData(migratedRatingsDb);
   const migratedFeedFlagsDb = await migrateSubmissionFeedFlags(migratedModerationDb);
-  const migratedProfileGenderDb = await migrateProfileGenderData(migratedFeedFlagsDb);
-  const migratedStreakDb = await migrateSubmissionStreakData(migratedProfileGenderDb);
+  const migratedStreakDb = await migrateSubmissionStreakData(migratedFeedFlagsDb);
   const migratedKnotFeedbackDb = await migrateKnotFeedbackMessages(migratedStreakDb);
   const migratedNorwegianDb = await migrateNorwegianText(migratedKnotFeedbackDb);
   return migrateComments(migratedNorwegianDb);
@@ -1045,57 +1031,6 @@ function normalizeBanType(value) {
   }
 
   return BAN_TYPES.FEED;
-}
-
-function normalizeGenderIdentity(value) {
-  if (typeof value !== 'string') {
-    return 'other';
-  }
-
-  const normalizedValue = value.trim().toLowerCase();
-  return GENDER_IDENTITY_ALIASES[normalizedValue] ?? 'other';
-}
-
-async function migrateProfileGenderData(db) {
-  let changed = false;
-  const users = (db.users ?? []).map((user) => {
-    const profile = user?.profile ?? {};
-    const { includeInGenderStats: _legacyIncludeInGenderStats, ...profileWithoutLegacyFlag } =
-      profile;
-    const normalizedGenderIdentity = normalizeGenderIdentity(profile.genderIdentity);
-    const includeInGenderStatsExists = Object.prototype.hasOwnProperty.call(
-      profile,
-      'includeInGenderStats',
-    );
-
-    if (
-      normalizedGenderIdentity === profile.genderIdentity &&
-      !includeInGenderStatsExists
-    ) {
-      return user;
-    }
-
-    changed = true;
-    return {
-      ...user,
-      profile: {
-        ...profileWithoutLegacyFlag,
-        genderIdentity: normalizedGenderIdentity,
-      },
-    };
-  });
-
-  if (!changed) {
-    return db;
-  }
-
-  const nextDb = {
-    ...db,
-    users,
-  };
-
-  await writeDb(nextDb);
-  return nextDb;
 }
 
 function toIsoOrFallback(value, fallbackIso) {
@@ -1895,7 +1830,6 @@ function buildBootstrap(db, user) {
           russName: profile.russName,
           realName: profile.realName,
           className: profile.className,
-          genderIdentity: profile.genderIdentity,
         }
       : leader;
   });
@@ -1905,7 +1839,6 @@ function buildBootstrap(db, user) {
   const activityLog = buildActivityLog(profiles, publicSubmissions);
   const classLeaderboard = buildClassLeaderboard(leaderboard);
   const knotTypeLeaderboard = buildKnotTypeLeaderboard(publicSubmissions, clientKnots);
-  const genderLeaderboards = buildGenderLeaderboards(leaderboard);
   const dailyKnot = buildDailyKnot(clientKnots);
   const dashboardData = currentLeader
     ? buildDashboardData(currentUserId, leaderboard, achievements, activityLog, clientKnots)
@@ -1952,7 +1885,6 @@ function buildBootstrap(db, user) {
     activityLog,
     classLeaderboard,
     knotTypeLeaderboard,
-    genderLeaderboards,
     dailyKnot,
     dashboardData,
     knotFeedbackMessages: cloneKnotFeedbackMessages(workingDb.knotFeedbackMessages),
@@ -2058,7 +1990,6 @@ function buildDisplayLeaders(db, currentUserId) {
     russName: profileDetails[leader.id]?.russName ?? leader.name,
     realName: profileDetails[leader.id]?.realName ?? leader.name,
     className: profileDetails[leader.id]?.className ?? leader.group,
-    genderIdentity: normalizeGenderIdentity(profileDetails[leader.id]?.genderIdentity),
   }));
 }
 
@@ -2153,10 +2084,6 @@ async function handleProfileUpdate(request, response) {
               favoriteCategory:
                 body.favoriteCategory ?? entry.profile.favoriteCategory,
               russType: body.russType === 'red' ? 'red' : 'blue',
-              genderIdentity:
-                body.genderIdentity == null
-                  ? entry.profile.genderIdentity
-                  : normalizeGenderIdentity(body.genderIdentity),
             },
           }
         : entry,
@@ -3569,7 +3496,6 @@ async function ensureJsonUserForAuth(authUser) {
       signatureKnot: '',
       favoriteCategory: '',
       russType: 'blue',
-      genderIdentity: 'other',
     },
   });
   await writeDb(db);

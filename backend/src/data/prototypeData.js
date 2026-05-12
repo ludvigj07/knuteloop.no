@@ -636,7 +636,6 @@ export const socialProfileDetails = {
     signatureKnot: 'Ta klassebilde med matchende solbriller',
     favoriteCategory: 'Generelle',
     russType: 'red',
-    genderIdentity: 'girl',
   },
   2: {
     icon: 'EM',
@@ -650,7 +649,6 @@ export const socialProfileDetails = {
     signatureKnot: 'Baka',
     favoriteCategory: 'Dobbelknuter',
     russType: 'blue',
-    genderIdentity: 'boy',
   },
   3: {
     icon: 'NO',
@@ -664,7 +662,6 @@ export const socialProfileDetails = {
     signatureKnot: 'Lag en heiarop-video for klassen',
     favoriteCategory: 'Generelle',
     russType: 'red',
-    genderIdentity: 'girl',
   },
   4: {
     icon: 'JO',
@@ -678,7 +675,6 @@ export const socialProfileDetails = {
     signatureKnot: 'Sang på skoletrappa',
     favoriteCategory: 'Generelle',
     russType: 'blue',
-    genderIdentity: 'boy',
   },
   5: {
     icon: 'LE',
@@ -692,7 +688,6 @@ export const socialProfileDetails = {
     signatureKnot: 'Arrangerte felles lunsj',
     favoriteCategory: 'Generelle',
     russType: 'red',
-    genderIdentity: 'girl',
   },
 };
 
