@@ -25,6 +25,7 @@ import {
   validatePasswordStrength,
   verifySecret,
 } from './passwords.mjs';
+import { sendInviteEmail } from '../email/sendInviteEmail.mjs';
 
 const RATE_LIMIT_WINDOW_MS = 15 * 60 * 1000;
 const RATE_LIMIT_MAX = 5;
@@ -322,7 +323,22 @@ export async function handleAdminCreateUser(request, response) {
   });
   const user = getUserById(userId);
   await bridge.ensureJsonUser(user);
-  sendJson(response, 201, { user: userPublicShape(user), inviteCode });
+
+  const emailResult = await sendInviteEmail({
+    email: user.email,
+    name: user.name,
+    code: inviteCode,
+  });
+  if (!emailResult.ok) {
+    console.warn(`[invite-email] Kunne ikke sende invitasjon til ${user.email}:`, emailResult.error);
+  }
+
+  sendJson(response, 201, {
+    user: userPublicShape(user),
+    inviteCode,
+    emailSent: emailResult.ok,
+    emailError: emailResult.ok ? undefined : emailResult.error,
+  });
 }
 
 export async function handleAdminSetRussName(request, response, userIdParam) {
@@ -352,7 +368,23 @@ export async function handleAdminRegenerateInvite(request, response, userIdParam
   const inviteCode = generateInviteCode();
   const inviteCodeHash = await hashSecret(inviteCode);
   updateUserInvite(userId, inviteCodeHash);
-  sendJson(response, 200, { user: userPublicShape(getUserById(userId)), inviteCode });
+  const fresh = getUserById(userId);
+
+  const emailResult = await sendInviteEmail({
+    email: fresh.email,
+    name: fresh.name,
+    code: inviteCode,
+  });
+  if (!emailResult.ok) {
+    console.warn(`[invite-email] Kunne ikke sende invitasjon til ${fresh.email}:`, emailResult.error);
+  }
+
+  sendJson(response, 200, {
+    user: userPublicShape(fresh),
+    inviteCode,
+    emailSent: emailResult.ok,
+    emailError: emailResult.ok ? undefined : emailResult.error,
+  });
 }
 
 export async function handleAdminResetPassword(request, response, userIdParam) {
