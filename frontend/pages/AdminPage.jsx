@@ -4,6 +4,7 @@ import { SectionCard } from '../components/SectionCard.jsx';
 import { StatCard } from '../components/StatCard.jsx';
 import { KNOT_FOLDERS, resolveKnotFolder } from '../data/knotFolders.js';
 import { UserAdminPanel } from '../components/UserAdminPanel.jsx';
+import { BulkRussNameAssign } from '../components/BulkRussNameAssign.jsx';
 
 const FOLDER_NAME_TO_ID = {
   sexkategori: 'Sexknuter',
@@ -1647,6 +1648,8 @@ export function AdminPage({
                 {revealRussnamesError}
               </p>
             ) : null}
+
+            <BulkRussNameAssign sessionToken={sessionToken} />
           </div>
         </SectionCard>
       ) : null}

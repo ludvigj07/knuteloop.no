@@ -9,10 +9,7 @@ import {
   adminSetUserActive,
   adminSetUserRussName,
 } from '../data/api.js';
-import { createRussNamePool } from '../utils/russNameGenerator.js';
 import { InvitePrintOverlay } from './InvitePrintOverlay.jsx';
-
-const BULK_RUSS_NAME_MAX_CHARS = 40;
 
 function splitBulkLine(line) {
   if (line.includes('\t')) return line.split(/\t+/);
@@ -20,10 +17,6 @@ function splitBulkLine(line) {
   if (/\s*(=>|→)\s*/.test(line)) return line.split(/\s*(?:=>|→)\s*/);
   if (line.includes(',')) return line.split(',');
   return [line];
-}
-
-function normalizeRussNameKey(value) {
-  return value.trim().replace(/\s+/g, ' ').toLowerCase();
 }
 
 function parseBulkLines(text) {
@@ -47,48 +40,6 @@ function parseBulkLines(text) {
       return null;
     })
     .filter((entry) => entry && /@/.test(entry.email));
-}
-
-function validateBulkRussNames(entries, existingUsers) {
-  const existingNames = new Set(
-    existingUsers
-      .map((user) => user.russName)
-      .filter(Boolean)
-      .map(normalizeRussNameKey),
-  );
-  const seen = new Map();
-  const errors = [];
-
-  for (const entry of entries) {
-    const russName = entry.russName?.trim();
-    if (!russName) continue;
-
-    if (russName.length > BULK_RUSS_NAME_MAX_CHARS) {
-      errors.push({
-        email: entry.email,
-        message: `Linje ${entry.lineNumber}: russenavnet er for langt (maks ${BULK_RUSS_NAME_MAX_CHARS} tegn).`,
-      });
-    }
-
-    const key = normalizeRussNameKey(russName);
-    if (existingNames.has(key)) {
-      errors.push({
-        email: entry.email,
-        message: `Linje ${entry.lineNumber}: russenavnet "${russName}" er allerede i bruk.`,
-      });
-    }
-
-    if (seen.has(key)) {
-      errors.push({
-        email: entry.email,
-        message: `Linje ${entry.lineNumber}: russenavnet "${russName}" er brukt flere ganger i samme bulk.`,
-      });
-    } else {
-      seen.set(key, entry.lineNumber);
-    }
-  }
-
-  return errors;
 }
 
 function buildShortHost() {
@@ -167,7 +118,7 @@ function userStatusVariant(user) {
 }
 
 function emptyForm() {
-  return { email: '', name: '', class: '', role: 'user', russName: '' };
+  return { email: '', name: '', class: '', role: 'user' };
 }
 
 export function UserAdminPanel({
@@ -214,12 +165,6 @@ export function UserAdminPanel({
   const [bulkInvites, setBulkInvites] = useState([]);
   const [bulkErrors, setBulkErrors] = useState([]);
 
-  // Bulk-tildeling av russenavn til eksisterende brukere
-  const [assignText, setAssignText] = useState('');
-  const [assignPreview, setAssignPreview] = useState(null);
-  const [assignBusy, setAssignBusy] = useState(false);
-  const [assignProgress, setAssignProgress] = useState({ done: 0, total: 0 });
-  const [assignResults, setAssignResults] = useState(null);
   const [printOverlayOpen, setPrintOverlayOpen] = useState(false);
   const [regenBusy, setRegenBusy] = useState(false);
   const [regenProgress, setRegenProgress] = useState({ done: 0, total: 0 });
@@ -278,10 +223,9 @@ export function UserAdminPanel({
     if (
       !form.email.trim() ||
       !form.name.trim() ||
-      !form.class.trim() ||
-      !form.russName.trim()
+      !form.class.trim()
     ) {
-      setError('Fyll inn e-post, navn, klasse og dåpsnavn.');
+      setError('Fyll inn e-post, navn og klasse.');
       return;
     }
     setBusy(true);
@@ -292,13 +236,12 @@ export function UserAdminPanel({
         name: form.name.trim(),
         class: form.class.trim(),
         role: form.role,
-        russName: form.russName.trim(),
       });
       const invite = {
         email: result.user.email,
         name: result.user.name,
         className: result.user.class ?? form.class.trim(),
-        russName: result.user.russName ?? form.russName.trim(),
+        russName: result.user.russName ?? '',
         code: result.inviteCode,
         link: buildInviteLink(result.user.email, result.inviteCode),
         shortHost: buildShortHost(),
@@ -329,7 +272,7 @@ export function UserAdminPanel({
 
     const entries = parseBulkLines(bulkText);
     if (entries.length === 0) {
-      setError('Fant ingen gyldige linjer. Format per linje: «Navn, e-post» eller «Navn, e-post, russenavn».');
+      setError('Fant ingen gyldige linjer. Format per linje: «Navn, e-post» eller bare «e-post».');
       return;
     }
     if (!bulkClass.trim()) {
@@ -337,22 +280,9 @@ export function UserAdminPanel({
       return;
     }
 
-    const validationErrors = validateBulkRussNames(entries, users);
-    if (validationErrors.length > 0) {
-      setBulkErrors(validationErrors);
-      setError('Rett opp russenavnene i bulk-listen før import.');
-      return;
-    }
-
     setBulkBusy(true);
     setBulkProgress({ done: 0, total: entries.length });
 
-    const namePool = createRussNamePool();
-    const providedRussNames = entries.map((entry) => entry.russName?.trim()).filter(Boolean);
-    const existingRussNames = [
-      ...users.map((u) => u.russName).filter(Boolean),
-      ...providedRussNames,
-    ];
     const newInvites = [];
     const errors = [];
     const shortHost = buildShortHost();
@@ -363,8 +293,6 @@ export function UserAdminPanel({
         entry.name ||
         entry.email.split('@')[0].replace(/[._-]+/g, ' ').trim() ||
         'Russ';
-      const russName = entry.russName?.trim() || namePool.take(existingRussNames);
-      existingRussNames.push(russName);
 
       try {
         const result = await adminCreateUser(sessionToken, {
@@ -372,13 +300,12 @@ export function UserAdminPanel({
           name: fallbackName,
           class: bulkClass.trim(),
           role: bulkRole,
-          russName,
         });
         newInvites.push({
           email: result.user.email,
           name: result.user.name,
           className: result.user.class ?? bulkClass.trim(),
-          russName: result.user.russName ?? russName,
+          russName: result.user.russName ?? '',
           code: result.inviteCode,
           link: buildInviteLink(result.user.email, result.inviteCode),
           shortHost,
@@ -525,96 +452,6 @@ export function UserAdminPanel({
     } finally {
       setRowBusyId(null);
     }
-  }
-
-  function handlePreviewAssign() {
-    setError('');
-    setAssignResults(null);
-    const entries = parseBulkLines(assignText);
-
-    if (entries.length === 0) {
-      setAssignPreview({ matches: [], notFound: [], skipped: [] });
-      setError('Fant ingen rader å forhåndsvise. Hver linje må inneholde en e-post og et russenavn.');
-      return;
-    }
-
-    const usersByEmail = new Map(
-      users.map((user) => [(user.email ?? '').toLowerCase().trim(), user]),
-    );
-    const matches = [];
-    const notFound = [];
-    const skipped = [];
-
-    for (const entry of entries) {
-      const emailKey = entry.email.toLowerCase().trim();
-      const russName = entry.russName.trim();
-
-      if (!russName) {
-        skipped.push({ ...entry, reason: 'Russenavn mangler i raden.' });
-        continue;
-      }
-      if (russName.length > BULK_RUSS_NAME_MAX_CHARS) {
-        skipped.push({
-          ...entry,
-          reason: `Russenavnet er for langt (maks ${BULK_RUSS_NAME_MAX_CHARS} tegn).`,
-        });
-        continue;
-      }
-
-      const user = usersByEmail.get(emailKey);
-      if (!user) {
-        notFound.push(entry);
-        continue;
-      }
-
-      const sameAsCurrent =
-        normalizeRussNameKey(user.russName ?? '') === normalizeRussNameKey(russName);
-      matches.push({
-        ...entry,
-        userId: user.id,
-        currentRussName: user.russName ?? '',
-        sameAsCurrent,
-      });
-    }
-
-    setAssignPreview({ matches, notFound, skipped });
-  }
-
-  async function handleConfirmAssign() {
-    if (!assignPreview || assignBusy) return;
-    const toUpdate = assignPreview.matches.filter((m) => !m.sameAsCurrent);
-    if (toUpdate.length === 0) return;
-
-    setAssignBusy(true);
-    setError('');
-    setAssignProgress({ done: 0, total: toUpdate.length });
-    const successes = [];
-    const failures = [];
-
-    for (let i = 0; i < toUpdate.length; i++) {
-      const entry = toUpdate[i];
-      try {
-        await adminSetUserRussName(sessionToken, entry.userId, entry.russName);
-        successes.push(entry);
-      } catch (err) {
-        failures.push({ ...entry, error: err.message });
-      } finally {
-        setAssignProgress({ done: i + 1, total: toUpdate.length });
-      }
-    }
-
-    setAssignResults({ successes, failures });
-    setAssignBusy(false);
-    setAssignPreview(null);
-    setAssignText('');
-    await refresh();
-  }
-
-  function handleResetAssign() {
-    setAssignText('');
-    setAssignPreview(null);
-    setAssignResults(null);
-    setAssignProgress({ done: 0, total: 0 });
   }
 
   async function handleDeleteUser(user) {
@@ -856,155 +693,7 @@ export function UserAdminPanel({
         </div>
       ) : null}
 
-      <div
-        style={{
-          marginBottom: '1.5rem',
-          padding: '1rem',
-          background: 'var(--color-surface-raised, #f5f5ff)',
-          borderRadius: 8,
-          border: '1px solid #ddd',
-        }}
-      >
-        <strong>Tilordne russenavn i bulk</strong>
-        <p style={{ margin: '0.5rem 0', fontSize: '0.9rem', color: '#555' }}>
-          Lim inn liste fra russeprestene. Hver linje må inneholde en e-post og et russenavn,
-          adskilt med tab, semikolon, komma eller pil (=&gt; / →). Eventuelt fullt navn kan stå
-          før e-posten — det brukes ikke til matching, kun for å holde dokumentet leselig.
-        </p>
-        <p style={{ margin: '0 0 0.5rem 0', fontSize: '0.8rem', color: '#666' }}>
-          Eksempler:
-          <br />
-          <code>ola@elev.no;Pingvin-Petter</code>
-          <br />
-          <code>Ola Nordmann{'\t'}ola@elev.no{'\t'}Pingvin-Petter</code>
-        </p>
-        <textarea
-          className="text-input text-input--area"
-          rows={8}
-          value={assignText}
-          onChange={(event) => setAssignText(event.target.value)}
-          placeholder="ola@elev.no;Pingvin-Petter&#10;kari@elev.no;Sjokolade-Sara"
-          disabled={assignBusy}
-          style={{ width: '100%', fontFamily: 'monospace', fontSize: '0.9rem' }}
-        />
-        <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', marginTop: '0.5rem' }}>
-          <button
-            type="button"
-            className="action-button action-button--ghost"
-            onClick={handlePreviewAssign}
-            disabled={assignBusy || !assignText.trim()}
-          >
-            Forhåndsvis
-          </button>
-          {assignPreview ? (
-            <>
-              <button
-                type="button"
-                className="action-button"
-                onClick={handleConfirmAssign}
-                disabled={
-                  assignBusy ||
-                  assignPreview.matches.filter((m) => !m.sameAsCurrent).length === 0
-                }
-              >
-                {assignBusy
-                  ? `Oppdaterer... (${assignProgress.done}/${assignProgress.total})`
-                  : `Bekreft ${assignPreview.matches.filter((m) => !m.sameAsCurrent).length} oppdateringer`}
-              </button>
-              <button
-                type="button"
-                className="action-button action-button--ghost"
-                onClick={handleResetAssign}
-                disabled={assignBusy}
-              >
-                Avbryt
-              </button>
-            </>
-          ) : null}
-        </div>
 
-        {assignPreview ? (
-          <div style={{ marginTop: '0.75rem', fontSize: '0.9rem' }}>
-            {assignPreview.matches.length > 0 ? (
-              <>
-                <strong style={{ color: '#1f5e1f' }}>
-                  ✓ {assignPreview.matches.length} treff
-                </strong>
-                <ul style={{ margin: '0.25rem 0 0.75rem 1.25rem', padding: 0 }}>
-                  {assignPreview.matches.map((m) => (
-                    <li key={`m-${m.email}`}>
-                      <code>{m.email}</code> →{' '}
-                      <strong>{m.russName}</strong>
-                      {m.sameAsCurrent ? (
-                        <span style={{ color: '#888' }}>
-                          {' '}
-                          (uendret — overstyres ikke)
-                        </span>
-                      ) : m.currentRussName ? (
-                        <span style={{ color: '#888' }}>
-                          {' '}
-                          (overstyrer «{m.currentRussName}»)
-                        </span>
-                      ) : null}
-                    </li>
-                  ))}
-                </ul>
-              </>
-            ) : null}
-            {assignPreview.notFound.length > 0 ? (
-              <>
-                <strong style={{ color: '#a33' }}>
-                  ⚠ {assignPreview.notFound.length} ikke funnet
-                </strong>
-                <ul style={{ margin: '0.25rem 0 0.75rem 1.25rem', padding: 0 }}>
-                  {assignPreview.notFound.map((m) => (
-                    <li key={`n-${m.lineNumber}`}>
-                      Linje {m.lineNumber}: <code>{m.email}</code> finnes ikke i brukerlisten.
-                    </li>
-                  ))}
-                </ul>
-              </>
-            ) : null}
-            {assignPreview.skipped.length > 0 ? (
-              <>
-                <strong style={{ color: '#a33' }}>
-                  ✗ {assignPreview.skipped.length} hoppet over
-                </strong>
-                <ul style={{ margin: '0.25rem 0 0.75rem 1.25rem', padding: 0 }}>
-                  {assignPreview.skipped.map((m) => (
-                    <li key={`s-${m.lineNumber}`}>
-                      Linje {m.lineNumber}: {m.reason}
-                    </li>
-                  ))}
-                </ul>
-              </>
-            ) : null}
-          </div>
-        ) : null}
-
-        {assignResults ? (
-          <div style={{ marginTop: '0.75rem', fontSize: '0.9rem' }}>
-            <strong style={{ color: '#1f5e1f' }}>
-              ✓ {assignResults.successes.length} russenavn lagret
-            </strong>
-            {assignResults.failures.length > 0 ? (
-              <>
-                <br />
-                <strong style={{ color: '#a33' }}>
-                  ⚠ {assignResults.failures.length} feilet:
-                </strong>
-                <ul style={{ margin: '0.25rem 0 0 1.25rem', padding: 0 }}>
-                  {assignResults.failures.map((f) => (
-                    <li key={`f-${f.email}`}>
-                      <code>{f.email}</code> ({f.russName}): {f.error}
-                    </li>
-                  ))}
-                </ul>
-              </>
-            ) : null}
-          </div>
-        ) : null}
-      </div>
 
       {inviteHistory.length > 0 ? (
         <div
@@ -1173,16 +862,6 @@ export function UserAdminPanel({
               <option value="user">Bruker</option>
               <option value="admin">Admin</option>
             </select>
-          </label>
-          <label className="field-group" style={{ gridColumn: '1 / -1' }}>
-            <span>Dåpsnavn</span>
-            <input
-              className="text-input"
-              value={form.russName}
-              onChange={(event) => setForm({ ...form, russName: event.target.value })}
-              placeholder="Russenavnet som vises i appen"
-              required
-            />
           </label>
         </div>
         <button type="submit" className="action-button" disabled={busy}>
