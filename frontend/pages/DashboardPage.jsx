@@ -263,7 +263,11 @@ export function DashboardPage({
   const streakDayLabel = streakCount === 1 ? 'dag' : 'dager';
 
   const schoolTopThree = [...(leaders ?? [])]
-    .filter((l) => Number.isFinite(l.rank))
+    .filter(
+      (l) =>
+        Number.isFinite(l.rank) &&
+        Number(l.completedKnots ?? 0) > 0,
+    )
     .sort((a, b) =>
       a.rank !== b.rank ? a.rank - b.rank : (b.points ?? 0) - (a.points ?? 0),
     )

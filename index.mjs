@@ -852,13 +852,18 @@ function getAuthedUser(db, request) {
 }
 
 function buildLeaderSeed(db) {
-  return db.users.map((user) => ({
-    id: user.id,
-    name: user.name,
-    group: user.group,
-    basePoints: user.basePoints,
-    baseCompletedKnots: user.baseCompletedKnots,
-  }));
+  // Filtrer ut prototype-fantomer (Sofie, Emil, Nora, Jonas, Leah fra
+  // initialLeaders har ingen email — de var seed-data for demoen).
+  // Ekte brukere fra invite-flyten har alltid email satt.
+  return db.users
+    .filter((user) => typeof user.email === 'string' && user.email.length > 0)
+    .map((user) => ({
+      id: user.id,
+      name: user.name,
+      group: user.group,
+      basePoints: user.basePoints,
+      baseCompletedKnots: user.baseCompletedKnots,
+    }));
 }
 
 function getLatestSubmissionByKnot(db, userId, knotId) {
