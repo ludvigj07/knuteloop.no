@@ -1833,7 +1833,7 @@ function buildBootstrap(db, user) {
   // unntas — de må kunne dobbeltsjekke at folk fikk riktig navn før dåpen.
   const russnamesRevealedAt = typeof db.russnamesRevealedAt === 'string' ? db.russnamesRevealedAt : null;
   const russnamesRevealed = Boolean(russnamesRevealedAt);
-  const workingDb = (russnamesRevealed || isAdminUser)
+  const russnamesStrippedDb = (russnamesRevealed || isAdminUser)
     ? db
     : {
         ...db,
@@ -1842,6 +1842,36 @@ function buildBootstrap(db, user) {
           profile: { ...entry.profile, russName: null },
         })),
       };
+
+  // Skjul super-admin-brukeren (ingve@kampsporthuset.no) fra alle som
+  // ikke er super-admin selv. Hun/han skal ikke fremstå som vanlig russ
+  // i lister, profiler, feed eller aktivitetslogg.
+  const viewerIsSuperAdmin = isSuperAdminEmail(user.email);
+  const superAdminUserId = russnamesStrippedDb.users.find(
+    (entry) => isSuperAdminEmail(entry.email),
+  )?.id;
+  const hideSuperAdmin =
+    !viewerIsSuperAdmin && superAdminUserId != null && superAdminUserId !== currentUserId;
+
+  const workingDb = hideSuperAdmin
+    ? {
+        ...russnamesStrippedDb,
+        users: russnamesStrippedDb.users.filter(
+          (entry) => entry.id !== superAdminUserId,
+        ),
+        submissions: russnamesStrippedDb.submissions.filter(
+          (submission) => submission.leaderId !== superAdminUserId,
+        ),
+        comments: (russnamesStrippedDb.comments ?? []).filter(
+          (comment) => comment.authorId !== superAdminUserId,
+        ),
+        profileHistory: Object.fromEntries(
+          Object.entries(russnamesStrippedDb.profileHistory ?? {}).filter(
+            ([id]) => Number(id) !== superAdminUserId,
+          ),
+        ),
+      }
+    : russnamesStrippedDb;
 
   const leaderSeed = buildLeaderSeed(workingDb);
   const clientKnots = buildClientKnots(workingDb, currentUserId);
