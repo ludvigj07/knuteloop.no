@@ -115,7 +115,7 @@ const PAGE_CONFIG = {
 };
 
 const USER_PAGE_ORDER = ['dashboard', 'knuter', 'leaderboard', 'feed', 'profiler', 'status'];
-const ADMIN_PAGE_ORDER = ['dashboard', 'knuter', 'leaderboard', 'feed', 'profiler', 'admin'];
+const ADMIN_PAGE_ORDER = ['dashboard', 'knuter', 'leaderboard', 'feed', 'profiler', 'status', 'admin'];
 
 const EMPTY_ARRAY = [];
 const EMPTY_OBJECT = {};
@@ -1224,12 +1224,12 @@ function App() {
     } else if (page.id === 'status') {
       content = (
         <StatusPage
-          achievements={achievements}
-          activityLog={activityLog}
-          currentUserId={currentUser.leaderId}
+          knots={knots}
+          currentUserPoints={currentLeader?.points ?? 0}
+          currentUserRank={currentLeader?.rank ?? null}
+          currentUserStreak={currentUserStreak}
           onOpenFeed={() => handleChangePage('feed')}
           onOpenKnots={() => handleChangePage('knuter')}
-          onOpenProfile={handleOpenProfile}
         />
       );
     } else if (page.id === 'admin') {
@@ -1258,12 +1258,12 @@ function App() {
   if (isLoadingApp) {
     return (
       <div className="app-theme">
-        <div className="app-shell">
-          <section className="section-card">
-            <p className="eyebrow">Laster</p>
-            <h2>Kobler til lagret data</h2>
-            <p>Henter brukere, knuter, submissions og profiler fra backend.</p>
-          </section>
+        <div className="app-loading-splash" role="status" aria-live="polite">
+          <div className="app-loading-splash__logo" aria-hidden="true">
+            <KnotIcon size={64} strokeWidth={1.6} />
+          </div>
+          <span className="app-loading-splash__spinner" aria-hidden="true" />
+          <p className="app-loading-splash__label">Laster…</p>
         </div>
       </div>
     );

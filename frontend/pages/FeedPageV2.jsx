@@ -469,58 +469,6 @@ function FeedPostActions({
   );
 }
 
-function FeedShareButton({ entry, onCopied, variant = 'default' }) {
-  if (!entry?.submissionId) return null;
-
-  async function handleClick() {
-    const shareUrl = `https://russeknute.no/feed/${entry.submissionId}`;
-    try {
-      if (navigator.clipboard?.writeText) {
-        await navigator.clipboard.writeText(shareUrl);
-      } else {
-        // Fallback for very old browsers — invisible textarea + execCommand.
-        const tmp = document.createElement('textarea');
-        tmp.value = shareUrl;
-        tmp.setAttribute('readonly', '');
-        tmp.style.position = 'fixed';
-        tmp.style.left = '-9999px';
-        document.body.appendChild(tmp);
-        tmp.select();
-        document.execCommand('copy');
-        document.body.removeChild(tmp);
-      }
-      onCopied?.();
-    } catch {
-      onCopied?.('Kunne ikke kopiere lenken.');
-    }
-  }
-
-  if (variant === 'hud') {
-    return (
-      <button
-        type="button"
-        className="feed-reel-card__hud-button"
-        onClick={handleClick}
-        aria-label="Del lenke til knuten"
-        title="Del lenke"
-      >
-        {'\u{1F517}'}
-      </button>
-    );
-  }
-
-  return (
-    <button
-      type="button"
-      className="action-button action-button--ghost action-button--compact feed-card-share-button"
-      onClick={handleClick}
-      aria-label="Del lenke til knuten"
-    >
-      <span aria-hidden="true">{'\u{1F517}'}</span> Del
-    </button>
-  );
-}
-
 function FeedReportButton({ entry, isSubmitting, onReport, variant = 'default' }) {
   if (!entry?.submissionId || !onReport) {
     return null;
@@ -1169,11 +1117,16 @@ function FeedCommentSheet({
                 className="feed-sheet__composer-input"
                 placeholder="Skriv en kommentar..."
                 value={draftText}
-                onChange={(e) => setDraftText(e.target.value)}
+                onChange={(e) => {
+                  if (e.target.value.length <= 100) {
+                    setDraftText(e.target.value);
+                  }
+                }}
                 onKeyDown={(e) => {
                   if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSubmit(); }
                 }}
                 rows={2}
+                maxLength={100}
                 disabled={isSubmitting}
                 aria-label="Skriv en kommentar"
               />
@@ -1185,6 +1138,9 @@ function FeedCommentSheet({
               >
                 {isSubmitting ? '...' : 'Send'}
               </button>
+              <span className="feed-sheet__composer-counter">
+                {draftText.length}/100
+              </span>
             </div>
           ) : null}
           {submitError ? <p className="feed-sheet__error">{submitError}</p> : null}
@@ -1323,7 +1279,6 @@ function FeedCardMobile({
             <span className="feed-reel-card__hud-pill">Feed</span>
           </div>
           <div className="feed-reel-card__hud-side feed-reel-card__hud-side--end">
-            <FeedShareButton entry={entry} onCopied={onShareCopied} variant="hud" />
             <FeedPostActions
               canManage={canManage}
               entry={entry}
@@ -1491,7 +1446,6 @@ function FeedCardDesktop({
           <span className="feed-card-v3__index">
             {index + 1}/{total}
           </span>
-          <FeedShareButton entry={entry} onCopied={onShareCopied} />
           <FeedReportButton entry={entry} isSubmitting={isReporting} onReport={onReport} />
         </div>
       </header>

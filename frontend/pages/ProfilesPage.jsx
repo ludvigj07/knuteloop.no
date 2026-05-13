@@ -1,7 +1,6 @@
 ﻿import { useEffect, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { SectionCard } from '../components/SectionCard.jsx';
-import { getUnlockedAchievements } from '../data/badgeSystem.js';
 
 function createProfileDraft(profile) {
   return {
@@ -108,92 +107,22 @@ function ProfileCard({ canEdit, onEdit, profile, roleLabel }) {
   );
 }
 
-function ScoreRankingCard({ profile, totalUsers }) {
-  return (
-    <section className="mobile-score-card">
-      <div className="mobile-score-card__points">
-        <span>Dine poeng</span>
-        <div className="mobile-score-card__score-line">
-          <span aria-hidden="true">⚡</span>
-          <strong>{profile.points}</strong>
-        </div>
-        <p>poeng</p>
-      </div>
-      <div className="mobile-score-card__ranking">
-        <span>Ranking</span>
-        <strong>#{profile.rank}</strong>
-        <p>av {totalUsers}</p>
-        <div className="mobile-score-card__trophy" aria-hidden="true">
-          🏆
-        </div>
-      </div>
-    </section>
-  );
-}
-
-function StatCard({ icon, label, value }) {
-  return (
-    <article className="mobile-stat-card">
-      <span aria-hidden="true">{icon}</span>
-      <strong>{value}</strong>
-      <p>{label}</p>
-    </article>
-  );
-}
-
-function Tabs({ activeTab, onChange, tabs }) {
-  return (
-    <div className="mobile-profile-tabs" role="tablist" aria-label="Profilinnhold">
-      {tabs.map((tab) => (
-        <button
-          key={tab.id}
-          type="button"
-          className={tab.id === activeTab ? 'is-active' : ''}
-          onClick={() => onChange(tab.id)}
-          role="tab"
-          aria-selected={tab.id === activeTab}
-        >
-          {tab.label}
-        </button>
-      ))}
-    </div>
-  );
-}
-
-function ActivityItem({ activity }) {
-  return (
-    <article className="mobile-activity-item">
-      <span className="mobile-activity-item__icon" aria-hidden="true">
-        {activity.icon}
-      </span>
-      <div>
-        <p>{activity.text}</p>
-        <time>{activity.time}</time>
-      </div>
-      <strong>{activity.points}</strong>
-    </article>
-  );
-}
-
 export function ProfilesPage({
-  achievements,
   currentUserId,
   currentUserRole,
   onBackToOverview,
-  onOpenSettings,
   onSelectProfile,
   onUpdateProfile,
   profileViewMode = 'overview',
   profiles,
   selectedProfile,
+  submissions = [],
 }) {
-  const unlockedAchievements = getUnlockedAchievements(achievements ?? []);
   const [isEditing, setIsEditing] = useState(false);
   const [isSavingProfile, setIsSavingProfile] = useState(false);
   const [profileEditorError, setProfileEditorError] = useState('');
   const [draft, setDraft] = useState(() => createProfileDraft(selectedProfile));
   const [profileSearchQuery, setProfileSearchQuery] = useState('');
-  const [activeProfileTab, setActiveProfileTab] = useState('statistikk');
   const normalizedProfileSearchQuery = profileSearchQuery.trim().toLowerCase();
   const filteredProfiles = useMemo(() => {
     if (!normalizedProfileSearchQuery) {
@@ -210,6 +139,16 @@ export function ProfilesPage({
       );
     });
   }, [profiles, normalizedProfileSearchQuery]);
+  const feedPostCount = useMemo(() => {
+    if (!Array.isArray(submissions) || !selectedProfile?.id) return 0;
+    const profileIdKey = String(selectedProfile.id);
+    return submissions.filter(
+      (submission) =>
+        String(submission.studentId) === profileIdKey
+        && submission.status === 'Godkjent'
+        && !submission.isAnonymous,
+    ).length;
+  }, [submissions, selectedProfile?.id]);
 
   if (!selectedProfile) {
     return (
@@ -224,55 +163,14 @@ export function ProfilesPage({
 
   const isOwnProfile = selectedProfile.id === currentUserId;
   const canEditProfile = isOwnProfile || currentUserRole === 'admin';
-  const badgeCount = isOwnProfile ? unlockedAchievements.length : selectedProfile.knots.length;
   const showOverview = profileViewMode !== 'detail';
   const completedKnotCount = selectedProfile.knots.length;
-  const recentKnots = selectedProfile.knots.slice(0, 3);
   const currentUserProfile =
     profiles.find((profile) => profile.id === currentUserId) ?? selectedProfile;
   const otherUserRailProfiles = [
     currentUserProfile,
     ...profiles.filter((profile) => profile.id !== currentUserId),
   ].slice(0, 8);
-  const averagePoints =
-    completedKnotCount > 0
-      ? Math.round(Number(selectedProfile.points ?? 0) / completedKnotCount)
-      : 0;
-  const openKnotCount = Math.max(0, 180 - completedKnotCount);
-  const memberDays = 12;
-  const profileTabs = [
-    { id: 'statistikk', label: 'Statistikk' },
-    { id: 'historikk', label: 'Historikk' },
-    { id: 'badges', label: 'Badges' },
-    { id: 'info', label: 'Info' },
-  ];
-  const profileStats = [
-    { icon: '🏆', label: 'Totalt poeng', value: `${selectedProfile.points}p` },
-    { icon: '⌁', label: 'Gj.snitt per knute', value: `${averagePoints}p` },
-    { icon: '🪢', label: 'Åpne knuter', value: openKnotCount },
-    { icon: '✓', label: 'Fullførte knuter', value: completedKnotCount },
-    { icon: '☆', label: 'Merker', value: badgeCount },
-  ];
-  const activityItems = [
-    {
-      icon: '🪢',
-      text: `Fullførte knuten ${recentKnots[0]?.title ?? 'Russedressen'}`,
-      time: 'I dag, 18:42',
-      points: `+${recentKnots[0]?.points ?? 20}p`,
-    },
-    {
-      icon: '⭐',
-      text: 'Låste opp merket Morgenruss',
-      time: 'I dag, 09:15',
-      points: '+10p',
-    },
-    {
-      icon: '🔥',
-      text: 'Startet en ny streak',
-      time: 'I går, 22:10',
-      points: '+5p',
-    },
-  ];
   useEffect(() => {
     if (!showOverview || typeof window === 'undefined') {
       return;
@@ -517,17 +415,6 @@ export function ProfilesPage({
             <span className="profile-own-return-card__arrow">→</span>
           </button>
 
-          {onOpenSettings ? (
-            <button
-              type="button"
-              className="profile-own-return-card profile-own-return-card--settings"
-              onClick={onOpenSettings}
-            >
-              <span>⚙ Innstillinger</span>
-              <span className="profile-own-return-card__arrow">→</span>
-            </button>
-          ) : null}
-
           <div className="profile-search-box">
             <label htmlFor="profile-search" className="profile-search-box__label">
               Finn bruker
@@ -586,14 +473,7 @@ export function ProfilesPage({
               ←
             </button>
             <h1>Min profil</h1>
-            <button
-              type="button"
-              onClick={canEditProfile ? handleOpenEditor : undefined}
-              aria-label="Innstillinger"
-              disabled={!canEditProfile}
-            >
-              ⚙
-            </button>
+            <span aria-hidden="true" />
           </header>
 
           <ProfileCard
@@ -603,58 +483,17 @@ export function ProfilesPage({
             roleLabel={currentUserRole === 'admin' && isOwnProfile ? 'Admin' : 'Russ'}
           />
 
-          <ScoreRankingCard profile={selectedProfile} totalUsers={profiles.length || 180} />
-
-          <section className="mobile-quick-stats" aria-label="Rask statistikk">
-            <StatCard icon="🔥" label="Streak" value="1" />
-            <StatCard icon="🪢" label="Fullførte knuter" value={completedKnotCount} />
-            <StatCard icon="⭐" label="Merker" value={badgeCount} />
-            <StatCard icon="📅" label="Dager medlem" value={memberDays} />
-          </section>
-
-          <section className="mobile-tab-card">
-            <Tabs
-              activeTab={activeProfileTab}
-              onChange={setActiveProfileTab}
-              tabs={profileTabs}
-            />
-
-            {activeProfileTab === 'statistikk' ? (
-              <div className="mobile-stat-list">
-                {profileStats.map((stat) => (
-                  <div key={stat.label} className="mobile-stat-row">
-                    <span aria-hidden="true">{stat.icon}</span>
-                    <p>{stat.label}</p>
-                    <strong>{stat.value}</strong>
-                  </div>
-                ))}
-              </div>
-            ) : null}
-
-            {activeProfileTab === 'historikk' ? (
-              <div className="mobile-activity-list">
-                {activityItems.map((activity) => (
-                  <ActivityItem key={`${activity.text}-${activity.time}`} activity={activity} />
-                ))}
-                <button type="button" className="mobile-history-button">
-                  Se all historikk <span aria-hidden="true">›</span>
-                </button>
-              </div>
-            ) : null}
-
-            {activeProfileTab === 'badges' ? (
-              <div className="mobile-empty-tab">
-                <strong>{badgeCount} merker</strong>
-                <p>Merkene dine vises her når du låser opp flere.</p>
-              </div>
-            ) : null}
-
-            {activeProfileTab === 'info' ? (
-              <div className="mobile-empty-tab">
-                <strong>{selectedProfile.knownFor}</strong>
-                <p>{selectedProfile.bio}</p>
-              </div>
-            ) : null}
+          <section className="mobile-stat-list" aria-label="Statistikk">
+            <div className="mobile-stat-row">
+              <span aria-hidden="true">🪢</span>
+              <p>Fullførte knuter</p>
+              <strong>{completedKnotCount}</strong>
+            </div>
+            <div className="mobile-stat-row">
+              <span aria-hidden="true">📣</span>
+              <p>Knuter postet i feed</p>
+              <strong>{feedPostCount}</strong>
+            </div>
           </section>
 
           <section className="mobile-other-users">

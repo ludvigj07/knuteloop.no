@@ -66,15 +66,6 @@ export function PostActionsMenu({
         <div className="post-actions-menu__dropdown" role="menu">
           <button
             type="button"
-            className="post-actions-menu__item"
-            role="menuitem"
-            disabled
-          >
-            <span aria-hidden="true">{'\u270E'}</span>
-            <span>Rediger innlegg</span>
-          </button>
-          <button
-            type="button"
             className="post-actions-menu__item post-actions-menu__item--danger"
             role="menuitem"
             onClick={handleDelete}
