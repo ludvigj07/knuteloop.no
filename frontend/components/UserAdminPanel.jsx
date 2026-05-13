@@ -566,13 +566,9 @@ export function UserAdminPanel({
         }}
       >
         <strong>Bulk-importer brukere fra liste</strong>
-        <p style={{ margin: '0.25rem 0 0.5rem', fontSize: '0.85rem' }}>
+        <p style={{ margin: '0.25rem 0 0.75rem', fontSize: '0.85rem' }}>
           Lim inn én elev per linje på formatet <code>Navn, e-post</code>. Klasse og rolle
-          gjelder for alle.
-        </p>
-        <p style={{ margin: '-0.25rem 0 0.75rem', fontSize: '0.85rem' }}>
-          Du kan også legge til russenavn som tredje kolonne: <code>Navn, e-post, russenavn</code>.
-          Mangler russenavn, genereres et automatisk navn.
+          gjelder for alle. Separator kan være komma, semikolon, tab eller pil (=&gt; / →).
         </p>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
           <label className="field-group">
