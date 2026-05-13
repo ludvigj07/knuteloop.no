@@ -119,7 +119,7 @@ function userStatusVariant(user) {
 }
 
 function emptyForm() {
-  return { email: '', name: '', class: '', role: 'user' };
+  return { email: '', name: '', class: '' };
 }
 
 export function UserAdminPanel({
@@ -239,7 +239,7 @@ export function UserAdminPanel({
         email: form.email.trim(),
         name: form.name.trim(),
         class: form.class.trim(),
-        role: form.role,
+        role: 'user',
       });
       const invite = {
         email: result.user.email,
@@ -860,18 +860,11 @@ export function UserAdminPanel({
               required
             />
           </label>
-          <label className="field-group">
-            <span>Rolle</span>
-            <select
-              className="text-input"
-              value={form.role}
-              onChange={(event) => setForm({ ...form, role: event.target.value })}
-            >
-              <option value="user">Bruker</option>
-              <option value="admin">Admin</option>
-            </select>
-          </label>
         </div>
+        <p style={{ margin: '0.5rem 0 0', fontSize: '0.8rem', color: '#666' }}>
+          Nye brukere opprettes alltid med rollen «Bruker». Admin-rolle settes
+          av super-admin via «Gjør til admin»-knappen i bruker-tabellen.
+        </p>
         <button type="submit" className="action-button" disabled={busy}>
           {busy ? 'Oppretter...' : 'Opprett og generer invitasjon'}
         </button>
