@@ -257,6 +257,17 @@ function SubmissionFormContent({
   const hasNote = Boolean((draft.note ?? '').trim());
   const hasContent = hasEvidence || hasNote;
   const knotDescription = getKnotDescription(knot);
+  const [isLocalSubmitting, setIsLocalSubmitting] = useState(false);
+
+  async function handleSubmitClick() {
+    if (isLocalSubmitting) return;
+    setIsLocalSubmitting(true);
+    try {
+      await onSubmit();
+    } finally {
+      setIsLocalSubmitting(false);
+    }
+  }
 
   function handleImageInputChange(event) {
     const file = event.target.files?.[0];
@@ -437,10 +448,10 @@ function SubmissionFormContent({
         <button
           type="button"
           className="action-button action-button--hero"
-          disabled={isOverCharacterLimit || Boolean(activeSubmissionBan) || !hasContent}
-          onClick={onSubmit}
+          disabled={isOverCharacterLimit || Boolean(activeSubmissionBan) || !hasContent || isLocalSubmitting}
+          onClick={handleSubmitClick}
         >
-          {buttonLabel}
+          {isLocalSubmitting ? 'Sender…' : buttonLabel}
         </button>
         {!hasContent ? (
           <p className="submission-form__hint">

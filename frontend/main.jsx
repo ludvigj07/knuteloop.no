@@ -2,6 +2,7 @@ import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import './index.css'
 import App from './App.jsx'
+import { ErrorBoundary } from './components/ErrorBoundary.jsx'
 import { InvitePage } from './pages/InvitePage.jsx'
 import { LogoutPage } from './pages/LogoutPage.jsx'
 
@@ -15,6 +16,8 @@ function Root() {
 
 createRoot(document.getElementById('root')).render(
   <StrictMode>
-    <Root />
+    <ErrorBoundary>
+      <Root />
+    </ErrorBoundary>
   </StrictMode>,
 )
