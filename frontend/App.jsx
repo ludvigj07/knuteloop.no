@@ -1124,6 +1124,7 @@ function App() {
       activityLog,
       achievements,
       currentUserId: currentUser.leaderId,
+      currentUserEmail: currentUser.email ?? '',
       currentUserRole: currentUser.role,
       currentUserName: currentUser.name,
       currentUserIsSuperAdmin: currentUser.isSuperAdmin === true,

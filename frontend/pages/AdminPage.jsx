@@ -382,6 +382,7 @@ function SubmissionList({
 export function AdminPage({
   bans = [],
   currentUserId,
+  currentUserEmail = '',
   currentUserIsSuperAdmin = false,
   knots,
   leaders = [],
@@ -1524,6 +1525,7 @@ export function AdminPage({
         <UserAdminPanel
           sessionToken={sessionToken}
           currentUserId={currentUserId}
+          currentUserEmail={currentUserEmail}
           currentUserIsSuperAdmin={currentUserIsSuperAdmin}
         />
       ) : null}

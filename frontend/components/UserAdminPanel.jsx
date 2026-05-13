@@ -169,7 +169,13 @@ function emptyForm() {
   return { email: '', name: '', class: '', role: 'user', russName: '' };
 }
 
-export function UserAdminPanel({ sessionToken, currentUserId, currentUserIsSuperAdmin = false }) {
+export function UserAdminPanel({
+  sessionToken,
+  currentUserId,
+  currentUserEmail = '',
+  currentUserIsSuperAdmin = false,
+}) {
+  const normalizedCurrentEmail = currentUserEmail.toLowerCase();
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -1036,7 +1042,8 @@ export function UserAdminPanel({ sessionToken, currentUserId, currentUserIsSuper
                     >
                       {user.active ? 'Deaktivér' : 'Aktivér'}
                     </button>
-                    {currentUserIsSuperAdmin && user.id !== currentUserId ? (
+                    {currentUserIsSuperAdmin &&
+                    (user.email ?? '').toLowerCase() !== normalizedCurrentEmail ? (
                       <button
                         type="button"
                         className="action-button action-button--ghost"
