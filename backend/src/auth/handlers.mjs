@@ -15,6 +15,7 @@ import {
   recordLoginAttempt,
   setUserActive,
   setUserPassword,
+  setUserRole,
   setUserRussName,
   touchSession,
   updateUserInvite,
@@ -443,6 +444,46 @@ export async function handleAdminSetActive(request, response, userIdParam) {
   setUserActive(userId, active);
   if (!active) deleteSessionsForUser(userId);
   sendJson(response, 200, { user: userPublicShape(getUserById(userId)) });
+}
+
+export async function handleAdminSetUserRole(request, response, userIdParam) {
+  const requester = requireAdmin(request, response);
+  if (!requester) return;
+
+  if (!isSuperAdminEmail(requester.email)) {
+    sendJson(response, 403, { error: 'Kun super-admin kan endre roller.' });
+    return;
+  }
+
+  const body = await readJsonBody(request);
+  const role = body.role === 'admin' ? 'admin' : 'user';
+  const userId = Number(userIdParam);
+  const target = getUserById(userId);
+
+  if (!target) {
+    sendJson(response, 404, { error: 'Fant ikke brukeren.' });
+    return;
+  }
+
+  if (isSuperAdminEmail(target.email)) {
+    sendJson(response, 400, { error: 'Super-admin sin rolle kan ikke endres.' });
+    return;
+  }
+
+  if (target.role === role) {
+    sendJson(response, 200, { user: userPublicShape(target) });
+    return;
+  }
+
+  setUserRole(userId, role);
+  const fresh = getUserById(userId);
+  await bridge.ensureJsonUser(fresh);
+
+  console.log(
+    `[admin] Endret rolle for bruker id=${userId} email=${fresh.email}: ${target.role} -> ${role} (av ${requester.email})`,
+  );
+
+  sendJson(response, 200, { user: userPublicShape(fresh) });
 }
 
 export async function handleAdminDeleteUser(request, response, userIdParam) {

@@ -144,6 +144,14 @@ export function setUserActive(userId, active) {
   );
 }
 
+export function setUserRole(userId, role) {
+  db.prepare(`UPDATE users SET role = ?, updated_at = ? WHERE id = ?`).run(
+    role,
+    Date.now(),
+    userId,
+  );
+}
+
 export function createSession(userId, tokenId) {
   const now = Date.now();
   db.prepare(
