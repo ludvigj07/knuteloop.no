@@ -1535,6 +1535,7 @@ export function FeedPage({
   activityLog,
   commentsBySubmission = {},
   currentUserId = null,
+  currentUserRole = 'user',
   currentUserActiveBans = [],
   onCreateComment,
   onDeleteComment,
@@ -1637,6 +1638,15 @@ export function FeedPage({
   );
 
   function canManageEntry(entry) {
+    if (!entry?.submissionId) {
+      return false;
+    }
+
+    // Admin kan fjerne hvilket som helst innlegg fra feed-en.
+    if (currentUserRole === 'admin') {
+      return true;
+    }
+
     if (!currentUserIdKey || entry?.studentId === null || entry?.studentId === undefined) {
       return false;
     }

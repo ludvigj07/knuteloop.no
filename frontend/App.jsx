@@ -1193,6 +1193,7 @@ function App() {
         <FeedPage
           activityLog={activityLog}
           currentUserId={currentUser.leaderId}
+          currentUserRole={currentUser.role}
           currentUserActiveBans={currentUserActiveBans}
           commentsBySubmission={appData?.commentsBySubmission ?? {}}
           onDeleteSubmission={handleDeleteSubmission}
