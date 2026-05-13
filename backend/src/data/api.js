@@ -105,6 +105,14 @@ export function adminSetUserActive(token, userId, active) {
   });
 }
 
+export function adminSetUserRole(token, userId, role) {
+  return apiRequest(`/admin/users/${userId}/role`, {
+    method: 'PATCH',
+    token,
+    body: { role },
+  });
+}
+
 export function adminDeleteUser(token, userId) {
   return apiRequest(`/admin/users/${userId}`, {
     method: 'DELETE',

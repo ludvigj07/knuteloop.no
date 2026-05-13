@@ -44,6 +44,7 @@ import {
   handleAdminResetPassword,
   handleAdminSetActive,
   handleAdminSetRussName,
+  handleAdminSetUserRole,
   isSuperAdminEmail,
   setAuthBridge,
 } from './backend/src/auth/handlers.mjs';
@@ -3343,6 +3344,10 @@ const server = createServer(async (request, response) => {
       }
       if ((m = url.pathname.match(/^\/api\/admin\/users\/(\d+)\/russ-name$/)) && request.method === 'PATCH') {
         await handleAdminSetRussName(request, response, m[1]);
+        return;
+      }
+      if ((m = url.pathname.match(/^\/api\/admin\/users\/(\d+)\/role$/)) && request.method === 'PATCH') {
+        await handleAdminSetUserRole(request, response, m[1]);
         return;
       }
       if ((m = url.pathname.match(/^\/api\/admin\/users\/(\d+)$/)) && request.method === 'DELETE') {

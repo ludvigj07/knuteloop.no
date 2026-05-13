@@ -7,6 +7,7 @@ import {
   adminRegenerateInvite,
   adminResetPassword,
   adminSetUserActive,
+  adminSetUserRole,
   adminSetUserRussName,
 } from '../data/api.js';
 import { InvitePrintOverlay } from './InvitePrintOverlay.jsx';
@@ -446,6 +447,24 @@ export function UserAdminPanel({
     setError('');
     try {
       await adminSetUserActive(sessionToken, user.id, !user.active);
+      await refresh();
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setRowBusyId(null);
+    }
+  }
+
+  async function handleToggleRole(user) {
+    const nextRole = user.role === 'admin' ? 'user' : 'admin';
+    const confirmed = window.confirm(
+      `Endre rolle for ${user.name} (${user.email}) fra «${user.role}» til «${nextRole}»?`,
+    );
+    if (!confirmed) return;
+    setRowBusyId(user.id);
+    setError('');
+    try {
+      await adminSetUserRole(sessionToken, user.id, nextRole);
       await refresh();
     } catch (err) {
       setError(err.message);
@@ -967,15 +986,26 @@ export function UserAdminPanel({
                     </button>
                     {currentUserIsSuperAdmin &&
                     (user.email ?? '').toLowerCase() !== normalizedCurrentEmail ? (
-                      <button
-                        type="button"
-                        className="action-button action-button--ghost"
-                        style={{ color: '#b91c1c', borderColor: '#b91c1c' }}
-                        disabled={busyRow}
-                        onClick={() => handleDeleteUser(user)}
-                      >
-                        Slett
-                      </button>
+                      <>
+                        <button
+                          type="button"
+                          className="action-button action-button--ghost"
+                          disabled={busyRow}
+                          onClick={() => handleToggleRole(user)}
+                          title={`Endre rolle fra ${user.role} til ${user.role === 'admin' ? 'user' : 'admin'}`}
+                        >
+                          {user.role === 'admin' ? 'Gjør til bruker' : 'Gjør til admin'}
+                        </button>
+                        <button
+                          type="button"
+                          className="action-button action-button--ghost"
+                          style={{ color: '#b91c1c', borderColor: '#b91c1c' }}
+                          disabled={busyRow}
+                          onClick={() => handleDeleteUser(user)}
+                        >
+                          Slett
+                        </button>
+                      </>
                     ) : null}
                   </td>
                 </tr>
