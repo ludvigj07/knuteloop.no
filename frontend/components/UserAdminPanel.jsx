@@ -160,7 +160,10 @@ export function UserAdminPanel({
 
   const [bulkText, setBulkText] = useState('');
   const [bulkClass, setBulkClass] = useState('');
-  const [bulkRole, setBulkRole] = useState('user');
+  // Bulk-import oppretter alltid brukere med rollen 'user'. Admin-rollen
+  // tildeles enten via enkelt-invitasjon eller via "Gjør til admin" i
+  // bruker-tabellen (super-admin).
+  const BULK_DEFAULT_ROLE = 'user';
   const [bulkBusy, setBulkBusy] = useState(false);
   const [bulkProgress, setBulkProgress] = useState({ done: 0, total: 0 });
   const [bulkInvites, setBulkInvites] = useState([]);
@@ -300,7 +303,7 @@ export function UserAdminPanel({
           email: entry.email.trim(),
           name: fallbackName,
           class: bulkClass.trim(),
-          role: bulkRole,
+          role: BULK_DEFAULT_ROLE,
         });
         newInvites.push({
           email: result.user.email,
@@ -586,34 +589,24 @@ export function UserAdminPanel({
       >
         <strong>Bulk-importer brukere fra liste</strong>
         <p style={{ margin: '0.25rem 0 0.75rem', fontSize: '0.85rem' }}>
-          Lim inn én elev per linje på formatet <code>Navn, e-post</code>. Klasse og rolle
+          Lim inn én elev per linje på formatet <code>Navn, e-post</code>. Klasse
           gjelder for alle. Separator kan være komma, semikolon, tab eller pil (=&gt; / →).
         </p>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
-          <label className="field-group">
-            <span>Klasse for alle</span>
-            <input
-              className="text-input"
-              value={bulkClass}
-              onChange={(event) => setBulkClass(event.target.value)}
-              placeholder="F.eks. 3STA"
-              required
-              disabled={bulkBusy}
-            />
-          </label>
-          <label className="field-group">
-            <span>Rolle for alle</span>
-            <select
-              className="text-input"
-              value={bulkRole}
-              onChange={(event) => setBulkRole(event.target.value)}
-              disabled={bulkBusy}
-            >
-              <option value="user">Bruker</option>
-              <option value="admin">Admin</option>
-            </select>
-          </label>
-        </div>
+        <label className="field-group">
+          <span>Klasse for alle</span>
+          <input
+            className="text-input"
+            value={bulkClass}
+            onChange={(event) => setBulkClass(event.target.value)}
+            placeholder="F.eks. 3STA"
+            required
+            disabled={bulkBusy}
+          />
+        </label>
+        <p style={{ margin: '0.5rem 0 0', fontSize: '0.8rem', color: '#666' }}>
+          Alle opprettes som vanlige brukere. Trenger noen admin-rolle? Bruk
+          enkelt-invitasjon eller endre rolle i bruker-tabellen etterpå.
+        </p>
         <label className="field-group">
           <span>Klasseliste</span>
           <textarea
