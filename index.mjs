@@ -468,7 +468,8 @@ async function readDb() {
   const migratedStreakDb = await migrateSubmissionStreakData(migratedFeedFlagsDb);
   const migratedKnotFeedbackDb = await migrateKnotFeedbackMessages(migratedStreakDb);
   const migratedNorwegianDb = await migrateNorwegianText(migratedKnotFeedbackDb);
-  return migrateComments(migratedNorwegianDb);
+  const migratedFantomsDb = await migratePrototypeFantomUsers(migratedNorwegianDb);
+  return migrateComments(migratedFantomsDb);
 }
 
 // Serialiserer alle writeDb-kall i én kø og skriver atomisk (.tmp +
@@ -1601,6 +1602,52 @@ async function migrateKnotFeedbackMessages(db) {
     knotFeedbackMessages: nextMessages,
   };
 
+  await writeDb(nextDb);
+  return nextDb;
+}
+
+// Rydder bort fantom-brukere fra den opprinnelige prototype-seeden
+// (Sofie, Emil, Nora, Jonas, Leah med id 1-5 og basePoints 260-315).
+// Disse manglet alltid email — ekte brukere fra invite-flyten har
+// alltid email satt — så vi bruker det som markør.
+async function migratePrototypeFantomUsers(db) {
+  const users = Array.isArray(db.users) ? db.users : [];
+  const fantomUserIds = users
+    .filter((u) => typeof u.email !== 'string' || u.email.length === 0)
+    .map((u) => u.id);
+
+  if (fantomUserIds.length === 0) {
+    return db;
+  }
+
+  const fantomSet = new Set(fantomUserIds);
+  const nextUsers = users.filter((u) => !fantomSet.has(u.id));
+
+  const nextProfileHistory = { ...(db.profileHistory ?? {}) };
+  for (const id of fantomUserIds) {
+    delete nextProfileHistory[id];
+  }
+
+  const nextLegacyApproved = { ...(db.legacyApprovedKnotIdsByUser ?? {}) };
+  for (const id of fantomUserIds) {
+    delete nextLegacyApproved[id];
+  }
+
+  const nextSubmissions = Array.isArray(db.submissions)
+    ? db.submissions.filter((s) => !fantomSet.has(s.leaderId))
+    : db.submissions;
+
+  const nextDb = {
+    ...db,
+    users: nextUsers,
+    profileHistory: nextProfileHistory,
+    legacyApprovedKnotIdsByUser: nextLegacyApproved,
+    submissions: nextSubmissions,
+  };
+
+  console.log(
+    `[migrate] Fjernet ${fantomUserIds.length} prototype-fantom-brukere fra db.users (ids: ${fantomUserIds.join(', ')})`,
+  );
   await writeDb(nextDb);
   return nextDb;
 }
