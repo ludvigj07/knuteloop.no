@@ -219,12 +219,12 @@ function FeedMedia({ entry, variant = 'mobile', isActive = false }) {
         controls={false}
         autoPlay
         loop
-        muted={false}
+        muted
         playsInline
         preload="metadata"
         src={entry.videoPreviewUrl}
         isActive={isActive}
-        playMode="sound-preferred"
+        playMode="auto"
         onAutoplayBlocked={(blocked) => setAutoplayBlocked(blocked)}
         onError={() => setVideoFailed(true)}
       />
