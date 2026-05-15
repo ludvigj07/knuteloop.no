@@ -187,6 +187,24 @@ export function LeaderboardPage({
     () => rankClassIndividuals(leaders ?? [], classIndividualFilter),
     [leaders, classIndividualFilter],
   );
+  // Klasse-vs-klasse: sorter på totalPoints (mest poeng vinner). Backend sorterer
+  // pa snitt, vi overstyrer her sa live-appen ikke trenger backend-endring.
+  const sortedClassLeaderboard = useMemo(() => {
+    return [...(classLeaderboard ?? [])]
+      .sort((left, right) => {
+        if ((right.totalPoints ?? 0) !== (left.totalPoints ?? 0)) {
+          return (right.totalPoints ?? 0) - (left.totalPoints ?? 0);
+        }
+        if ((right.totalCompletedKnots ?? 0) !== (left.totalCompletedKnots ?? 0)) {
+          return (right.totalCompletedKnots ?? 0) - (left.totalCompletedKnots ?? 0);
+        }
+        return String(left.className ?? '').localeCompare(
+          String(right.className ?? ''),
+          'nb',
+        );
+      })
+      .map((entry, index) => ({ ...entry, rank: index + 1 }));
+  }, [classLeaderboard]);
   const selectedClassLabel =
     CLASS_INDIVIDUAL_FILTER_OPTIONS.find((option) => option.value === classIndividualFilter)
       ?.label ?? classIndividualFilter.toUpperCase();
@@ -306,8 +324,8 @@ export function LeaderboardPage({
 
           {leaderboardScope === 'class' ? (
             <div className="leaderboard-list leaderboard-list--compact leaderboard-list--friendly">
-              {classLeaderboard.length > 0 ? (
-                classLeaderboard.map((entry) => {
+              {sortedClassLeaderboard.length > 0 ? (
+                sortedClassLeaderboard.map((entry) => {
                   const isCurrentClass = areSameClass(entry.className, currentUserClassName);
 
                   return (
