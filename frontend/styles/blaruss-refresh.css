@@ -792,6 +792,77 @@
   background: var(--card) !important;
 }
 
+.app-theme .knot-search-wrap {
+  position: sticky !important;
+  top: 0 !important;
+  z-index: 6 !important;
+  display: block !important;
+  padding-block: 10px !important;
+  margin-bottom: 4px !important;
+  background: var(--background) !important;
+}
+
+.app-theme .knot-search-wrap__icon {
+  position: absolute !important;
+  left: 18px !important;
+  top: 50% !important;
+  transform: translateY(-50%) !important;
+  pointer-events: none !important;
+  color: var(--foreground) !important;
+  opacity: 0.6 !important;
+}
+
+.app-theme .knot-search {
+  width: 100% !important;
+  min-height: 48px !important;
+  border-radius: 999px !important;
+  padding: 0 48px 0 44px !important;
+  font-size: 16px !important;
+  border: 2px solid var(--foreground) !important;
+  background: var(--card) !important;
+  color: var(--foreground) !important;
+  box-shadow: 3px 3px 0 0 var(--foreground) !important;
+  font: inherit !important;
+  font-size: 16px !important;
+}
+
+.app-theme .knot-search::-webkit-search-decoration,
+.app-theme .knot-search::-webkit-search-cancel-button {
+  -webkit-appearance: none !important;
+  appearance: none !important;
+}
+
+.app-theme .knot-search:focus {
+  outline: none !important;
+  border-color: var(--primary, var(--foreground)) !important;
+}
+
+.app-theme .knot-search-wrap__clear {
+  position: absolute !important;
+  right: 14px !important;
+  top: 50% !important;
+  transform: translateY(-50%) !important;
+  width: 32px !important;
+  height: 32px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  border: none !important;
+  background: transparent !important;
+  border-radius: 50% !important;
+  color: var(--foreground) !important;
+  cursor: pointer !important;
+  padding: 0 !important;
+}
+
+.app-theme .knot-search-wrap__clear:hover {
+  background: rgba(0, 0, 0, 0.06) !important;
+}
+
+.app-theme .knot-search-wrap__clear:active {
+  background: rgba(0, 0, 0, 0.12) !important;
+}
+
 .app-theme .knots-page .folder-empty,
 .app-theme .knots-page .filter-empty-state {
   border-style: solid !important;
