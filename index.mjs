@@ -458,7 +458,13 @@ function migrateComments(db) {
   return { ...db, comments: [] };
 }
 
+// In-memory DB cache — eliminerer disklesing på kvar request.
+// Populert ved første readDb()-kall (inkl. alle migrasjoner).
+// writeDb() oppdaterer cachen synkront før diskskriving.
+let cachedDb = null;
+
 async function readDb() {
+  if (cachedDb !== null) return cachedDb;
   await ensureStorage();
   const raw = await fs.readFile(DB_FILE, 'utf8');
   const db = JSON.parse(raw);
@@ -470,7 +476,8 @@ async function readDb() {
   const migratedKnotFeedbackDb = await migrateKnotFeedbackMessages(migratedStreakDb);
   const migratedNorwegianDb = await migrateNorwegianText(migratedKnotFeedbackDb);
   const migratedFantomsDb = await migratePrototypeFantomUsers(migratedNorwegianDb);
-  return migrateComments(migratedFantomsDb);
+  cachedDb = await migrateComments(migratedFantomsDb);
+  return cachedDb;
 }
 
 // Serialiserer alle writeDb-kall i én kø og skriver atomisk (.tmp +
@@ -485,6 +492,7 @@ async function readDb() {
 // akseptabelt; for høyere trafikk bør handler-lag også låses.
 let dbWriteChain = Promise.resolve();
 async function writeDb(nextDb) {
+  cachedDb = nextDb;
   const previous = dbWriteChain;
   let release;
   dbWriteChain = new Promise((resolve) => {
