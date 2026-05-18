@@ -5,6 +5,8 @@ import {
   ArrowUp,
   ArrowUpDown,
   Layers,
+  Search,
+  X,
 } from 'lucide-react';
 import { MobileVideo } from '../components/MobileVideo.jsx';
 import {
@@ -42,6 +44,17 @@ function matchesStatusFilter(status, filterId) {
     return status === 'Godkjent' || status === 'Sendt inn';
   }
   return status === 'Tilgjengelig' || isRejectedStatus(status);
+}
+
+function normalizeSearchQuery(query) {
+  return String(query ?? '').trim().toLowerCase();
+}
+
+function matchesSearchQuery(knot, normalizedQuery) {
+  if (!normalizedQuery) return true;
+  const haystack = `${String(knot?.title ?? '').toLowerCase()} ${String(knot?.description ?? '').toLowerCase()}`;
+  const terms = normalizedQuery.split(/\s+/).filter(Boolean);
+  return terms.every((term) => haystack.includes(term));
 }
 
 const SORT_OPTIONS = [
@@ -725,6 +738,7 @@ export function KnotsPage({
   );
   const [statusFilter, setStatusFilter] = useState('ikke-tatt');
   const [sortKey, setSortKey] = useState('standard');
+  const [searchQuery, setSearchQuery] = useState('');
   const [openFormId, setOpenFormId] = useState(null);
   const [sheetKnotId, setSheetKnotId] = useState(null);
   const [drafts, setDrafts] = useState({});
@@ -748,8 +762,11 @@ export function KnotsPage({
     visibleFolder.id === ALL_KNOTS_FOLDER_ID
       ? knots
       : knots.filter((k) => resolveKnotFolder(k) === visibleFolder.id);
+  const normalizedSearchQuery = normalizeSearchQuery(searchQuery);
   const filteredKnots = sortKnots(
-    visibleFolderKnots.filter((k) => matchesStatusFilter(k.status, statusFilter)),
+    visibleFolderKnots
+      .filter((k) => matchesStatusFilter(k.status, statusFilter))
+      .filter((k) => matchesSearchQuery(k, normalizedSearchQuery)),
     sortKey,
   );
   const visibleKnots =
@@ -763,7 +780,8 @@ export function KnotsPage({
   const approvedCount = visibleFolderKnots.filter(
     (k) => k.status === 'Godkjent',
   ).length;
-  const hasActiveFilters = statusFilter !== 'ikke-tatt' || sortKey !== 'standard';
+  const hasActiveFilters =
+    statusFilter !== 'ikke-tatt' || sortKey !== 'standard' || normalizedSearchQuery !== '';
   const activeFeedBan =
     currentUserActiveBans.find((b) => b.type === 'feed') ?? null;
   const activeSubmissionBan =
@@ -1201,6 +1219,7 @@ export function KnotsPage({
   function handleResetFilters() {
     setStatusFilter('ikke-tatt');
     setSortKey('standard');
+    setSearchQuery('');
   }
 
   function handleDocumentClick(knotId) {
@@ -1283,6 +1302,38 @@ export function KnotsPage({
         </span>
       </div>
 
+      <div className="knot-search-wrap" data-swipe-lock="true">
+        <Search
+          size={18}
+          strokeWidth={2.2}
+          className="knot-search-wrap__icon"
+          aria-hidden="true"
+        />
+        <input
+          type="search"
+          className="knot-search text-input"
+          placeholder="Søk etter knute…"
+          value={searchQuery}
+          onChange={(event) => setSearchQuery(event.target.value)}
+          inputMode="search"
+          enterKeyHint="search"
+          autoCorrect="off"
+          autoCapitalize="off"
+          spellCheck={false}
+          aria-label="Søk etter knute"
+        />
+        {searchQuery ? (
+          <button
+            type="button"
+            className="knot-search-wrap__clear"
+            onClick={() => setSearchQuery('')}
+            aria-label="Tøm søk"
+          >
+            <X size={18} strokeWidth={2.4} aria-hidden="true" />
+          </button>
+        ) : null}
+      </div>
+
       <KnotTypeFilters
         filters={KNOT_TYPE_FILTERS}
         activeFilter={activeFolder}
@@ -1350,10 +1401,16 @@ export function KnotsPage({
         <div className="filter-empty-state empty-state">
           <div className="empty-state__icon" aria-hidden="true">🔍</div>
           <h3 className="empty-state__title">
-            {statusFilter === 'tatt' ? 'Du har ikke tatt noen knuter ennå' : 'Ingen knuter igjen i denne kategorien'}
+            {normalizedSearchQuery
+              ? `Ingen knuter matcher «${searchQuery.trim()}»`
+              : statusFilter === 'tatt'
+                ? 'Du har ikke tatt noen knuter ennå'
+                : 'Ingen knuter igjen i denne kategorien'}
           </h3>
           <p className="empty-state__hint">
-            Prøv andre filtre eller nullstill for å se hele mappen igjen.
+            {normalizedSearchQuery
+              ? 'Prøv et annet søkeord, bytt kategori eller nullstill filtrene.'
+              : 'Prøv andre filtre eller nullstill for å se hele mappen igjen.'}
           </p>
           <button
             type="button"
