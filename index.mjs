@@ -73,6 +73,12 @@ const VIDEO_MIME_TYPES = new Set([
   'video/x-m4v',
   'video/webm',
 ]);
+const HEIF_MIME_TYPES = new Set([
+  'image/heif',
+  'image/heic',
+  'image/heif-sequence',
+  'image/heic-sequence',
+]);
 const MIN_STAR_RATING = 1;
 const MAX_STAR_RATING = 5;
 const REPORT_REASON_OPTIONS = [
@@ -1988,6 +1994,20 @@ function buildBootstrap(db, user) {
   };
 }
 
+async function convertHeifToJpegBuffer(buffer) {
+  const id = randomUUID();
+  const tmpIn = path.join(UPLOADS_DIR, `heif-in-${id}.heic`);
+  const tmpOut = path.join(UPLOADS_DIR, `heif-out-${id}.jpg`);
+  try {
+    await fs.writeFile(tmpIn, buffer);
+    await execFileAsync(FFMPEG_BINARY, ['-y', '-i', tmpIn, tmpOut]);
+    return await fs.readFile(tmpOut);
+  } finally {
+    await fs.unlink(tmpIn).catch(() => {});
+    await fs.unlink(tmpOut).catch(() => {});
+  }
+}
+
 async function saveUploadedAsset(dataUrl, originalName, category) {
   if (!dataUrl) {
     return '';
@@ -2002,17 +2022,20 @@ async function saveUploadedAsset(dataUrl, originalName, category) {
   const isVideo = VIDEO_MIME_TYPES.has(parsed.mimeType);
 
   if (!isVideo) {
-    const isImage = parsed.mimeType.startsWith('image/');
+    const isImage = parsed.mimeType.startsWith('image/') || HEIF_MIME_TYPES.has(parsed.mimeType);
     if (isImage) {
+      const imageBuffer = HEIF_MIME_TYPES.has(parsed.mimeType)
+        ? await convertHeifToJpegBuffer(parsed.buffer)
+        : parsed.buffer;
       const safeName = `${category}-${Date.now()}-${randomUUID()}.webp`;
       const outputPath = path.join(UPLOADS_DIR, safeName);
-      await sharp(parsed.buffer)
+      await sharp(imageBuffer)
         .rotate()
         .resize({ width: 1600, withoutEnlargement: true })
         .webp({ quality: 80 })
         .toFile(outputPath);
       const thumbName = `${path.basename(safeName, path.extname(safeName))}-thumb.webp`;
-      await sharp(parsed.buffer)
+      await sharp(imageBuffer)
         .rotate()
         .resize({ width: 480, withoutEnlargement: true })
         .webp({ quality: 72 })
