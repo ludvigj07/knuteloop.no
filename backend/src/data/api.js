@@ -73,8 +73,32 @@ export function deleteOwnAccount(token, payload = {}) {
   });
 }
 
-export function fetchBootstrap(token) {
-  return apiRequest('/bootstrap', { token });
+let bootstrapEtag = null;
+
+export async function fetchBootstrap(token) {
+  const headers = {
+    'Content-Type': 'application/json',
+    ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    ...(bootstrapEtag ? { 'If-None-Match': bootstrapEtag } : {}),
+  };
+
+  const response = await fetch(`${API_BASE}/bootstrap`, { headers });
+
+  if (response.status === 304) {
+    // Ingenting har endret seg — returner null så kalleren kan beholde eksisterende data
+    return null;
+  }
+
+  const newEtag = response.headers.get('ETag');
+  if (newEtag) bootstrapEtag = newEtag;
+
+  const payload = await response.json();
+
+  if (!response.ok) {
+    throw new Error(payload.error ?? 'Noe gikk galt mot API-et.');
+  }
+
+  return payload;
 }
 
 export function adminListUsers(token) {

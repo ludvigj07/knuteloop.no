@@ -550,12 +550,13 @@ function App() {
     const silentRefresh = async () => {
       try {
         const next = await fetchBootstrap(sessionToken);
-        if (!cancelled) setAppData(next);
+        // null = 304 Not Modified — ingenting har endret seg, behold eksisterende data
+        if (!cancelled && next !== null) setAppData(next);
       } catch {
         // Ignore transient failures; the next user action triggers a full refresh.
       }
     };
-    const interval = window.setInterval(silentRefresh, 30000);
+    const interval = window.setInterval(silentRefresh, 60000);
     const onVisibility = () => {
       if (document.visibilityState === 'visible') silentRefresh();
     };

@@ -7,7 +7,7 @@ import { createReadStream, promises as fs } from 'node:fs';
 import path from 'node:path';
 import { promisify } from 'node:util';
 import { fileURLToPath } from 'node:url';
-import { brotliCompressSync, gzipSync } from 'node:zlib';
+import { brotliCompress, createGzip } from 'node:zlib';
 import ffmpegPath from 'ffmpeg-static';
 import {
   buildActivityLog,
@@ -486,6 +486,10 @@ async function readDb() {
   return cachedDb;
 }
 
+// Monoton versjon som øker ved kvar writeDb. Brukes til ETag-validering
+// på GET /api/bootstrap så uendrede poll-kall returnerer 304 uten body.
+let dbVersion = 1;
+
 // Serialiserer alle writeDb-kall i én kø og skriver atomisk (.tmp +
 // rename). Beskytter mot to hoved-feilmoduser:
 // 1. Partial write: prosess crasher / systemd restart mid-skriving.
@@ -499,6 +503,7 @@ async function readDb() {
 let dbWriteChain = Promise.resolve();
 async function writeDb(nextDb) {
   cachedDb = nextDb;
+  dbVersion += 1;
   const previous = dbWriteChain;
   let release;
   dbWriteChain = new Promise((resolve) => {
@@ -718,7 +723,22 @@ async function readJsonBody(request) {
 
 const JSON_COMPRESSION_THRESHOLD = 1024;
 
-function sendJson(response, statusCode, payload) {
+function compressAsync(buffer, encoding) {
+  return new Promise((resolve, reject) => {
+    if (encoding === 'br') {
+      brotliCompress(buffer, (err, result) => (err ? reject(err) : resolve(result)));
+    } else {
+      const chunks = [];
+      const gz = createGzip();
+      gz.on('data', (chunk) => chunks.push(chunk));
+      gz.on('end', () => resolve(Buffer.concat(chunks)));
+      gz.on('error', reject);
+      gz.end(buffer);
+    }
+  });
+}
+
+async function sendJson(response, statusCode, payload, etag = null) {
   const body = Buffer.from(JSON.stringify(payload), 'utf8');
   const headers = {
     'Content-Type': 'application/json; charset=utf-8',
@@ -728,15 +748,20 @@ function sendJson(response, statusCode, payload) {
     Vary: 'Accept-Encoding',
   };
 
+  if (etag) {
+    headers['ETag'] = etag;
+    headers['Cache-Control'] = 'no-cache';
+  }
+
   const accept = response.req?.headers?.['accept-encoding'] ?? '';
   let output = body;
 
   if (body.length >= JSON_COMPRESSION_THRESHOLD) {
     if (accept.includes('br')) {
-      output = brotliCompressSync(body);
+      output = await compressAsync(body, 'br');
       headers['Content-Encoding'] = 'br';
     } else if (accept.includes('gzip')) {
-      output = gzipSync(body);
+      output = await compressAsync(body, 'gzip');
       headers['Content-Encoding'] = 'gzip';
     }
   }
@@ -2119,7 +2144,7 @@ async function handleLogout(request, response) {
   const token = getSessionToken(request);
 
   if (!token) {
-    sendJson(response, 204, {});
+    await sendJson(response, 204, {});
     return;
   }
 
@@ -2129,7 +2154,7 @@ async function handleLogout(request, response) {
   };
 
   await writeDb(nextDb);
-  sendJson(response, 200, { ok: true });
+  await sendJson(response, 200, { ok: true });
 }
 
 async function handleBootstrap(request, response) {
@@ -2137,11 +2162,23 @@ async function handleBootstrap(request, response) {
   const user = getAuthedUser(db, request);
 
   if (!user) {
-    sendJson(response, 401, { error: 'Ikke logget inn.' });
+    await sendJson(response, 401, { error: 'Ikke logget inn.' });
     return;
   }
 
-  sendJson(response, 200, buildBootstrap(db, user));
+  const etag = `"v${dbVersion}-u${user.id}"`;
+  const ifNoneMatch = request.headers?.['if-none-match'] ?? '';
+  if (ifNoneMatch === etag) {
+    response.writeHead(304, {
+      'Access-Control-Allow-Origin': ALLOWED_ORIGIN,
+      ETag: etag,
+      'Cache-Control': 'no-cache',
+    });
+    response.end();
+    return;
+  }
+
+  await sendJson(response, 200, buildBootstrap(db, user), etag);
 }
 
 async function handleProfileUpdate(request, response) {
@@ -2149,7 +2186,7 @@ async function handleProfileUpdate(request, response) {
   const user = getAuthedUser(db, request);
 
   if (!user) {
-    sendJson(response, 401, { error: 'Ikke logget inn.' });
+    await sendJson(response, 401, { error: 'Ikke logget inn.' });
     return;
   }
 
@@ -2161,12 +2198,12 @@ async function handleProfileUpdate(request, response) {
     : user;
 
   if (!targetUser) {
-    sendJson(response, 404, { error: 'Fant ikke profilen som skulle oppdateres.' });
+    await sendJson(response, 404, { error: 'Fant ikke profilen som skulle oppdateres.' });
     return;
   }
 
   if (targetUser.id !== user.id && !assertAdmin(user)) {
-    sendJson(response, 403, { error: 'Kun admin kan oppdatere andre profiler.' });
+    await sendJson(response, 403, { error: 'Kun admin kan oppdatere andre profiler.' });
     return;
   }
 
@@ -2208,7 +2245,7 @@ async function handleProfileUpdate(request, response) {
   };
 
   await writeDb(nextDb);
-  sendJson(response, 200, buildBootstrap(nextDb, nextDb.users.find((item) => item.id === user.id)));
+  await sendJson(response, 200, buildBootstrap(nextDb, nextDb.users.find((item) => item.id === user.id)));
 }
 
 async function handleCreateSubmission(request, response) {
@@ -2216,7 +2253,7 @@ async function handleCreateSubmission(request, response) {
   const user = getAuthedUser(db, request);
 
   if (!user) {
-    sendJson(response, 401, { error: 'Ikke logget inn.' });
+    await sendJson(response, 401, { error: 'Ikke logget inn.' });
     return;
   }
 
@@ -2227,7 +2264,7 @@ async function handleCreateSubmission(request, response) {
   );
 
   if (activeSubmissionBan) {
-    sendJson(response, 403, {
+    await sendJson(response, 403, {
       error: getBanBlockMessage(BAN_TYPES.SUBMISSION, activeSubmissionBan),
     });
     return;
@@ -2253,7 +2290,7 @@ async function handleCreateSubmission(request, response) {
   const createdAt = nowIso();
 
   if (!knot) {
-    sendJson(response, 404, { error: 'Fant ikke knuten.' });
+    await sendJson(response, 404, { error: 'Fant ikke knuten.' });
     return;
   }
 
@@ -2347,7 +2384,7 @@ async function handleCreateSubmission(request, response) {
     };
 
     await writeDb(nextDb);
-    sendJson(response, 200, buildBootstrap(nextDb, user));
+    await sendJson(response, 200, buildBootstrap(nextDb, user));
     return;
   }
 
@@ -2404,7 +2441,7 @@ async function handleCreateSubmission(request, response) {
   };
 
   await writeDb(nextDb);
-  sendJson(response, 200, buildBootstrap(nextDb, user));
+  await sendJson(response, 200, buildBootstrap(nextDb, user));
 }
 
 async function handleReviewSubmission(request, response, submissionId) {
@@ -2412,7 +2449,7 @@ async function handleReviewSubmission(request, response, submissionId) {
   const user = getAuthedUser(db, request);
 
   if (!assertAdmin(user)) {
-    sendJson(response, 403, { error: 'Kun admin kan vurdere innsendinger.' });
+    await sendJson(response, 403, { error: 'Kun admin kan vurdere innsendinger.' });
     return;
   }
 
@@ -2421,7 +2458,7 @@ async function handleReviewSubmission(request, response, submissionId) {
   const submission = db.submissions.find((item) => item.id === submissionId);
 
   if (!submission) {
-    sendJson(response, 404, { error: 'Fant ikke innsendingen.' });
+    await sendJson(response, 404, { error: 'Fant ikke innsendingen.' });
     return;
   }
 
@@ -2441,7 +2478,7 @@ async function handleReviewSubmission(request, response, submissionId) {
     );
 
     if (requestedSubmissionMode !== currentSubmissionMode) {
-      sendJson(response, 400, {
+      await sendJson(response, 400, {
         error: 'Admin kan ikke endre innsendingstype ved godkjenning.',
       });
       return;
@@ -2472,7 +2509,7 @@ async function handleReviewSubmission(request, response, submissionId) {
   const finalDb = recalculated.db;
 
   await writeDb(finalDb);
-  sendJson(response, 200, buildBootstrap(finalDb, user));
+  await sendJson(response, 200, buildBootstrap(finalDb, user));
 }
 
 async function handleRateSubmission(request, response, submissionId) {
@@ -2480,7 +2517,7 @@ async function handleRateSubmission(request, response, submissionId) {
   const user = getAuthedUser(db, request);
 
   if (!user) {
-    sendJson(response, 401, { error: 'Ikke logget inn.' });
+    await sendJson(response, 401, { error: 'Ikke logget inn.' });
     return;
   }
 
@@ -2492,19 +2529,19 @@ async function handleRateSubmission(request, response, submissionId) {
     nextRating < MIN_STAR_RATING ||
     nextRating > MAX_STAR_RATING
   ) {
-    sendJson(response, 400, { error: 'Ugyldig rating. Bruk 1 til 5 stjerner.' });
+    await sendJson(response, 400, { error: 'Ugyldig rating. Bruk 1 til 5 stjerner.' });
     return;
   }
 
   const submission = db.submissions.find((item) => item.id === submissionId);
 
   if (!submission) {
-    sendJson(response, 404, { error: 'Fant ikke innsendingen.' });
+    await sendJson(response, 404, { error: 'Fant ikke innsendingen.' });
     return;
   }
 
   if (!isSubmissionVisibleInFeed(submission)) {
-    sendJson(response, 400, { error: 'Innsendingen kan ikke rates.' });
+    await sendJson(response, 400, { error: 'Innsendingen kan ikke rates.' });
     return;
   }
 
@@ -2527,7 +2564,7 @@ async function handleRateSubmission(request, response, submissionId) {
   };
 
   await writeDb(nextDb);
-  sendJson(response, 200, buildBootstrap(nextDb, user));
+  await sendJson(response, 200, buildBootstrap(nextDb, user));
 }
 
 async function handleDeleteSubmission(request, response, submissionId) {
@@ -2535,14 +2572,14 @@ async function handleDeleteSubmission(request, response, submissionId) {
   const user = getAuthedUser(db, request);
 
   if (!user) {
-    sendJson(response, 401, { error: 'Ikke logget inn.' });
+    await sendJson(response, 401, { error: 'Ikke logget inn.' });
     return;
   }
 
   const submission = db.submissions.find((item) => item.id === submissionId);
 
   if (!submission) {
-    sendJson(response, 404, { error: 'Fant ikke innsendingen.' });
+    await sendJson(response, 404, { error: 'Fant ikke innsendingen.' });
     return;
   }
 
@@ -2550,7 +2587,7 @@ async function handleDeleteSubmission(request, response, submissionId) {
   const isOwner = submission.leaderId === user.id;
 
   if (!isAdmin && !isOwner) {
-    sendJson(response, 403, {
+    await sendJson(response, 403, {
       error: 'Du kan bare fjerne dine egne feed-poster.',
     });
     return;
@@ -2563,7 +2600,7 @@ async function handleDeleteSubmission(request, response, submissionId) {
     ) === 'review' && submission.isAnonymousFeed !== true;
 
   if (alreadyRemovedFromFeed) {
-    sendJson(response, 200, buildBootstrap(db, user));
+    await sendJson(response, 200, buildBootstrap(db, user));
     return;
   }
 
@@ -2581,7 +2618,7 @@ async function handleDeleteSubmission(request, response, submissionId) {
   };
 
   await writeDb(nextDb);
-  sendJson(response, 200, buildBootstrap(nextDb, user));
+  await sendJson(response, 200, buildBootstrap(nextDb, user));
 }
 
 async function handleSetKnotVisibility(request, response, submissionId) {
@@ -2589,19 +2626,19 @@ async function handleSetKnotVisibility(request, response, submissionId) {
   const user = getAuthedUser(db, request);
 
   if (!user) {
-    sendJson(response, 401, { error: 'Ikke logget inn.' });
+    await sendJson(response, 401, { error: 'Ikke logget inn.' });
     return;
   }
 
   const submission = db.submissions.find((item) => item.id === submissionId);
 
   if (!submission) {
-    sendJson(response, 404, { error: 'Fant ikke innsendingen.' });
+    await sendJson(response, 404, { error: 'Fant ikke innsendingen.' });
     return;
   }
 
   if (submission.leaderId !== user.id) {
-    sendJson(response, 403, { error: 'Du kan bare endre synlighet på egne knuter.' });
+    await sendJson(response, 403, { error: 'Du kan bare endre synlighet på egne knuter.' });
     return;
   }
 
@@ -2616,7 +2653,7 @@ async function handleSetKnotVisibility(request, response, submissionId) {
   };
 
   await writeDb(nextDb);
-  sendJson(response, 200, buildBootstrap(nextDb, user));
+  await sendJson(response, 200, buildBootstrap(nextDb, user));
 }
 
 async function handleReportSubmission(request, response, submissionId) {
@@ -2624,19 +2661,19 @@ async function handleReportSubmission(request, response, submissionId) {
   const user = getAuthedUser(db, request);
 
   if (!user) {
-    sendJson(response, 401, { error: 'Ikke logget inn.' });
+    await sendJson(response, 401, { error: 'Ikke logget inn.' });
     return;
   }
 
   const submission = db.submissions.find((item) => item.id === submissionId);
 
   if (!submission) {
-    sendJson(response, 404, { error: 'Fant ikke innsendingen.' });
+    await sendJson(response, 404, { error: 'Fant ikke innsendingen.' });
     return;
   }
 
   if (!isSubmissionVisibleInFeed(submission)) {
-    sendJson(response, 400, { error: 'Du kan bare rapportere synlige feed-poster.' });
+    await sendJson(response, 400, { error: 'Du kan bare rapportere synlige feed-poster.' });
     return;
   }
 
@@ -2645,7 +2682,7 @@ async function handleReportSubmission(request, response, submissionId) {
   );
 
   if (alreadyReported) {
-    sendJson(response, 409, {
+    await sendJson(response, 409, {
       error: 'Du har allerede rapportert denne posten.',
     });
     return;
@@ -2671,7 +2708,7 @@ async function handleReportSubmission(request, response, submissionId) {
   };
 
   await writeDb(nextDb);
-  sendJson(response, 200, buildBootstrap(nextDb, user));
+  await sendJson(response, 200, buildBootstrap(nextDb, user));
 }
 
 async function handleCreateComment(request, response, submissionId) {
@@ -2679,7 +2716,7 @@ async function handleCreateComment(request, response, submissionId) {
   const user = getAuthedUser(db, request);
 
   if (!user) {
-    sendJson(response, 401, { error: 'Ikke logget inn.' });
+    await sendJson(response, 401, { error: 'Ikke logget inn.' });
     return;
   }
 
@@ -2687,13 +2724,13 @@ async function handleCreateComment(request, response, submissionId) {
     (b) => b.userId === user.id && b.type === 'feed' && isBanActive(b),
   );
   if (activeBan) {
-    sendJson(response, 403, { error: 'Feed-tilgangen din er midlertidig begrenset.' });
+    await sendJson(response, 403, { error: 'Feed-tilgangen din er midlertidig begrenset.' });
     return;
   }
 
   const submission = db.submissions.find((item) => item.id === submissionId);
   if (!submission || !isSubmissionVisibleInFeed(submission)) {
-    sendJson(response, 404, { error: 'Fant ikke feed-posten.' });
+    await sendJson(response, 404, { error: 'Fant ikke feed-posten.' });
     return;
   }
 
@@ -2702,7 +2739,7 @@ async function handleCreateComment(request, response, submissionId) {
   const rawParentId = typeof body?.parentId === 'string' ? body.parentId.trim() : null;
 
   if (!text) {
-    sendJson(response, 400, { error: 'Kommentar kan ikke være tom.' });
+    await sendJson(response, 400, { error: 'Kommentar kan ikke være tom.' });
     return;
   }
 
@@ -2712,7 +2749,7 @@ async function handleCreateComment(request, response, submissionId) {
       (c) => c.id === rawParentId && c.submissionId === submissionId && !c.deletedAt && !c.parentId,
     );
     if (!parentComment) {
-      sendJson(response, 400, { error: 'Ugyldig svar-kommentar.' });
+      await sendJson(response, 400, { error: 'Ugyldig svar-kommentar.' });
       return;
     }
     parentId = rawParentId;
@@ -2731,7 +2768,7 @@ async function handleCreateComment(request, response, submissionId) {
 
   const nextDb = { ...db, comments: [...(db.comments ?? []), nextComment] };
   await writeDb(nextDb);
-  sendJson(response, 200, buildBootstrap(nextDb, user));
+  await sendJson(response, 200, buildBootstrap(nextDb, user));
 }
 
 async function handleDeleteComment(request, response, commentId) {
@@ -2739,18 +2776,18 @@ async function handleDeleteComment(request, response, commentId) {
   const user = getAuthedUser(db, request);
 
   if (!user) {
-    sendJson(response, 401, { error: 'Ikke logget inn.' });
+    await sendJson(response, 401, { error: 'Ikke logget inn.' });
     return;
   }
 
   const comment = (db.comments ?? []).find((c) => c.id === commentId);
   if (!comment || comment.deletedAt) {
-    sendJson(response, 404, { error: 'Fant ikke kommentaren.' });
+    await sendJson(response, 404, { error: 'Fant ikke kommentaren.' });
     return;
   }
 
   if (comment.authorId !== user.id && !assertAdmin(user)) {
-    sendJson(response, 403, { error: 'Du kan bare slette egne kommentarer.' });
+    await sendJson(response, 403, { error: 'Du kan bare slette egne kommentarer.' });
     return;
   }
 
@@ -2761,7 +2798,7 @@ async function handleDeleteComment(request, response, commentId) {
     ),
   };
   await writeDb(nextDb);
-  sendJson(response, 200, buildBootstrap(nextDb, user));
+  await sendJson(response, 200, buildBootstrap(nextDb, user));
 }
 
 async function handleLikeComment(request, response, commentId) {
@@ -2769,13 +2806,13 @@ async function handleLikeComment(request, response, commentId) {
   const user = getAuthedUser(db, request);
 
   if (!user) {
-    sendJson(response, 401, { error: 'Ikke logget inn.' });
+    await sendJson(response, 401, { error: 'Ikke logget inn.' });
     return;
   }
 
   const comment = (db.comments ?? []).find((c) => c.id === commentId && !c.deletedAt);
   if (!comment) {
-    sendJson(response, 404, { error: 'Fant ikke kommentaren.' });
+    await sendJson(response, 404, { error: 'Fant ikke kommentaren.' });
     return;
   }
 
@@ -2791,7 +2828,7 @@ async function handleLikeComment(request, response, commentId) {
     ),
   };
   await writeDb(nextDb);
-  sendJson(response, 200, buildBootstrap(nextDb, user));
+  await sendJson(response, 200, buildBootstrap(nextDb, user));
 }
 
 async function handleReportComment(request, response, commentId) {
@@ -2799,13 +2836,13 @@ async function handleReportComment(request, response, commentId) {
   const user = getAuthedUser(db, request);
 
   if (!user) {
-    sendJson(response, 401, { error: 'Ikke logget inn.' });
+    await sendJson(response, 401, { error: 'Ikke logget inn.' });
     return;
   }
 
   const comment = (db.comments ?? []).find((c) => c.id === commentId && !c.deletedAt);
   if (!comment) {
-    sendJson(response, 404, { error: 'Fant ikke kommentaren.' });
+    await sendJson(response, 404, { error: 'Fant ikke kommentaren.' });
     return;
   }
 
@@ -2816,7 +2853,7 @@ async function handleReportComment(request, response, commentId) {
       r.status === REPORT_STATUS.OPEN,
   );
   if (alreadyReported) {
-    sendJson(response, 409, { error: 'Du har allerede rapportert denne kommentaren.' });
+    await sendJson(response, 409, { error: 'Du har allerede rapportert denne kommentaren.' });
     return;
   }
 
@@ -2838,7 +2875,7 @@ async function handleReportComment(request, response, commentId) {
 
   const nextDb = { ...db, reports: [nextReport, ...(db.reports ?? [])] };
   await writeDb(nextDb);
-  sendJson(response, 200, buildBootstrap(nextDb, user));
+  await sendJson(response, 200, buildBootstrap(nextDb, user));
 }
 
 async function handleAdminReports(request, response) {
@@ -2846,11 +2883,11 @@ async function handleAdminReports(request, response) {
   const user = getAuthedUser(db, request);
 
   if (!assertAdmin(user)) {
-    sendJson(response, 403, { error: 'Kun admin kan se rapporter.' });
+    await sendJson(response, 403, { error: 'Kun admin kan se rapporter.' });
     return;
   }
 
-  sendJson(response, 200, {
+  await sendJson(response, 200, {
     reports: (db.reports ?? []).map((report) => toPublicReport(db, report)),
   });
 }
@@ -2860,19 +2897,19 @@ async function handleAdminReportAction(request, response, reportId) {
   const user = getAuthedUser(db, request);
 
   if (!assertAdmin(user)) {
-    sendJson(response, 403, { error: 'Kun admin kan behandle rapporter.' });
+    await sendJson(response, 403, { error: 'Kun admin kan behandle rapporter.' });
     return;
   }
 
   const report = (db.reports ?? []).find((item) => item.id === reportId);
 
   if (!report) {
-    sendJson(response, 404, { error: 'Fant ikke rapporten.' });
+    await sendJson(response, 404, { error: 'Fant ikke rapporten.' });
     return;
   }
 
   if (report.status !== REPORT_STATUS.OPEN) {
-    sendJson(response, 400, { error: 'Rapporten er allerede behandlet.' });
+    await sendJson(response, 400, { error: 'Rapporten er allerede behandlet.' });
     return;
   }
 
@@ -2894,7 +2931,7 @@ async function handleAdminReportAction(request, response, reportId) {
         c.id === report.commentId ? { ...c, deletedAt: reviewedAt } : c,
       );
     } else if (action !== 'keep') {
-      sendJson(response, 400, {
+      await sendJson(response, 400, {
         error: 'Ugyldig rapporthandling for kommentar. Bruk keep eller delete-comment.',
       });
       return;
@@ -2903,7 +2940,7 @@ async function handleAdminReportAction(request, response, reportId) {
     const submission = db.submissions.find((item) => item.id === report.submissionId);
 
     if (!submission) {
-      sendJson(response, 404, { error: 'Fant ikke innsendingen som ble rapportert.' });
+      await sendJson(response, 404, { error: 'Fant ikke innsendingen som ble rapportert.' });
       return;
     }
 
@@ -2935,7 +2972,7 @@ async function handleAdminReportAction(request, response, reportId) {
           : item,
       );
     } else if (action !== 'keep') {
-      sendJson(response, 400, {
+      await sendJson(response, 400, {
         error: 'Ugyldig rapporthandling. Bruk keep, remove-feed eller reverse-approval.',
       });
       return;
@@ -2966,7 +3003,7 @@ async function handleAdminReportAction(request, response, reportId) {
   };
 
   await writeDb(nextDb);
-  sendJson(response, 200, buildBootstrap(nextDb, user));
+  await sendJson(response, 200, buildBootstrap(nextDb, user));
 }
 
 async function handleCreateBan(request, response) {
@@ -2974,7 +3011,7 @@ async function handleCreateBan(request, response) {
   const user = getAuthedUser(db, request);
 
   if (!assertAdmin(user)) {
-    sendJson(response, 403, { error: 'Kun admin kan opprette bans.' });
+    await sendJson(response, 403, { error: 'Kun admin kan opprette bans.' });
     return;
   }
 
@@ -2984,29 +3021,29 @@ async function handleCreateBan(request, response) {
   const durationHours = Number(body?.durationHours);
 
   if (!Number.isInteger(userId) || userId <= 0) {
-    sendJson(response, 400, { error: 'Velg en gyldig bruker.' });
+    await sendJson(response, 400, { error: 'Velg en gyldig bruker.' });
     return;
   }
 
   if (banType !== body?.type) {
-    sendJson(response, 400, { error: 'Velg en gyldig ban-type.' });
+    await sendJson(response, 400, { error: 'Velg en gyldig ban-type.' });
     return;
   }
 
   if (!BAN_DURATION_HOURS.has(durationHours)) {
-    sendJson(response, 400, { error: 'Velg 24t, 3 dager eller 1 uke.' });
+    await sendJson(response, 400, { error: 'Velg 24t, 3 dager eller 1 uke.' });
     return;
   }
 
   const targetUser = db.users.find((entry) => entry.id === userId);
 
   if (!targetUser) {
-    sendJson(response, 404, { error: 'Fant ikke brukeren.' });
+    await sendJson(response, 404, { error: 'Fant ikke brukeren.' });
     return;
   }
 
   if (targetUser.role === 'admin') {
-    sendJson(response, 400, { error: 'Admin-kontoer kan ikke bannes.' });
+    await sendJson(response, 400, { error: 'Admin-kontoer kan ikke bannes.' });
     return;
   }
 
@@ -3047,7 +3084,7 @@ async function handleCreateBan(request, response) {
   };
 
   await writeDb(nextDb);
-  sendJson(response, 200, buildBootstrap(nextDb, user));
+  await sendJson(response, 200, buildBootstrap(nextDb, user));
 }
 
 async function handleDeleteBan(request, response, banId) {
@@ -3055,14 +3092,14 @@ async function handleDeleteBan(request, response, banId) {
   const user = getAuthedUser(db, request);
 
   if (!assertAdmin(user)) {
-    sendJson(response, 403, { error: 'Kun admin kan oppheve bans.' });
+    await sendJson(response, 403, { error: 'Kun admin kan oppheve bans.' });
     return;
   }
 
   const ban = (db.bans ?? []).find((entry) => entry.id === banId);
 
   if (!ban) {
-    sendJson(response, 404, { error: 'Fant ikke denne bannen.' });
+    await sendJson(response, 404, { error: 'Fant ikke denne bannen.' });
     return;
   }
 
@@ -3081,7 +3118,7 @@ async function handleDeleteBan(request, response, banId) {
   };
 
   await writeDb(nextDb);
-  sendJson(response, 200, buildBootstrap(nextDb, user));
+  await sendJson(response, 200, buildBootstrap(nextDb, user));
 }
 
 async function handleUpdateKnotFeedbackMessages(request, response) {
@@ -3089,7 +3126,7 @@ async function handleUpdateKnotFeedbackMessages(request, response) {
   const user = getAuthedUser(db, request);
 
   if (!assertAdmin(user)) {
-    sendJson(response, 403, { error: 'Kun admin kan oppdatere feedback-tekster.' });
+    await sendJson(response, 403, { error: 'Kun admin kan oppdatere feedback-tekster.' });
     return;
   }
 
@@ -3102,7 +3139,7 @@ async function handleUpdateKnotFeedbackMessages(request, response) {
   );
 
   if (!hasAnyMessage) {
-    sendJson(response, 400, { error: 'Legg inn minst en feedback-tekst for a lagre.' });
+    await sendJson(response, 400, { error: 'Legg inn minst en feedback-tekst for a lagre.' });
     return;
   }
 
@@ -3112,7 +3149,7 @@ async function handleUpdateKnotFeedbackMessages(request, response) {
   };
 
   await writeDb(nextDb);
-  sendJson(response, 200, buildBootstrap(nextDb, user));
+  await sendJson(response, 200, buildBootstrap(nextDb, user));
 }
 
 async function handleRevealRussnames(request, response) {
@@ -3120,7 +3157,7 @@ async function handleRevealRussnames(request, response) {
   const user = getAuthedUser(db, request);
 
   if (!assertAdmin(user)) {
-    sendJson(response, 403, { error: 'Kun admin kan avsløre russenavn.' });
+    await sendJson(response, 403, { error: 'Kun admin kan avsløre russenavn.' });
     return;
   }
 
@@ -3139,7 +3176,7 @@ async function handleRevealRussnames(request, response) {
     );
   }
 
-  sendJson(response, 200, buildBootstrap(nextDb, user));
+  await sendJson(response, 200, buildBootstrap(nextDb, user));
 }
 
 async function handleHideRussnames(request, response) {
@@ -3147,7 +3184,7 @@ async function handleHideRussnames(request, response) {
   const user = getAuthedUser(db, request);
 
   if (!assertAdmin(user)) {
-    sendJson(response, 403, { error: 'Kun admin kan reversere russenavn-avsløring.' });
+    await sendJson(response, 403, { error: 'Kun admin kan reversere russenavn-avsløring.' });
     return;
   }
 
@@ -3164,7 +3201,7 @@ async function handleHideRussnames(request, response) {
     );
   }
 
-  sendJson(response, 200, buildBootstrap(nextDb, user));
+  await sendJson(response, 200, buildBootstrap(nextDb, user));
 }
 
 async function handleImportKnots(request, response) {
@@ -3172,7 +3209,7 @@ async function handleImportKnots(request, response) {
   const user = getAuthedUser(db, request);
 
   if (!assertAdmin(user)) {
-    sendJson(response, 403, { error: 'Kun admin kan legge til knuter.' });
+    await sendJson(response, 403, { error: 'Kun admin kan legge til knuter.' });
     return;
   }
 
@@ -3198,7 +3235,7 @@ async function handleImportKnots(request, response) {
   };
 
   await writeDb(nextDb);
-  sendJson(response, 200, {
+  await sendJson(response, 200, {
     result: {
       added: result.added,
       skipped: result.skipped,
@@ -3212,7 +3249,7 @@ async function handleUpdateKnotPoints(request, response, knotId) {
   const user = getAuthedUser(db, request);
 
   if (!assertAdmin(user)) {
-    sendJson(response, 403, { error: 'Kun admin kan endre poeng.' });
+    await sendJson(response, 403, { error: 'Kun admin kan endre poeng.' });
     return;
   }
 
@@ -3244,7 +3281,7 @@ async function handleUpdateKnotPoints(request, response, knotId) {
   const finalDb = recalculated.db;
 
   await writeDb(finalDb);
-  sendJson(response, 200, buildBootstrap(finalDb, user));
+  await sendJson(response, 200, buildBootstrap(finalDb, user));
 }
 
 async function handleDeleteKnot(request, response, knotId) {
@@ -3252,7 +3289,7 @@ async function handleDeleteKnot(request, response, knotId) {
   const user = getAuthedUser(db, request);
 
   if (!assertAdmin(user)) {
-    sendJson(response, 403, { error: 'Kun admin kan slette knuter.' });
+    await sendJson(response, 403, { error: 'Kun admin kan slette knuter.' });
     return;
   }
 
@@ -3273,7 +3310,7 @@ async function handleDeleteKnot(request, response, knotId) {
   const finalDb = recalculated.db;
 
   await writeDb(finalDb);
-  sendJson(response, 200, buildBootstrap(finalDb, user));
+  await sendJson(response, 200, buildBootstrap(finalDb, user));
 }
 
 
@@ -3311,20 +3348,20 @@ function getContentType(filePath) {
 
 const server = createServer(async (request, response) => {
   if (!request.url) {
-    sendJson(response, 400, { error: 'Ugyldig request.' });
+    await sendJson(response, 400, { error: 'Ugyldig request.' });
     return;
   }
 
   const url = new URL(request.url, `http://${request.headers.host}`);
 
   if (request.method === 'OPTIONS') {
-    sendJson(response, 204, {});
+    await sendJson(response, 204, {});
     return;
   }
 
   try {
     if (request.method === 'GET' && url.pathname === '/api/health') {
-      sendJson(response, 200, { ok: true });
+      await sendJson(response, 200, { ok: true });
       return;
     }
 
@@ -3546,7 +3583,7 @@ const server = createServer(async (request, response) => {
       const filePath = path.join(UPLOADS_DIR, fileName);
 
       if (!(await fileExists(filePath))) {
-        sendJson(response, 404, { error: 'Fant ikke filen.' });
+        await sendJson(response, 404, { error: 'Fant ikke filen.' });
         return;
       }
 
@@ -3556,7 +3593,7 @@ const server = createServer(async (request, response) => {
         return;
       }
 
-    sendJson(response, 404, { error: 'Fant ikke endpoint.' });
+    await sendJson(response, 404, { error: 'Fant ikke endpoint.' });
   } catch (error) {
     const statusCode = error?.statusCode ?? 500;
     if (statusCode >= 500) {
@@ -3565,7 +3602,7 @@ const server = createServer(async (request, response) => {
         error instanceof Error ? error.stack ?? error.message : error,
       );
     }
-    sendJson(response, statusCode, {
+    await sendJson(response, statusCode, {
       error: statusCode === 413 ? (error?.message ?? 'For stor forespørsel.') : 'Serverfeil.',
       detail: error instanceof Error ? error.message : 'Ukjent feil',
     });
