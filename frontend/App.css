@@ -9917,6 +9917,31 @@ textarea.text-input:focus {
   cursor: pointer;
 }
 
+.feed-video-sound-toggle {
+  position: absolute;
+  top: calc(72px + env(safe-area-inset-top, 0px));
+  right: 14px;
+  z-index: 4;
+  width: 40px;
+  height: 40px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  border-radius: 50%;
+  background: rgba(15, 23, 42, 0.55);
+  color: #fff;
+  cursor: pointer;
+  pointer-events: auto;
+  box-shadow: 0 6px 14px rgba(0, 0, 0, 0.22);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+}
+
+.feed-video-sound-toggle:active {
+  transform: scale(0.94);
+}
+
 .feed-sheet-backdrop {
   position: fixed;
   inset: 0;

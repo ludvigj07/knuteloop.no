@@ -146,7 +146,13 @@ function FeedLightbox({ entry, onClose }) {
   );
 }
 
-function FeedMedia({ entry, variant = 'mobile', isActive = false }) {
+function FeedMedia({
+  entry,
+  variant = 'mobile',
+  isActive = false,
+  audioOn = false,
+  onToggleAudio,
+}) {
   const [videoFailed, setVideoFailed] = useState(false);
   const [lightboxOpen, setLightboxOpen] = useState(false);
   const [autoplayBlocked, setAutoplayBlocked] = useState(false);
@@ -219,16 +225,32 @@ function FeedMedia({ entry, variant = 'mobile', isActive = false }) {
         controls={false}
         autoPlay
         loop
-        muted
+        muted={!audioOn}
         playsInline
         preload="metadata"
         src={entry.videoPreviewUrl}
         isActive={isActive}
-        playMode="auto"
+        playMode={audioOn ? 'sound-preferred' : 'auto'}
         onAutoplayBlocked={(blocked) => setAutoplayBlocked(blocked)}
         onError={() => setVideoFailed(true)}
       />
     );
+
+    const handleSoundToggle = async () => {
+      const willTurnOn = !audioOn;
+
+      if (willTurnOn) {
+        const didPlay = await videoRef.current?.playWithAudio?.();
+        if (didPlay) {
+          onToggleAudio?.(true);
+        } else {
+          // Browseren blokkerte \u2014 fall tilbake til muted og varsle via fallback-knappen
+          await videoRef.current?.playMuted?.();
+        }
+      } else {
+        onToggleAudio?.(false);
+      }
+    };
 
     return (
       <>
@@ -247,6 +269,28 @@ function FeedMedia({ entry, variant = 'mobile', isActive = false }) {
         ) : (
           renderMobileFrame(mobileVideo)
         )}
+        {!isDesktop && isActive ? (
+          <button
+            type="button"
+            className="feed-video-sound-toggle"
+            onClick={handleSoundToggle}
+            aria-label={audioOn ? 'Sla av lyd' : 'Sla pa lyd'}
+            aria-pressed={audioOn}
+          >
+            {audioOn ? (
+              <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor" aria-hidden="true">
+                <path d="M3 10v4a1 1 0 0 0 1 1h3l4.3 3.7a1 1 0 0 0 1.7-.8V6.1a1 1 0 0 0-1.7-.8L7 9H4a1 1 0 0 0-1 1Z" />
+                <path d="M16.5 8.5a4 4 0 0 1 0 7" stroke="currentColor" strokeWidth="2" strokeLinecap="round" fill="none" />
+                <path d="M18.8 5.7a8 8 0 0 1 0 12.6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" fill="none" />
+              </svg>
+            ) : (
+              <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor" aria-hidden="true">
+                <path d="M3 10v4a1 1 0 0 0 1 1h3l4.3 3.7a1 1 0 0 0 1.7-.8V6.1a1 1 0 0 0-1.7-.8L7 9H4a1 1 0 0 0-1 1Z" />
+                <path d="M16 9l5 6m0-6-5 6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" fill="none" />
+              </svg>
+            )}
+          </button>
+        ) : null}
         {!isDesktop && autoplayBlocked && isActive ? (
           <button
             type="button"
@@ -254,7 +298,9 @@ function FeedMedia({ entry, variant = 'mobile', isActive = false }) {
             onClick={async () => {
               const didPlay = await videoRef.current?.playWithAudio?.();
 
-              if (!didPlay) {
+              if (didPlay) {
+                onToggleAudio?.(true);
+              } else {
                 await videoRef.current?.playMuted?.();
               }
 
@@ -1238,6 +1284,8 @@ function FeedCardMobile({
   registerCardRef,
   onLongPressReaction,
   onShareCopied,
+  audioOn = false,
+  onToggleAudio,
 }) {
   const longPress = useLongPressReaction((x, y) => {
     onLongPressReaction?.(x, y);
@@ -1261,7 +1309,13 @@ function FeedCardMobile({
       onPointerUp={longPress.onPointerUp}
       onPointerCancel={longPress.onPointerCancel}
     >
-      <FeedMedia entry={entry} variant="mobile" isActive={isActive} />
+      <FeedMedia
+        entry={entry}
+        variant="mobile"
+        isActive={isActive}
+        audioOn={audioOn}
+        onToggleAudio={onToggleAudio}
+      />
 
       <div className="feed-reel-card__overlay">
         <div className="feed-reel-card__hud feed-reel-card__hud--top">
@@ -1536,6 +1590,22 @@ export function FeedPage({
     [],
   );
   const [activeMobileIndex, setActiveMobileIndex] = useState(0);
+  const [feedAudioOn, setFeedAudioOn] = useState(() => {
+    if (typeof window === 'undefined') return false;
+    try {
+      return window.localStorage.getItem('feed_audio_on') === 'true';
+    } catch {
+      return false;
+    }
+  });
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    try {
+      window.localStorage.setItem('feed_audio_on', feedAudioOn ? 'true' : 'false');
+    } catch {
+      // Ignore — preferansen er ikke kritisk
+    }
+  }, [feedAudioOn]);
   const [commentSheetEntry, setCommentSheetEntry] = useState(null);
   const [pullDistance, setPullDistance] = useState(0);
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -2208,6 +2278,8 @@ export function FeedPage({
               registerCardRef={registerCardRef}
               onLongPressReaction={handleOpenReactionPicker}
               onShareCopied={handleShareCopied}
+              audioOn={feedAudioOn}
+              onToggleAudio={setFeedAudioOn}
             />
           ))}
         </div>
