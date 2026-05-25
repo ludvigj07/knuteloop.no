@@ -13116,6 +13116,26 @@ textarea.text-input:focus {
   color: #fff;
 }
 
+.knot-status-pills .knot-status-pill--favorites {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 10px 14px;
+  min-width: 48px;
+}
+
+.knot-status-pills .knot-status-pill--favorites:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.knot-status-pills .knot-status-pill--favorites.is-active {
+  background: #ffd93d;
+  color: #1a2540;
+  border-color: #e0a800;
+}
+
 .knot-row--single {
   background: #fff;
   border: 1px solid rgba(26, 37, 64, 0.12);
@@ -13208,6 +13228,48 @@ textarea.text-input:focus {
   font-size: 0.85rem;
   cursor: pointer;
   flex-shrink: 0;
+}
+
+.knot-row__favorite-btn {
+  background: none;
+  border: none;
+  padding: 8px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: rgba(26, 37, 64, 0.45);
+  cursor: pointer;
+  border-radius: 999px;
+  flex-shrink: 0;
+  min-width: 36px;
+  min-height: 36px;
+  -webkit-tap-highlight-color: transparent;
+  transition: color 0.15s ease, transform 0.1s ease;
+}
+
+.knot-row__favorite-btn:hover {
+  color: #e0a800;
+}
+
+.knot-row__favorite-btn:focus-visible {
+  outline: 2px solid var(--accent, #3b6cd9);
+  outline-offset: 2px;
+}
+
+.knot-row__favorite-btn:active {
+  transform: scale(0.9);
+}
+
+.knot-row__favorite-btn.is-active {
+  color: #e0a800;
+}
+
+.knot-row--single.is-completed .knot-row__favorite-btn {
+  color: rgba(26, 37, 64, 0.3);
+}
+
+.knot-row--single.is-completed .knot-row__favorite-btn.is-active {
+  color: #c69200;
 }
 
 .knot-row__take-btn:disabled {

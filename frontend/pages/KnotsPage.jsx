@@ -4,11 +4,13 @@ import {
   ArrowDown,
   ArrowUp,
   ArrowUpDown,
+  Bookmark,
   Layers,
   Search,
   X,
 } from 'lucide-react';
 import { MobileVideo } from '../components/MobileVideo.jsx';
+import { useFavoriteKnots } from '../lib/favorites.js';
 import {
   BeerBottleIcon,
   HeteroSymbolIcon,
@@ -490,6 +492,8 @@ function KnotRow({
   activeFeedBan,
   activeSubmissionBan,
   focusedRef,
+  isFavorited = false,
+  onToggleFavorite,
   onDocumentClick,
   onUpdateNote,
   onUpdateMode,
@@ -552,6 +556,24 @@ function KnotRow({
             {isPendingKnot ? 'Endre' : isRejected ? 'Send på nytt' : 'Ta knute'}
           </button>
         ) : null}
+
+        <button
+          type="button"
+          className={`knot-row__favorite-btn${isFavorited ? ' is-active' : ''}`}
+          onClick={(event) => {
+            event.stopPropagation();
+            onToggleFavorite?.(knot.id);
+          }}
+          aria-label={isFavorited ? 'Fjern bokmerke' : 'Bokmerke knute'}
+          aria-pressed={isFavorited}
+          title={isFavorited ? 'Fjern bokmerke' : 'Bokmerke knute'}
+        >
+          <Bookmark
+            size={18}
+            strokeWidth={1.8}
+            fill={isFavorited ? 'currentColor' : 'none'}
+          />
+        </button>
       </div>
 
       {isFormOpen && !isMobile ? (
@@ -739,6 +761,8 @@ export function KnotsPage({
   const [statusFilter, setStatusFilter] = useState('ikke-tatt');
   const [sortKey, setSortKey] = useState('standard');
   const [searchQuery, setSearchQuery] = useState('');
+  const [onlyFavorites, setOnlyFavorites] = useState(false);
+  const { favorites, toggleFavorite, isFavorite } = useFavoriteKnots(currentUserId);
   const [openFormId, setOpenFormId] = useState(null);
   const [sheetKnotId, setSheetKnotId] = useState(null);
   const [drafts, setDrafts] = useState({});
@@ -766,7 +790,8 @@ export function KnotsPage({
   const filteredKnots = sortKnots(
     visibleFolderKnots
       .filter((k) => matchesStatusFilter(k.status, statusFilter))
-      .filter((k) => matchesSearchQuery(k, normalizedSearchQuery)),
+      .filter((k) => matchesSearchQuery(k, normalizedSearchQuery))
+      .filter((k) => !onlyFavorites || favorites.has(String(k.id))),
     sortKey,
   );
   const visibleKnots =
@@ -781,7 +806,7 @@ export function KnotsPage({
     (k) => k.status === 'Godkjent',
   ).length;
   const hasActiveFilters =
-    statusFilter !== 'ikke-tatt' || sortKey !== 'standard' || normalizedSearchQuery !== '';
+    statusFilter !== 'ikke-tatt' || sortKey !== 'standard' || normalizedSearchQuery !== '' || onlyFavorites;
   const activeFeedBan =
     currentUserActiveBans.find((b) => b.type === 'feed') ?? null;
   const activeSubmissionBan =
@@ -866,6 +891,7 @@ export function KnotsPage({
       setActiveFolder(resolveKnotFolder(nextFocused) || ALL_KNOTS_FOLDER_ID);
       setStatusFilter('ikke-tatt');
       setSortKey('standard');
+      setOnlyFavorites(false);
       setOpenFormId(null);
       setSheetKnotId(null);
       setHighlightedKnotId(nextFocused.id);
@@ -1220,6 +1246,7 @@ export function KnotsPage({
     setStatusFilter('ikke-tatt');
     setSortKey('standard');
     setSearchQuery('');
+    setOnlyFavorites(false);
   }
 
   function handleDocumentClick(knotId) {
@@ -1352,6 +1379,22 @@ export function KnotsPage({
             {filter.label}
           </button>
         ))}
+        <button
+          type="button"
+          className={`knot-status-pill knot-status-pill--favorites${onlyFavorites ? ' is-active' : ''}`}
+          aria-pressed={onlyFavorites}
+          onClick={() => setOnlyFavorites((current) => !current)}
+          disabled={favorites.size === 0 && !onlyFavorites}
+          aria-label={favorites.size === 0 ? 'Ingen bokmerker ennå' : 'Vis bare bokmerker'}
+          title={favorites.size === 0 ? 'Du har ingen bokmerker ennå' : 'Vis bare bokmerker'}
+        >
+          <Bookmark
+            size={18}
+            strokeWidth={2}
+            fill={onlyFavorites ? 'currentColor' : 'none'}
+            aria-hidden="true"
+          />
+        </button>
       </div>
 
       {/* Feedback & ban banners */}
@@ -1403,9 +1446,11 @@ export function KnotsPage({
           <h3 className="empty-state__title">
             {normalizedSearchQuery
               ? `Ingen knuter matcher «${searchQuery.trim()}»`
-              : statusFilter === 'tatt'
-                ? 'Du har ikke tatt noen knuter ennå'
-                : 'Ingen knuter igjen i denne kategorien'}
+              : onlyFavorites
+                ? 'Ingen bokmerker matcher disse filtrene'
+                : statusFilter === 'tatt'
+                  ? 'Du har ikke tatt noen knuter ennå'
+                  : 'Ingen knuter igjen i denne kategorien'}
           </h3>
           <p className="empty-state__hint">
             {normalizedSearchQuery
@@ -1479,6 +1524,8 @@ export function KnotsPage({
                 activeFeedBan={activeFeedBan}
                 activeSubmissionBan={activeSubmissionBan}
                 focusedRef={knot.id === focusedKnotId ? focusedCardRef : null}
+                isFavorited={isFavorite(knot.id)}
+                onToggleFavorite={toggleFavorite}
                 onDocumentClick={() => handleDocumentClick(knot.id)}
                 onUpdateNote={(note) => updateDraftNote(knot.id, note)}
                 onUpdateMode={(mode) => updateDraftSubmissionMode(knot.id, mode)}
