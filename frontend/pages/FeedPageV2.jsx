@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { MobileVideo } from '../components/MobileVideo.jsx';
+import { BackToTopButton } from '../components/BackToTopButton.jsx';
 import { PostActionsMenu } from '../components/PostActionsMenu.jsx';
 import { PhotoZoomViewer } from '../components/PhotoZoomViewer.jsx';
 import {
@@ -1279,6 +1280,7 @@ function FeedCardMobile({
   onReport,
   onRate,
   ratingError,
+  commentCount = 0,
   feedInteractionsDisabled,
   feedInteractionMessage,
   registerCardRef,
@@ -1380,10 +1382,13 @@ function FeedCardMobile({
                   className="feed-reel-card__comment-inline-button"
                   onClick={() => onOpenComments(entry)}
                   disabled={feedInteractionsDisabled}
-                  aria-label="Apne kommentarer"
+                  aria-label={`Apne kommentarer (${commentCount})`}
                   title="Apne kommentarer"
                 >
-                  {'\u{1F4AC}'}
+                  <span aria-hidden="true">{'\u{1F4AC}'}</span>
+                  {commentCount > 0 ? (
+                    <span className="feed-reel-card__comment-count">{commentCount}</span>
+                  ) : null}
                 </button>
               </div>
             </div>
@@ -2273,6 +2278,11 @@ export function FeedPage({
               onOpenProfile={onOpenProfile}
               onReport={openReportModal}
               onRate={handleRate}
+              commentCount={
+                (commentsBySubmission[String(entry.submissionId)] ?? []).filter(
+                  (c) => !c.deleted,
+                ).length
+              }
               feedInteractionsDisabled={Boolean(activeFeedBan)}
               feedInteractionMessage={feedInteractionMessage}
               registerCardRef={registerCardRef}
@@ -2390,6 +2400,8 @@ export function FeedPage({
           </div>
         </div>
       ) : null}
+
+      {isDesktop ? <BackToTopButton /> : null}
     </div>
   );
 }

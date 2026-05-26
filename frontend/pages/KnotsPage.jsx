@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import {
   ArrowDown,
@@ -6,9 +6,12 @@ import {
   ArrowUpDown,
   Layers,
   Search,
+  Shuffle,
+  Users,
   X,
 } from 'lucide-react';
 import { MobileVideo } from '../components/MobileVideo.jsx';
+import { BackToTopButton } from '../components/BackToTopButton.jsx';
 import {
   BeerBottleIcon,
   HeteroSymbolIcon,
@@ -62,6 +65,24 @@ const SORT_OPTIONS = [
   { value: 'points-desc', label: 'Høyest poeng' },
   { value: 'points-asc', label: 'Lavest poeng' },
 ];
+
+const RANDOM_KNOT_MESSAGES = [
+  'Her har du en skreddersydd knute, søtnos 💛',
+  'Skreddersydd for deg, {name} 🎯',
+  'Knuten jeg synes du skal ta nå, {name} ✨',
+  'Universet sier: ta denne, {name} 🌙',
+  'Plukket spesielt til {name} 🎁',
+  'Slumpen sier: denne, {name}! 🎲',
+  'Tilfeldig — men passer perfekt 💫',
+  'Her kommer din neste utfordring, {name}!',
+];
+
+function pickRandomKnotMessage(name) {
+  const template =
+    RANDOM_KNOT_MESSAGES[Math.floor(Math.random() * RANDOM_KNOT_MESSAGES.length)];
+  const safeName = (name ?? '').trim() || 'du';
+  return template.replace(/\{name\}/g, safeName);
+}
 
 const DIFFICULTY_ORDER = {
   lett: 0,
@@ -481,6 +502,7 @@ function SubmissionFormContent({
 function KnotRow({
   knot,
   isHighlighted,
+  isRandomHighlighted = false,
   isFormOpen,
   isMobile,
   isTourTarget = false,
@@ -490,6 +512,8 @@ function KnotRow({
   activeFeedBan,
   activeSubmissionBan,
   focusedRef,
+  takerCount = 0,
+  showTakerCount = true,
   onDocumentClick,
   onUpdateNote,
   onUpdateMode,
@@ -514,6 +538,7 @@ function KnotRow({
       ref={focusedRef}
       className={`knot-row knot-row--single${isCompletedKnot ? ' is-completed' : ''}${isHighlighted ? ' is-highlighted' : ''}${isFormOpen ? ' is-form-open' : ''}`}
       data-status={getStatusKey(knot.status)}
+      data-knot-id={knot.id}
       data-tour-id={isTourTarget ? 'first-knot' : undefined}
     >
       <div className="knot-row__line">
@@ -526,8 +551,20 @@ function KnotRow({
           {knot.title}
         </span>
         <span className="knot-row__points-badge">{knot.points}p</span>
+        {showTakerCount ? (
+          <span
+            className="knot-row__takers-pill"
+            aria-label={`${takerCount} har tatt denne knuten`}
+            title={`${takerCount} har tatt denne knuten`}
+          >
+            <Users size={12} strokeWidth={2.2} aria-hidden="true" />
+            <span>{takerCount}</span>
+          </span>
+        ) : null}
         {isHighlighted ? (
-          <span className="knot-row__type-badge knot-row__type-badge--today">Dagens</span>
+          <span className="knot-row__type-badge knot-row__type-badge--today">
+            {isRandomHighlighted ? 'Tilfeldig' : 'Dagens'}
+          </span>
         ) : null}
         {isPendingKnot ? (
           <span className="knot-row__type-badge knot-row__type-badge--pending">
@@ -553,6 +590,7 @@ function KnotRow({
           </button>
         ) : null}
       </div>
+
 
       {isFormOpen && !isMobile ? (
         <div className="knot-row__form">
@@ -717,8 +755,10 @@ function KnotActionBar({ documented, total, hasActiveFilters, onResetFilters }) 
 // ─── KnotsPage ────────────────────────────────────────────────────────────────
 
 export function KnotsPage({
+  activityLog = [],
   currentUserActiveBans = [],
   currentUserId = null,
+  currentUserName = '',
   currentUserPoints = 0,
   currentUserStreak = null,
   focusedKnotId,
@@ -726,6 +766,7 @@ export function KnotsPage({
   knuterSettledToken = 0,
   isPageActive = true,
   knots,
+  onShowToast,
   onSubmitKnot,
   submissions = [],
 }) {
@@ -743,6 +784,7 @@ export function KnotsPage({
   const [sheetKnotId, setSheetKnotId] = useState(null);
   const [drafts, setDrafts] = useState({});
   const [highlightedKnotId, setHighlightedKnotId] = useState(null);
+  const [randomHighlightedKnotId, setRandomHighlightedKnotId] = useState(null);
   const [isMobileViewport, setIsMobileViewport] = useState(() => {
     if (typeof window === 'undefined') return false;
     return window.innerWidth <= MOBILE_BREAKPOINT;
@@ -755,6 +797,23 @@ export function KnotsPage({
   const highlightTimeoutRef = useRef(null);
 
   // ── Derived ──────────────────────────────────────────────────────────────
+
+  // Sosial proof: tell unike brukere som har tatt hver knute, basert på activityLog.
+  // ActivityLog mangler knotId, så vi matcher på lowercase title.
+  const takerCountByTitle = useMemo(() => {
+    const idsByTitle = new Map();
+    for (const entry of activityLog ?? []) {
+      const title = String(entry?.knotTitle ?? '').trim().toLowerCase();
+      if (!title || entry?.studentId == null) continue;
+      if (!idsByTitle.has(title)) idsByTitle.set(title, new Set());
+      idsByTitle.get(title).add(entry.studentId);
+    }
+    const result = new Map();
+    for (const [title, ids] of idsByTitle) {
+      result.set(title, ids.size);
+    }
+    return result;
+  }, [activityLog]);
 
   const visibleFolder =
     KNOT_TYPE_FILTERS.find((f) => f.id === activeFolder) ?? KNOT_TYPE_FILTERS[0];
@@ -1222,6 +1281,43 @@ export function KnotsPage({
     setSearchQuery('');
   }
 
+  function handlePickRandomKnot() {
+    const availableInFolder = visibleFolderKnots.filter(
+      (k) => k.status === 'Tilgjengelig',
+    );
+    if (availableInFolder.length === 0) {
+      onShowToast?.(
+        'Ingen ledige knuter i denne mappen — bytt mappe eller fjern filtre.',
+        'info',
+      );
+      return;
+    }
+
+    const pick =
+      availableInFolder[Math.floor(Math.random() * availableInFolder.length)];
+
+    setStatusFilter('ikke-tatt');
+    setSearchQuery('');
+    setRandomHighlightedKnotId(pick.id);
+    if (highlightTimeoutRef.current) {
+      window.clearTimeout(highlightTimeoutRef.current);
+    }
+    highlightTimeoutRef.current = window.setTimeout(() => {
+      setRandomHighlightedKnotId((current) =>
+        current === pick.id ? null : current,
+      );
+    }, 4000);
+
+    window.requestAnimationFrame(() => {
+      const el = document.querySelector(`[data-knot-id="${pick.id}"]`);
+      if (el && typeof el.scrollIntoView === 'function') {
+        el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+    });
+
+    onShowToast?.(pickRandomKnotMessage(currentUserName), 'info');
+  }
+
   function handleDocumentClick(knotId) {
     if (isMobileViewport) {
       setSheetKnotId((current) => {
@@ -1428,6 +1524,15 @@ export function KnotsPage({
           <div className="knot-list__header">
             <button
               type="button"
+              className="knot-list__random-btn"
+              onClick={handlePickRandomKnot}
+              aria-label="Trekk en tilfeldig knute"
+            >
+              <Shuffle size={16} strokeWidth={2.2} aria-hidden="true" />
+              <span>Tilfeldig</span>
+            </button>
+            <button
+              type="button"
               className="knot-list__sort-cycle"
               onClick={() => {
                 const order = ['standard', 'points-desc', 'points-asc'];
@@ -1469,7 +1574,11 @@ export function KnotsPage({
               <KnotRow
                 key={knot.id}
                 knot={knot}
-                isHighlighted={highlightedKnotId === knot.id}
+                isHighlighted={
+                  highlightedKnotId === knot.id ||
+                  randomHighlightedKnotId === knot.id
+                }
+                isRandomHighlighted={randomHighlightedKnotId === knot.id}
                 isFormOpen={openFormId === knot.id}
                 isMobile={isMobileViewport}
                 isTourTarget={knotIndex === 0}
@@ -1479,6 +1588,12 @@ export function KnotsPage({
                 activeFeedBan={activeFeedBan}
                 activeSubmissionBan={activeSubmissionBan}
                 focusedRef={knot.id === focusedKnotId ? focusedCardRef : null}
+                takerCount={
+                  takerCountByTitle.get(
+                    String(knot.title ?? '').trim().toLowerCase(),
+                  ) ?? 0
+                }
+                showTakerCount={resolveKnotFolder(knot) !== 'Sexknuter'}
                 onDocumentClick={() => handleDocumentClick(knot.id)}
                 onUpdateNote={(note) => updateDraftNote(knot.id, note)}
                 onUpdateMode={(mode) => updateDraftSubmissionMode(knot.id, mode)}
@@ -1541,6 +1656,8 @@ export function KnotsPage({
           onResetFilters={handleResetFilters}
         />
       ) : null}
+
+      <BackToTopButton />
     </div>
   );
 }
