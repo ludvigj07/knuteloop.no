@@ -567,6 +567,8 @@ async function drainTranscodeQueue() {
   }
 }
 
+const TRANSCODE_TIMEOUT_MS = 3 * 60 * 1000; // 3 min maks per video
+
 async function transcodeVideoToMp4(inputPath, outputPath) {
   if (!FFMPEG_BINARY) {
     throw new Error(
@@ -583,9 +585,15 @@ async function transcodeVideoToMp4(inputPath, outputPath) {
       '-vcodec', 'h264',
       '-acodec', 'aac',
       '-movflags', '+faststart',
+      // Begrens tråder for å redusere minnebruk (~4x færre buffers)
+      '-threads', '1',
       outputPath,
     ],
-    { windowsHide: true },
+    {
+      windowsHide: true,
+      timeout: TRANSCODE_TIMEOUT_MS,
+      killSignal: 'SIGKILL',
+    },
   );
 }
 
