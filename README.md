@@ -12,7 +12,7 @@ For å starte begge (front end og back end), kjør npm start fra terminal vindue
 
 
 # Server side
-
+ssh root@62.238.11.32
 # 1. Deploy ny kode (gjør git pull + npm ci + build + restart automatisk)
 sudo -u knuteloop /opt/knuteloop/deploy.sh
 
