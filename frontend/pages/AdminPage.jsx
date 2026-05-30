@@ -507,6 +507,16 @@ export function AdminPage({
       count: stats.length,
       note: 'Kort',
     },
+    ...(currentUserIsSuperAdmin
+      ? [
+          {
+            id: 'knute-deltakere',
+            label: 'Knutedeltakere',
+            count: knots?.length ?? 0,
+            note: 'Kun superadmin',
+          },
+        ]
+      : []),
   ];
 
   const reviewFilters = [
@@ -1731,7 +1741,123 @@ export function AdminPage({
           </div>
         </SectionCard>
       ) : null}
+
+      {activeAdminTask === 'knute-deltakere' && currentUserIsSuperAdmin ? (
+        <KnuteDeltakerePanel
+          knots={knots}
+          submissions={submissions}
+          leaders={leaders}
+        />
+      ) : null}
     </div>
+  );
+}
+
+function KnuteDeltakerePanel({ knots = [], submissions = [], leaders = [] }) {
+  const [search, setSearch] = useState('');
+
+  const leaderById = useMemo(() => {
+    const map = new Map();
+    for (const l of leaders) map.set(String(l.id), l);
+    return map;
+  }, [leaders]);
+
+  const approvedByKnotTitle = useMemo(() => {
+    const map = new Map();
+    for (const sub of submissions) {
+      if (sub.status !== 'Godkjent') continue;
+      const title = String(sub.knotTitle ?? '').trim();
+      if (!title) continue;
+      if (!map.has(title)) map.set(title, []);
+      map.get(title).push(sub);
+    }
+    return map;
+  }, [submissions]);
+
+  const normalizedSearch = search.trim().toLowerCase();
+
+  const filteredKnots = useMemo(() => {
+    return [...knots]
+      .sort((a, b) => String(a.title ?? '').localeCompare(String(b.title ?? ''), 'nb'))
+      .filter((k) => {
+        if (!normalizedSearch) return true;
+        return String(k.title ?? '').toLowerCase().includes(normalizedSearch);
+      });
+  }, [knots, normalizedSearch]);
+
+  return (
+    <SectionCard
+      title="Knutedeltakere"
+      description="Oversikt over hvem som har tatt hvilke knuter. Kun synlig for superadmin."
+    >
+      <div style={{ marginBottom: '12px' }}>
+        <input
+          type="search"
+          className="text-input"
+          placeholder="Søk etter knutenavn…"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          style={{ width: '100%', maxWidth: '360px' }}
+        />
+      </div>
+      <div className="stack-layout" style={{ gap: '12px' }}>
+        {filteredKnots.map((knot) => {
+          const subs = approvedByKnotTitle.get(String(knot.title ?? '').trim()) ?? [];
+          return (
+            <div
+              key={knot.id}
+              style={{
+                background: 'var(--card, #fff)',
+                border: '1px solid rgba(26,37,64,0.12)',
+                borderRadius: '10px',
+                padding: '12px 14px',
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: subs.length ? '8px' : 0 }}>
+                <strong style={{ flex: 1 }}>{knot.title}</strong>
+                <span
+                  style={{
+                    background: subs.length ? '#e8f5e9' : 'rgba(26,37,64,0.06)',
+                    color: subs.length ? '#2e7d32' : 'rgba(26,37,64,0.5)',
+                    borderRadius: '999px',
+                    padding: '2px 10px',
+                    fontSize: '0.8rem',
+                    fontWeight: 700,
+                  }}
+                >
+                  {subs.length} tatt
+                </span>
+              </div>
+              {subs.length > 0 ? (
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+                  {subs.map((sub) => {
+                    const leader = leaderById.get(String(sub.leaderId));
+                    const name = leader?.russName || leader?.name || `Bruker ${sub.leaderId}`;
+                    const cls = leader?.className ? ` (${leader.className})` : '';
+                    return (
+                      <span
+                        key={sub.id ?? sub.leaderId}
+                        style={{
+                          background: 'rgba(26,37,64,0.06)',
+                          borderRadius: '999px',
+                          padding: '3px 10px',
+                          fontSize: '0.82rem',
+                        }}
+                      >
+                        {name}{cls}
+                      </span>
+                    );
+                  })}
+                </div>
+              ) : null}
+            </div>
+          );
+        })}
+        {filteredKnots.length === 0 ? (
+          <p style={{ color: 'rgba(26,37,64,0.5)' }}>Ingen knuter matcher søket.</p>
+        ) : null}
+      </div>
+    </SectionCard>
   );
 }
 
