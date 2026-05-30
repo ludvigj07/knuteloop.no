@@ -1154,6 +1154,7 @@ function App() {
       onReviewReport: handleReviewReport,
       onReviewSubmission: handleReviewSubmission,
       onSelectProfile: handleOpenProfile,
+      onShowToast: showToast,
       onSubmitKnot: handleSubmitKnot,
       onUpdateKnotPoints: handleUpdateKnotPoints,
       onUpdateProfile: handleUpdateProfile,
