@@ -1753,8 +1753,83 @@ export function AdminPage({
   );
 }
 
+function SubmissionDocModal({ sub, leaderName, onClose }) {
+  const hasImage = Boolean(sub.imagePreviewUrl);
+  const hasVideo = Boolean(sub.videoPreviewUrl);
+
+  useEffect(() => {
+    function onKey(e) { if (e.key === 'Escape') onClose(); }
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [onClose]);
+
+  return (
+    <div
+      style={{
+        position: 'fixed', inset: 0, zIndex: 200,
+        background: 'rgba(0,0,0,0.6)',
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        padding: '16px',
+      }}
+      onClick={onClose}
+    >
+      <div
+        style={{
+          background: '#fff', borderRadius: '14px',
+          maxWidth: '480px', width: '100%',
+          maxHeight: '90vh', overflowY: 'auto',
+          padding: '20px',
+          boxShadow: '0 20px 60px rgba(0,0,0,0.3)',
+        }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '12px' }}>
+          <div>
+            <strong style={{ fontSize: '1rem' }}>{leaderName}</strong>
+            <p style={{ margin: '2px 0 0', fontSize: '0.85rem', color: 'rgba(26,37,64,0.55)' }}>
+              {sub.knotTitle} · {sub.submittedAt}
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '1.4rem', lineHeight: 1, padding: '0 0 0 12px' }}
+            aria-label="Lukk"
+          >
+            ×
+          </button>
+        </div>
+
+        {hasVideo ? (
+          <video
+            src={sub.videoPreviewUrl}
+            controls
+            playsInline
+            style={{ width: '100%', borderRadius: '8px', background: '#000', maxHeight: '320px' }}
+          />
+        ) : hasImage ? (
+          <img
+            src={sub.imagePreviewUrl}
+            alt="Dokumentasjon"
+            style={{ width: '100%', borderRadius: '8px', objectFit: 'contain', maxHeight: '320px' }}
+          />
+        ) : (
+          <p style={{ color: 'rgba(26,37,64,0.5)', fontStyle: 'italic' }}>Ingen bilder eller video levert inn.</p>
+        )}
+
+        {sub.note ? (
+          <p style={{ marginTop: '12px', fontSize: '0.9rem', background: 'rgba(26,37,64,0.04)', borderRadius: '8px', padding: '10px 12px' }}>
+            {sub.note}
+          </p>
+        ) : null}
+      </div>
+    </div>
+  );
+}
+
 function KnuteDeltakerePanel({ knots = [], submissions = [], leaders = [] }) {
   const [search, setSearch] = useState('');
+  const [selectedSub, setSelectedSub] = useState(null);
 
   const leaderById = useMemo(() => {
     const map = new Map();
@@ -1785,10 +1860,25 @@ function KnuteDeltakerePanel({ knots = [], submissions = [], leaders = [] }) {
       });
   }, [knots, normalizedSearch]);
 
+  const selectedLeaderName = selectedSub
+    ? (() => {
+        const l = leaderById.get(String(selectedSub.leaderId));
+        return l?.russName || l?.name || `Bruker ${selectedSub.leaderId}`;
+      })()
+    : '';
+
   return (
+    <>
+      {selectedSub ? (
+        <SubmissionDocModal
+          sub={selectedSub}
+          leaderName={selectedLeaderName}
+          onClose={() => setSelectedSub(null)}
+        />
+      ) : null}
     <SectionCard
       title="Knutedeltakere"
-      description="Oversikt over hvem som har tatt hvilke knuter. Kun synlig for superadmin."
+      description="Oversikt over hvem som har tatt hvilke knuter. Klikk på et navn for å se dokumentasjonen."
     >
       <div style={{ marginBottom: '12px' }}>
         <input
@@ -1834,18 +1924,26 @@ function KnuteDeltakerePanel({ knots = [], submissions = [], leaders = [] }) {
                     const leader = leaderById.get(String(sub.leaderId));
                     const name = leader?.russName || leader?.name || `Bruker ${sub.leaderId}`;
                     const cls = leader?.className ? ` (${leader.className})` : '';
+                    const hasMedia = Boolean(sub.imagePreviewUrl || sub.videoPreviewUrl);
                     return (
-                      <span
+                      <button
                         key={sub.id ?? sub.leaderId}
+                        type="button"
+                        onClick={() => setSelectedSub(sub)}
+                        title={hasMedia ? 'Klikk for å se dokumentasjon' : 'Ingen media levert inn'}
                         style={{
-                          background: 'rgba(26,37,64,0.06)',
+                          background: hasMedia ? 'rgba(26,37,64,0.08)' : 'rgba(26,37,64,0.04)',
+                          border: 'none',
                           borderRadius: '999px',
-                          padding: '3px 10px',
+                          padding: '4px 12px',
                           fontSize: '0.82rem',
+                          cursor: 'pointer',
+                          textDecoration: hasMedia ? 'underline dotted' : 'none',
+                          color: 'inherit',
                         }}
                       >
                         {name}{cls}
-                      </span>
+                      </button>
                     );
                   })}
                 </div>
@@ -1858,6 +1956,7 @@ function KnuteDeltakerePanel({ knots = [], submissions = [], leaders = [] }) {
         ) : null}
       </div>
     </SectionCard>
+    </>
   );
 }
 
