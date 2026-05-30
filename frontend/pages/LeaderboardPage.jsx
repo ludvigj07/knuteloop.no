@@ -270,11 +270,20 @@ export function LeaderboardPage({
                   <article
                     key={leader.id}
                     ref={leader.id === currentUserId ? currentLeaderRef : null}
-                    className={`leaderboard-row leaderboard-row--player ${getPodiumRowClass(
+                    className={`leaderboard-row leaderboard-row--player is-clickable ${getPodiumRowClass(
                       leader.rank,
                     )} ${
                       leader.id === currentUserId ? 'leaderboard-row--self' : ''
                     }`}
+                    role="button"
+                    tabIndex={0}
+                    onClick={() => onOpenProfile?.(leader.id)}
+                    onKeyDown={(event) => {
+                      if (event.key === 'Enter' || event.key === ' ') {
+                        event.preventDefault();
+                        onOpenProfile?.(leader.id);
+                      }
+                    }}
                   >
                     <div
                       className={`leaderboard-row__rank ${getRankToneClass(leader.rank)}`}
@@ -397,11 +406,20 @@ export function LeaderboardPage({
                   selectedClassIndividualEntries.map((leader) => (
                     <article
                       key={`${classIndividualFilter}-${leader.id}`}
-                      className={`leaderboard-row leaderboard-row--player ${getPodiumRowClass(
+                      className={`leaderboard-row leaderboard-row--player is-clickable ${getPodiumRowClass(
                         leader.classRank,
                       )} ${
                         leader.id === currentUserId ? 'leaderboard-row--self' : ''
                       }`}
+                      role="button"
+                      tabIndex={0}
+                      onClick={() => onOpenProfile?.(leader.id)}
+                      onKeyDown={(event) => {
+                        if (event.key === 'Enter' || event.key === ' ') {
+                          event.preventDefault();
+                          onOpenProfile?.(leader.id);
+                        }
+                      }}
                     >
                       <div
                         className={`leaderboard-row__rank ${getRankToneClass(leader.classRank)}`}

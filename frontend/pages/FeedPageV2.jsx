@@ -666,7 +666,34 @@ function CommentAvatar({ comment, size = 'small' }) {
   return <div className={cls}>{comment.authorIcon || comment.authorName?.charAt(0) || '?'}</div>;
 }
 
-function FeedCommentPreview({ comments, onOpenComments, commentCount, isDisabled = false }) {
+function CommentAuthorLink({ comment, onOpenProfile, className = '' }) {
+  const baseClassName = className || 'feed-comment__author-name';
+
+  if (!onOpenProfile || !comment?.authorId) {
+    return <strong className={baseClassName}>{comment?.authorName}</strong>;
+  }
+
+  return (
+    <button
+      type="button"
+      className={`${baseClassName} feed-comment__author-link`}
+      onClick={(event) => {
+        event.stopPropagation();
+        onOpenProfile(comment.authorId);
+      }}
+    >
+      {comment.authorName}
+    </button>
+  );
+}
+
+function FeedCommentPreview({
+  comments,
+  onOpenComments,
+  onOpenProfile,
+  commentCount,
+  isDisabled = false,
+}) {
   const previewComments = comments.filter((c) => !c.deleted).slice(0, 2);
 
   return (
@@ -686,7 +713,12 @@ function FeedCommentPreview({ comments, onOpenComments, commentCount, isDisabled
         <div className="feed-comment-preview__list">
           {previewComments.map((comment) => (
             <p key={comment.id} className="feed-comment-preview__item">
-              <strong>{comment.authorName}</strong> {comment.text}
+              <CommentAuthorLink
+                comment={comment}
+                onOpenProfile={onOpenProfile}
+                className="feed-comment-preview__author"
+              />{' '}
+              {comment.text}
             </p>
           ))}
         </div>
@@ -718,6 +750,7 @@ function CommentItem({
   onCancelReport,
   onConfirmReport,
   onReportReasonChange,
+  onOpenProfile,
   isDisabled,
 }) {
   const isReplying = replyingToId === comment.id;
@@ -731,7 +764,7 @@ function CommentItem({
       <div className="feed-comment__header">
         <CommentAvatar comment={comment} size="small" />
         <div className="feed-comment__author-info">
-          <strong className="feed-comment__author-name">{comment.authorName}</strong>
+          <CommentAuthorLink comment={comment} onOpenProfile={onOpenProfile} />
         </div>
         {!comment.deleted && !isDisabled && !comment.isOwn ? (
           <button
@@ -840,7 +873,7 @@ function CommentItem({
               <div className="feed-comment__header">
                 <CommentAvatar comment={reply} size="xsmall" />
                 <div className="feed-comment__author-info">
-                  <strong className="feed-comment__author-name">{reply.authorName}</strong>
+                  <CommentAuthorLink comment={reply} onOpenProfile={onOpenProfile} />
                 </div>
                 {!reply.deleted && !isDisabled && !reply.isOwn ? (
                   <button
@@ -920,6 +953,7 @@ function FeedCommentSheet({
   onDeleteComment,
   onLikeComment,
   onReportComment,
+  onOpenProfile,
   isDisabled = false,
   disabledReason = '',
 }) {
@@ -1144,6 +1178,7 @@ function FeedCommentSheet({
                 onCancelReport={() => setConfirmReportId(null)}
                 onConfirmReport={handleConfirmReport}
                 onReportReasonChange={setReportReason}
+                onOpenProfile={onOpenProfile}
                 isDisabled={isDisabled}
               />
             ))
@@ -1527,6 +1562,7 @@ function FeedCardDesktop({
             comments={comments}
             commentCount={comments.length}
             onOpenComments={() => onOpenComments(entry)}
+            onOpenProfile={onOpenProfile}
             isDisabled={feedInteractionsDisabled}
           />
 
@@ -2317,6 +2353,7 @@ export function FeedPage({
           onDeleteComment={onDeleteComment}
           onLikeComment={onLikeComment}
           onReportComment={onReportComment}
+          onOpenProfile={onOpenProfile}
           isDisabled={Boolean(activeFeedBan)}
           disabledReason={feedInteractionMessage}
         />
