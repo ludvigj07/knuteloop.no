@@ -13055,18 +13055,21 @@ textarea.text-input:focus {
 
 .knots-page__hero--compact {
   display: flex !important;
-  flex-direction: row !important;
-  align-items: center !important;
-  justify-content: space-between !important;
-  gap: 12px;
-  padding: 12px 16px 8px;
+  flex-direction: column !important;
+  align-items: stretch !important;
+  justify-content: flex-start !important;
+  gap: 8px;
+  padding: 14px 16px 10px;
   margin: 0;
 }
 
 .knots-page__hero--compact .knots-page__title {
-  font-size: 1.4rem;
+  /* Overstyrer blaruss-refresh sin `max-width: 8ch` som ellers wrapper
+     "Hva tar du i dag?" i en smal 3-linjes kolonne ved siden av chipsene. */
+  max-width: none !important;
+  font-size: clamp(2rem, 8vw, 2.8rem) !important;
+  line-height: 1.05 !important;
   margin: 0;
-  flex: 1;
 }
 
 .knots-page__chips {
@@ -13074,6 +13077,7 @@ textarea.text-input:focus {
   align-items: center;
   gap: 6px;
   flex-shrink: 0;
+  justify-content: flex-start;
 }
 
 .knots-page__points-chip {
@@ -13315,6 +13319,80 @@ textarea.text-input:focus {
   overflow: hidden;
   text-overflow: ellipsis;
   min-width: 0;
+}
+
+/* Mobile: tittel til venstre (litt større, klampes til 2 linjer) +
+   en kompakt 2x2-boks med kontrollene til høyre.
+   Layout:
+     ┌──────────────────┬──── 2x2 ────┐
+     │                  │ [20p] [👤0] │
+     │  Tittel her med  │              │
+     │  flere ord       │ [Ta knute] 🔖│
+     └──────────────────┴──────────────┘
+   Grid med 3 kolonner: title spenner rad 1+2 i kol 1; chips fyller
+   kol 2+3 rad 1; take-btn + bokmerke fyller kol 2+3 rad 2.
+   Eventuelle type-badges (Dagens/Sendt inn/Avslått) auto-flyter på
+   en ny rad 3, høyrejustert. */
+.knots-page--mobile .knot-row--single .knot-row__line {
+  display: grid;
+  grid-template-columns: auto auto minmax(0, 1fr) auto auto;
+  column-gap: 6px;
+  row-gap: 4px;
+  align-items: center;
+}
+
+.knots-page--mobile .knot-row--single .knot-row__check {
+  grid-column: 1;
+  grid-row: 1;
+  align-self: start;
+}
+
+.knots-page--mobile .knot-row--single .knot-row__title {
+  grid-column: 1 / span 3;
+  grid-row: 2;
+  font-size: 1.15rem;
+  font-weight: 600;
+  line-height: 1.25;
+  white-space: normal;
+  text-overflow: clip;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  align-self: center;
+}
+
+.knots-page--mobile .knot-row--single .knot-row__points-badge {
+  grid-column: 1;
+  grid-row: 1;
+  justify-self: start;
+}
+
+.knots-page--mobile .knot-row--single .knot-row__takers-pill {
+  grid-column: 2;
+  grid-row: 1;
+  justify-self: start;
+}
+
+.knots-page--mobile .knot-row--single .knot-row__take-btn,
+.knots-page--mobile .knot-row--single .knot-row__taken-label {
+  grid-column: 4;
+  grid-row: 1 / span 2;
+  justify-self: end;
+  align-self: center;
+}
+
+.knots-page--mobile .knot-row--single .knot-row__favorite-btn {
+  grid-column: 5;
+  grid-row: 1 / span 2;
+  justify-self: end;
+  align-self: center;
+}
+
+.knots-page--mobile .knot-row--single .knot-row__type-badge {
+  grid-column: 3;
+  grid-row: 1;
+  justify-self: end;
 }
 
 .knot-row__points-badge {
