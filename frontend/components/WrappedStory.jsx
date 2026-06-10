@@ -45,14 +45,72 @@ const PERSONAS = {
   },
 };
 
-// Egen spydighet per vinnerkategori på kategori-sliden.
+// Tekstvarianter velges deterministisk fra bruker-ID: Per og Pål med
+// identiske tall får ulike formuleringer, men hver bruker ser alltid
+// den samme versjonen sin.
+function pickVariant(seed, salt, variants) {
+  return variants[(seed + salt) % variants.length];
+}
+
+// Egen spydighet per vinnerkategori på kategori-sliden — 2 varianter per.
 const CATEGORY_WIN_QUIPS = {
-  Alkoholknuter: 'Alkohol vant. Sjokk. Leveren din har levert oppsigelse. 🍺',
-  Sexknuter: 'Sex-knuter på topp. Vi sier det ikke til mora di. 😏',
-  'Fordervett-knuter': 'Rampestrek vant, din lille kriminelle. 🙈',
-  Dobbelknuter: 'Dobbel vant. Klarer du i det hele tatt noe alene? 🤝',
-  Generelle: 'Generelle vant. Modig som faen. 🧷',
+  Alkoholknuter: [
+    'Alkohol vant. Sjokk. Leveren din har levert oppsigelse. 🍺',
+    'Alkohol vant. Ingen i loopen er overrasket. Ingen. 🍺',
+  ],
+  Sexknuter: [
+    'Sex-knuter på topp. Vi sier det ikke til mora di. 😏',
+    'Sex-knuter vant. Vi har sett tallene. Vi trenger en prat. 😏',
+  ],
+  'Fordervett-knuter': [
+    'Rampestrek vant, din lille kriminelle. 🙈',
+    'Rampestrek vant. Rektor hadde grått. 🙈',
+  ],
+  Dobbelknuter: [
+    'Dobbel vant. Klarer du i det hele tatt noe alene? 🤝',
+    'Dobbel vant. Separasjonsangst, men du har gjort det til en greie. 🤝',
+  ],
+  Generelle: [
+    'Generelle vant. Modig som faen. 🧷',
+    'Generelle vant. Vanilje — men du eier det. 🧷',
+  ],
 };
+
+const CATEGORY_SUB_VARIANTS = [
+  'Og du vet nøyaktig hvilken kveld som dro opp statistikken.',
+  'Statistikk lyver ikke. Du vet hva du gjorde.',
+];
+
+const RANK_FIRST_VARIANTS = [
+  'Førsteplass. Wow. Helt fantastisk. Kan vi få autograf, sjef? Skal vi ringe NRK? 🙇',
+  'Førsteplass. Gratulerer, eller noe. De andre hater deg litt nå — bare så du vet det.',
+];
+
+const RANK_TOP_VARIANTS = [
+  (pct) =>
+    `Topp ${pct} %. Imponerende — og du har sjekket topplisten oftere enn du innrømmer, det vet vi begge.`,
+  (pct) => `Topp ${pct} %. Flexer du nå? Det kjennes sånn ut. Vi lar deg holde på.`,
+];
+
+const RANK_BOTTOM_VARIANTS = [
+  'Du var «opptatt med andre ting», sant? Vi tror deg. Nesten.',
+  'Noen må være fundamentet i pyramiden. Takk for tjenesten. 🫡',
+];
+
+const BEST_DAY_VARIANTS = [
+  ' Du husker ikke halvparten av den dagen, og det vet du godt.',
+  ' Den dagen kommer til å bli gjenfortalt feil i mange år. Av deg.',
+];
+
+const STREAK_VARIANTS = [
+  'Minst én knute hver eneste dag. Noen har hobbyer — du har et problem. Vi heier på problemet. 🔥',
+  'Hver dag. HVER dag. Disiplinen din er skummel — tenk om du brukte den på skolen. 🔥',
+];
+
+const IMAGES_SUB_VARIANTS = [
+  'minst ett av disse angrer du på. Du vet selv hvilket.',
+  'du kommer til å vise dem til barna dine en dag. Kanskje ikke alle.',
+];
 
 const CONFETTI_COLORS = ['#ffdc68', '#ff7eb6', '#6fe3c1', '#fffaf0', '#2c54a8'];
 
@@ -254,6 +312,7 @@ function buildWrappedStats({
     persona,
     isNightOwl,
     threadTier,
+    seed: Math.abs(Number(currentUserId) || 0),
   };
 }
 
@@ -327,34 +386,49 @@ function buildSlides(stats) {
 }
 
 function totalSlideCopy(stats) {
-  const { totalCount } = stats;
+  const { totalCount, seed } = stats;
   if (totalCount === 0) {
     return {
       headline: 'Null knuter.',
-      sub: 'Null, faen. Appen funker — vi har sjekket tre ganger. Du åpnet den bare for å «se litt», sant? Klassisk deg.',
+      sub: pickVariant(seed, 1, [
+        'Null, faen. Appen funker — vi har sjekket tre ganger. Du åpnet den bare for å «se litt», sant? Klassisk deg.',
+        'Ikke én. Vi hadde en hel animasjon klar og alt. Skuffende — men på en imponerende måte.',
+      ]),
     };
   }
   if (totalCount <= 2) {
     return {
       headline: totalCount === 1 ? '1 knute!' : '2 knuter!',
-      sub: 'Kvalitet over kvantitet, sant? Si det høyt nok mange ganger, så blir det kanskje sant, kompis.',
+      sub: pickVariant(seed, 2, [
+        'Kvalitet over kvantitet, sant? Si det høyt nok mange ganger, så blir det kanskje sant, kompis.',
+        'Du smakte på det. Som å gå på treningssenter én gang i januar. Vi ser deg.',
+      ]),
     };
   }
   if (totalCount >= 25) {
     return {
       headline: `${totalCount} knuter?!`,
-      sub: 'Hvem faen har oppdratt deg? Imponerende og bekymringsverdig i nøyaktig lik mengde.',
+      sub: pickVariant(seed, 3, [
+        'Hvem faen har oppdratt deg? Imponerende og bekymringsverdig i nøyaktig lik mengde.',
+        'Vi måtte dobbeltsjekke at det ikke var en bug. Det var ikke en bug. Du er buggen.',
+      ]),
     };
   }
   if (totalCount >= 10) {
     return {
       headline: `${totalCount} knuter!`,
-      sub: 'Solid, gærning. Du sa «bare én til» minst seks ganger i vår. Vi vet det. Du vet det.',
+      sub: pickVariant(seed, 4, [
+        'Solid, gærning. Du sa «bare én til» minst seks ganger i vår. Vi vet det. Du vet det.',
+        'Imponerende innsats fra en som «egentlig ikke brydde seg så mye om knuter». Jaja.',
+      ]),
     };
   }
   return {
     headline: `${totalCount} knuter!`,
-    sub: 'Helt midt på treet. Som en 4-er i gym. Og vi SÅ deg scrolle i knutelista kl. 23 uten å sende inn noe, klovn.',
+    sub: pickVariant(seed, 5, [
+      'Helt midt på treet. Som en 4-er i gym. Og vi SÅ deg scrolle i knutelista kl. 23 uten å sende inn noe, klovn.',
+      'Solid mellomklasse. Ikke flaut, ikke imponerende — bare veldig, veldig deg.',
+    ]),
   };
 }
 
@@ -561,10 +635,10 @@ export function WrappedStory({
             <h2 className="ws-headline">av {stats.totalUsers} i loopen</h2>
             <p className="ws-sub">
               {stats.rank === 1
-                ? 'Førsteplass. Wow. Helt fantastisk. Kan vi få autograf, sjef? Skal vi ringe NRK? 🙇'
+                ? pickVariant(stats.seed, 6, RANK_FIRST_VARIANTS)
                 : stats.topPercent && stats.topPercent <= 50
-                  ? `Topp ${stats.topPercent} %. Imponerende — og du har sjekket topplisten oftere enn du innrømmer, det vet vi begge.`
-                  : 'Du var «opptatt med andre ting», sant? Vi tror deg. Nesten.'}
+                  ? pickVariant(stats.seed, 7, RANK_TOP_VARIANTS)(stats.topPercent)
+                  : pickVariant(stats.seed, 8, RANK_BOTTOM_VARIANTS)}
             </p>
           </>
         );
@@ -576,7 +650,9 @@ export function WrappedStory({
           <>
             <p className="ws-eyebrow">Dine kategorier</p>
             <h2 className="ws-headline">
-              {CATEGORY_WIN_QUIPS[winner.folder] ?? `${winner.label}-knuter vant! 🏆`}
+              {CATEGORY_WIN_QUIPS[winner.folder]
+                ? pickVariant(stats.seed, 9, CATEGORY_WIN_QUIPS[winner.folder])
+                : `${winner.label}-knuter vant! 🏆`}
             </h2>
             <div className="ws-bars">
               {stats.categories.slice(0, 5).map((category, position) => (
@@ -596,7 +672,7 @@ export function WrappedStory({
               ))}
             </div>
             <p className="ws-sub ws-sub--small">
-              Og du vet nøyaktig hvilken kveld som dro opp statistikken.
+              {pickVariant(stats.seed, 10, CATEGORY_SUB_VARIANTS)}
             </p>
           </>
         );
@@ -614,7 +690,7 @@ export function WrappedStory({
               Siste registrering: {stats.bestDay.timeLabel}.
               {stats.isNightOwl
                 ? ' Og det var ikke et unntak — du er en sertifisert nattugle. Søvn er visst for de svake 🦉'
-                : ' Du husker ikke halvparten av den dagen, og det vet du godt.'}
+                : pickVariant(stats.seed, 11, BEST_DAY_VARIANTS)}
             </p>
           </>
         );
@@ -630,8 +706,7 @@ export function WrappedStory({
               {stats.longestStreak} dager i strekk!
             </h2>
             <p className="ws-sub">
-              Minst én knute hver eneste dag. Noen har hobbyer — du har et
-              problem. Vi heier på problemet. 🔥
+              {pickVariant(stats.seed, 12, STREAK_VARIANTS)}
             </p>
           </>
         );
@@ -658,9 +733,7 @@ export function WrappedStory({
               ))}
             </div>
             <p className="ws-sub ws-sub--small">
-              {remaining > 0
-                ? `+ ${remaining} til. Kun synlig for deg — og minst ett av disse angrer du på. Du vet selv hvilket.`
-                : 'Kun synlig for deg — og minst ett av disse angrer du på. Du vet selv hvilket.'}
+              {`${remaining > 0 ? `+ ${remaining} til. ` : ''}Kun synlig for deg — og ${pickVariant(stats.seed, 13, IMAGES_SUB_VARIANTS)}`}
             </p>
           </>
         );
