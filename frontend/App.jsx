@@ -6,6 +6,7 @@ import './styles/blaruss-refresh.css';
 import './styles/admin-mobile.css';
 import './styles/mobile-polish.css';
 import './styles/admin-density.css';
+import './styles/wrapped.css';
 import { AchievementCelebration } from './components/AchievementCelebration.jsx';
 import { ConfettiBurst } from './components/ConfettiBurst.jsx';
 import { LiveOnboarding } from './components/LiveOnboarding.jsx';
@@ -14,6 +15,7 @@ import { RankUpToast } from './components/RankUpToast.jsx';
 import { SettingsModal } from './components/SettingsModal.jsx';
 import { SwipeTabsShell } from './components/SwipeTabsShell.jsx';
 import { Toast } from './components/Toast.jsx';
+import { WrappedStory } from './components/WrappedStory.jsx';
 import { useIdleAnimation } from './lib/useIdleAnimation.js';
 import { playDing, playSwoosh, playTick, isSoundsMuted, setSoundsMuted } from './lib/sounds.js';
 import {
@@ -141,6 +143,7 @@ function App() {
   const [appError, setAppError] = useState('');
   const [isOnboardingOpen, setIsOnboardingOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [isWrappedOpen, setIsWrappedOpen] = useState(false);
 
   // Idle easter egg: wobble the Knuter tab icon after 30s of no input.
   useIdleAnimation(() => {
@@ -1180,6 +1183,7 @@ function App() {
           leaders={displayLeaders}
           onOpenDailyKnot={handleOpenDailyKnot}
           onOpenProfile={handleOpenProfile}
+          onOpenWrapped={() => setIsWrappedOpen(true)}
         />
       );
     } else if (page.id === 'knuter') {
@@ -1350,6 +1354,17 @@ function App() {
           onClose={() => setPendingRankUp(null)}
         />
         <PwaInstallPrompt />
+        {isWrappedOpen ? (
+          <WrappedStory
+            onClose={() => setIsWrappedOpen(false)}
+            currentUserId={currentUser.leaderId}
+            displayName={currentProfile?.russName ?? currentUser.name ?? ''}
+            submissions={submissions}
+            knots={knots}
+            activityLog={activityLog}
+            leaderboard={displayLeaders}
+          />
+        ) : null}
       </div>
     </div>
   );

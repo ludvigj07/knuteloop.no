@@ -256,6 +256,7 @@ export function DashboardPage({
   leaders,
   onOpenDailyKnot,
   onOpenProfile,
+  onOpenWrapped,
 }) {
   const currentLeader =
     dashboard.currentLeader ?? leaders.find((l) => l.id === currentUserId);
@@ -387,6 +388,22 @@ export function DashboardPage({
           <span className="db-hero__progress-label">{nextRankNote}</span>
         </div>
       </section>
+
+      {/* ══ 1b. KNUTELOOP WRAPPED ════════════════════════════════════════════ */}
+      {onOpenWrapped ? (
+        <button
+          type="button"
+          className="db-wrapped-card"
+          onClick={onOpenWrapped}
+        >
+          <span className="db-wrapped-card__emoji" aria-hidden="true">🪢</span>
+          <span className="db-wrapped-card__copy">
+            <strong>Din Knuteloop Wrapped er klar!</strong>
+            <span>Russetiden 2026 oppsummert — bare for deg</span>
+          </span>
+          <span className="db-wrapped-card__cta">Se den →</span>
+        </button>
+      ) : null}
 
       {/* ══ 2. DAGENS KNUTE — kompakt stripe ═════════════════════════════════ */}
       {dailyKnot ? (
