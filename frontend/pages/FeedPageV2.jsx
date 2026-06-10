@@ -656,6 +656,17 @@ function FeedProfileAvatar({ entry }) {
           alt={entry.isAnonymous ? 'Anonym profilbilde' : `${entry.studentName} profilbilde`}
           loading="lazy"
           decoding="async"
+          onError={(event) => {
+            // Thumb-URL-en utledes på serveren uten å sjekke at filen finnes
+            // (opplastinger fra før thumb-generering mangler den). Fall
+            // tilbake til originalbildet — men bare én gang, så et bilde som
+            // mangler helt ikke gir en evig feil-løkke.
+            const fallback = entry.isAnonymous ? '' : entry.studentPhotoUrl;
+            if (fallback && !event.currentTarget.dataset.fellBack) {
+              event.currentTarget.dataset.fellBack = 'true';
+              event.currentTarget.src = fallback;
+            }
+          }}
         />
       </div>
     );
@@ -1738,6 +1749,26 @@ export function FeedPage({
       ),
     [activityLog],
   );
+
+  // Feeden er levende: bakgrunns-refreshen legger nye innlegg øverst, slik at
+  // indeksen til kortet brukeren ser på forskyves. Siden hydrerings- og
+  // videovinduet er indeksbasert, må activeMobileIndex remappes til samme
+  // submissionId i samme render — ellers kan kortet brukeren ser på falle ut
+  // av vinduet og få videoen sin avmontert midt i avspillingen.
+  const [prevFeedEntries, setPrevFeedEntries] = useState(feedEntries);
+  if (prevFeedEntries !== feedEntries) {
+    setPrevFeedEntries(feedEntries);
+    const previousActive = prevFeedEntries[activeMobileIndex];
+    if (previousActive?.submissionId != null) {
+      const nextIndex = feedEntries.findIndex(
+        (candidate) =>
+          String(candidate.submissionId) === String(previousActive.submissionId),
+      );
+      if (nextIndex !== -1 && nextIndex !== activeMobileIndex) {
+        setActiveMobileIndex(nextIndex);
+      }
+    }
+  }
 
   useEffect(() => {
     if (!isDesktop) {
