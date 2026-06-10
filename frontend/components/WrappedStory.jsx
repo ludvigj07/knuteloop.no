@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { resolveKnotFolder } from '../data/knotFolders.js';
 
 const SLIDE_MS = 7000;
@@ -401,8 +402,11 @@ export function WrappedStory({
   const slides = useMemo(() => buildSlides(stats), [stats]);
 
   const [index, setIndex] = useState(0);
+  const [isPaused, setIsPaused] = useState(false);
   const indexRef = useRef(0);
   indexRef.current = index;
+  const remainingMsRef = useRef(SLIDE_MS);
+  const holdStartRef = useRef(0);
   const isLast = index === slides.length - 1;
 
   function goTo(nextIndex) {
@@ -418,15 +422,47 @@ export function WrappedStory({
     };
   }, []);
 
-  // Automatisk fremdrift — stopper på siste slide.
+  // Ny slide = full tid på klokka igjen.
   useEffect(() => {
-    if (isLast || prefersReducedMotion()) return undefined;
+    remainingMsRef.current = SLIDE_MS;
+  }, [index]);
+
+  // Automatisk fremdrift — stopper på siste slide, og fryser når brukeren
+  // holder fingeren på skjermen (resttiden huskes mellom pauser).
+  useEffect(() => {
+    if (isLast || isPaused || prefersReducedMotion()) return undefined;
+    const startedAt = Date.now();
     const timer = window.setTimeout(() => {
       goTo(indexRef.current + 1);
-    }, SLIDE_MS);
-    return () => window.clearTimeout(timer);
+    }, remainingMsRef.current);
+    return () => {
+      window.clearTimeout(timer);
+      remainingMsRef.current = Math.max(
+        0,
+        remainingMsRef.current - (Date.now() - startedAt),
+      );
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [index, isLast, slides.length]);
+  }, [index, isPaused, isLast, slides.length]);
+
+  // Hold-for-pause: pek ned fryser, slipp gjenopptar. Et kort trykk
+  // (<250 ms) teller som blading i stedet.
+  function handleHoldStart() {
+    holdStartRef.current = Date.now();
+    setIsPaused(true);
+  }
+
+  function handleHoldEnd(navigateDelta) {
+    setIsPaused(false);
+    const heldMs = Date.now() - holdStartRef.current;
+    if (heldMs < 250 && navigateDelta !== 0) {
+      goTo(indexRef.current + navigateDelta);
+    }
+  }
+
+  function handleHoldCancel() {
+    setIsPaused(false);
+  }
 
   useEffect(() => {
     function onKeyDown(event) {
@@ -533,7 +569,7 @@ export function WrappedStory({
               Siste registrering: {stats.bestDay.timeLabel}.
               {stats.isNightOwl
                 ? ' Og det var ikke et unntak — du er en sertifisert nattugle. Søvn er visst for de svake 🦉'
-                : ' Du husker ikke halvparten av den dagen, og det vet du godt. Foreldrene dine tror fortsatt du var «hos en venn».'}
+                : ' Du husker ikke halvparten av den dagen, og det vet du godt.'}
             </p>
           </>
         );
@@ -672,10 +708,21 @@ export function WrappedStory({
     }
   }
 
-  return (
-    <div className="wrapped-story" role="dialog" aria-modal="true" aria-label="Knuteloop Wrapped">
+  // Portal til document.body — garanterer ekte fullskjerm uansett hvilke
+  // transforms/filtre forfedre i appen måtte ha (fixed-positioning-fella).
+  return createPortal(
+    <div
+      className="wrapped-story"
+      role="dialog"
+      aria-modal="true"
+      aria-label="Knuteloop Wrapped"
+      onContextMenu={(event) => event.preventDefault()}
+    >
       <div className="ws-stage">
-        <div className="ws-progress" aria-hidden="true">
+        <div
+          className={`ws-progress${isPaused ? ' is-paused' : ''}`}
+          aria-hidden="true"
+        >
           {slides.map((item, position) => (
             <span
               key={`${item.id}-${position === index ? 'active' : 'idle'}`}
@@ -693,7 +740,10 @@ export function WrappedStory({
           ✕
         </button>
 
-        <section key={slide.id} className={`ws-slide ws-slide--${slide.tone}`}>
+        <section
+          key={slide.id}
+          className={`ws-slide ws-slide--${slide.tone}${isPaused ? ' is-paused' : ''}`}
+        >
           {renderSlide()}
         </section>
 
@@ -702,18 +752,27 @@ export function WrappedStory({
         <button
           type="button"
           className="ws-tap ws-tap--left"
-          onClick={() => goTo(index - 1)}
+          onPointerDown={handleHoldStart}
+          onPointerUp={() => handleHoldEnd(-1)}
+          onPointerLeave={handleHoldCancel}
+          onPointerCancel={handleHoldCancel}
           aria-label="Forrige slide"
         />
         <button
           type="button"
           className="ws-tap ws-tap--right"
-          onClick={() => goTo(index + 1)}
+          onPointerDown={handleHoldStart}
+          onPointerUp={() => handleHoldEnd(1)}
+          onPointerLeave={handleHoldCancel}
+          onPointerCancel={handleHoldCancel}
           aria-label="Neste slide"
         />
 
-        {index === 0 ? <p className="ws-hint">Trykk for å bla videre</p> : null}
+        {index === 0 ? (
+          <p className="ws-hint">Trykk for å bla · hold for pause</p>
+        ) : null}
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }
