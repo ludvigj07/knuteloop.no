@@ -15,42 +15,42 @@ const PERSONAS = {
   Alkoholknuter: {
     emoji: '🍻',
     name: 'Festgeneralen',
-    text: 'Der det skjedde noe, var du. Der du var, skjedde det noe. Loopen husker alt — dessverre for deg.',
+    text: 'Der det skjedde noe, var du. Tilfeldig? Aldri. Du har minst én historie fra i vår som starter med «ok, men du kan IKKE si det videre». Loopen vet uansett.',
   },
   Sexknuter: {
     emoji: '😏',
     name: 'Sjarmøren',
-    text: 'Vi sier ikke mer enn tallene gjør. Og tallene sier MYE.',
+    text: 'Vi sier ikke mer enn tallene gjør — men tallene skriker, kompis. Og den personen du tenker på akkurat nå? De vet det godt.',
   },
   'Fordervett-knuter': {
     emoji: '🦊',
     name: 'Kaosreven',
-    text: 'Rampestrek etter rampestrek. Statistisk sett burde du vært utvist. Imponerende.',
+    text: 'Statistisk sett burde du vært utvist. Sosialt sett er du legenden folk kommer til å lyve om at de kjente. Faens imponerende.',
   },
   Dobbelknuter: {
     emoji: '🤝',
     name: 'Lagspilleren',
-    text: 'Aldri alene om noe. Medskyldig i alt. Vennene dine kan ikke vitne mot deg — de var der selv.',
+    text: 'Aldri alene om noe, medskyldig i alt. Du vet nøyaktig hvem partner-in-crime er — og de tenker på deg når de leser sin.',
   },
   Generelle: {
     emoji: '🧩',
     name: 'Allrounderen',
-    text: 'Litt av alt, og alt litt bedre enn de andre. Irriterende, egentlig.',
+    text: 'Litt av alt, og alltid bittelitt bedre enn folk forventet. Irriterende som faen. Ikke slutt.',
   },
   none: {
     emoji: '👻',
     name: 'Mysteriet',
-    text: 'Du var her. Det vet vi. Resten nekter loopen å snakke om.',
+    text: 'Du var her. Det vet vi. Resten nekter loopen å snakke om — og noe sier oss at det er best for alle sånn.',
   },
 };
 
 // Egen spydighet per vinnerkategori på kategori-sliden.
 const CATEGORY_WIN_QUIPS = {
-  Alkoholknuter: 'Alkohol-knuter vant. Sjokk. 🍺',
-  Sexknuter: 'Sex-knuter på topp. Vi dømmer ikke. Litt. 😏',
-  'Fordervett-knuter': 'Rampestrek vant. Håper rektor aldri ser dette. 🙈',
-  Dobbelknuter: 'Dobbel-knuter vant. Du gjør visst ingenting alene. 🤝',
-  Generelle: 'Generelle vant. Trygt. Veldig trygt. 🧷',
+  Alkoholknuter: 'Alkohol vant. Sjokk. Leveren din har levert oppsigelse. 🍺',
+  Sexknuter: 'Sex-knuter på topp. Vi sier det ikke til mora di. 😏',
+  'Fordervett-knuter': 'Rampestrek vant, din lille kriminelle. 🙈',
+  Dobbelknuter: 'Dobbel vant. Klarer du i det hele tatt noe alene? 🤝',
+  Generelle: 'Generelle vant. Modig som faen. 🧷',
 };
 
 const CONFETTI_COLORS = ['#ffdc68', '#ff7eb6', '#6fe3c1', '#fffaf0', '#2c54a8'];
@@ -285,30 +285,30 @@ function totalSlideCopy(stats) {
   if (totalCount === 0) {
     return {
       headline: 'Null knuter.',
-      sub: 'Null. Appen funker, altså — vi har sjekket. Fortsatt tid til å redde æren!',
+      sub: 'Null, faen. Appen funker — vi har sjekket tre ganger. Du åpnet den bare for å «se litt», sant? Klassisk deg.',
     };
   }
   if (totalCount <= 2) {
     return {
       headline: totalCount === 1 ? '1 knute!' : '2 knuter!',
-      sub: 'Kvalitet over kvantitet. Det er det du sier til deg selv, ihvertfall.',
+      sub: 'Kvalitet over kvantitet, sant? Si det høyt nok mange ganger, så blir det kanskje sant, kompis.',
     };
   }
   if (totalCount >= 25) {
     return {
-      headline: `${totalCount} knuter!`,
-      sub: 'Imponerende. Bekymringsverdig, men imponerende.',
+      headline: `${totalCount} knuter?!`,
+      sub: 'Hvem faen har oppdratt deg? Imponerende og bekymringsverdig i nøyaktig lik mengde.',
     };
   }
   if (totalCount >= 10) {
     return {
       headline: `${totalCount} knuter!`,
-      sub: 'Solid. Loopen merket at du var der. Naboene sikkert også.',
+      sub: 'Solid, gærning. Du sa «bare én til» minst seks ganger i vår. Vi vet det. Du vet det.',
     };
   }
   return {
     headline: `${totalCount} knuter!`,
-    sub: 'Helt greit. Som en 4-er i gym.',
+    sub: 'Helt midt på treet. Som en 4-er i gym. Og vi SÅ deg scrolle i knutelista kl. 23 uten å sende inn noe, klovn.',
   };
 }
 
@@ -449,11 +449,11 @@ export function WrappedStory({
             <div className="ws-rope" aria-hidden="true">🪢</div>
             <p className="ws-eyebrow">Russetiden 2026</p>
             <h2 className="ws-headline">
-              Knutene er talt opp{displayName ? `, ${displayName}` : ''}.
+              Ok{displayName ? ` ${displayName}` : ''}. Vi må snakke.
             </h2>
             <p className="ws-sub">
-              Vi har sett i loopen din. Du kan ikke slette historikken her,
-              kompis. 👀
+              Vi har gått gjennom loopen din. Alt sammen. Du vet godt hva som
+              kommer nå — og nei, du kan ikke slette historikken. 👀
             </p>
           </>
         );
@@ -479,9 +479,11 @@ export function WrappedStory({
             <div className="ws-big">#{stats.rank}</div>
             <h2 className="ws-headline">av {stats.totalUsers} i loopen</h2>
             <p className="ws-sub">
-              {stats.topPercent && stats.topPercent <= 50
-                ? `Topp ${stats.topPercent} %. Ok, flexer du nå, eller?`
-                : '«Det viktigste er å delta.» Sa ingen russ noensinne. Men du, altså.'}
+              {stats.rank === 1
+                ? 'Førsteplass. Wow. Helt fantastisk. Kan vi få autograf, sjef? Skal vi ringe NRK? 🙇'
+                : stats.topPercent && stats.topPercent <= 50
+                  ? `Topp ${stats.topPercent} %. Imponerende — og du har sjekket topplisten oftere enn du innrømmer, det vet vi begge.`
+                  : 'Du var «opptatt med andre ting», sant? Vi tror deg. Nesten.'}
             </p>
           </>
         );
@@ -512,6 +514,9 @@ export function WrappedStory({
                 </div>
               ))}
             </div>
+            <p className="ws-sub ws-sub--small">
+              Og du vet nøyaktig hvilken kveld som dro opp statistikken.
+            </p>
           </>
         );
       }
@@ -522,13 +527,13 @@ export function WrappedStory({
             <p className="ws-eyebrow">Din villeste dag</p>
             <div className="ws-big ws-big--date">{stats.bestDay.label}</div>
             <h2 className="ws-headline">
-              {stats.bestDay.count} knuter på én dag 🤯
+              {stats.bestDay.count} knuter på én dag, din gærning 🤯
             </h2>
             <p className="ws-sub">
               Siste registrering: {stats.bestDay.timeLabel}.
               {stats.isNightOwl
-                ? ' Og det var ikke et unntak — du er en sertifisert nattugle 🦉'
-                : ' Foreldrene dine tror du var «hos en venn».'}
+                ? ' Og det var ikke et unntak — du er en sertifisert nattugle. Søvn er visst for de svake 🦉'
+                : ' Du husker ikke halvparten av den dagen, og det vet du godt. Foreldrene dine tror fortsatt du var «hos en venn».'}
             </p>
           </>
         );
@@ -544,7 +549,8 @@ export function WrappedStory({
               {stats.longestStreak} dager i strekk!
             </h2>
             <p className="ws-sub">
-              Minst én knute hver eneste dag. Noen har hobbyer. Du har dette.
+              Minst én knute hver eneste dag. Noen har hobbyer — du har et
+              problem. Vi heier på problemet. 🔥
             </p>
           </>
         );
@@ -572,8 +578,8 @@ export function WrappedStory({
             </div>
             <p className="ws-sub ws-sub--small">
               {remaining > 0
-                ? `+ ${remaining} til. Kun synlig for deg. Heldigvis.`
-                : 'Kun synlig for deg. Heldigvis.'}
+                ? `+ ${remaining} til. Kun synlig for deg — og minst ett av disse angrer du på. Du vet selv hvilket.`
+                : 'Kun synlig for deg — og minst ett av disse angrer du på. Du vet selv hvilket.'}
             </p>
           </>
         );
@@ -593,6 +599,9 @@ export function WrappedStory({
                 </div>
               ))}
             </div>
+            <p className="ws-sub ws-sub--small">
+              Sau-mentalitet, hele gjengen. Elsker det.
+            </p>
           </>
         );
 
@@ -652,8 +661,8 @@ export function WrappedStory({
               <div className="ws-card-brand">🪢 Knuteloop Wrapped 2026</div>
             </div>
             <p className="ws-sub ws-sub--small">
-              Ta skjermbilde og del i loopen — eller gjem det for alltid. Vi
-              skjønner begge deler. 💛
+              Ta skjermbilde og del i loopen — eller gjem det for alltid,
+              feiging. Vi skjønner begge deler. 💛
             </p>
           </>
         );
