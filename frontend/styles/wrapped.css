@@ -1,0 +1,644 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+   Knuteloop Wrapped — fullskjerms story-visning + inngangskort på dashbordet.
+   Scopet under .wrapped-story / .db-wrapped-card så ingenting lekker ut.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.wrapped-story {
+  position: fixed;
+  inset: 0;
+  z-index: 9600;
+  background: #05080f;
+  display: flex;
+  justify-content: center;
+  font-family: 'Inter', 'Segoe UI', sans-serif;
+  -webkit-tap-highlight-color: transparent;
+  user-select: none;
+}
+
+.wrapped-story .ws-stage {
+  position: relative;
+  width: 100%;
+  max-width: 480px;
+  height: 100vh;
+  height: 100dvh;
+  overflow: hidden;
+}
+
+/* ── Fremdriftsstriper ─────────────────────────────────────────────────── */
+
+.wrapped-story .ws-progress {
+  position: absolute;
+  top: calc(10px + env(safe-area-inset-top, 0px));
+  left: 12px;
+  right: 56px;
+  display: flex;
+  gap: 5px;
+  z-index: 50;
+}
+
+.wrapped-story .ws-progress span {
+  flex: 1;
+  height: 4px;
+  border-radius: 99px;
+  background: rgba(255, 250, 240, 0.25);
+  overflow: hidden;
+  position: relative;
+}
+
+.wrapped-story .ws-progress span::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: #ffdc68;
+  transform: scaleX(0);
+  transform-origin: left;
+}
+
+.wrapped-story .ws-progress span.is-done::after {
+  transform: scaleX(1);
+}
+
+.wrapped-story .ws-progress span.is-active::after {
+  animation: ws-fill 7s linear forwards;
+}
+
+@keyframes ws-fill {
+  to {
+    transform: scaleX(1);
+  }
+}
+
+/* ── Lukkeknapp ────────────────────────────────────────────────────────── */
+
+.wrapped-story .ws-close {
+  position: absolute;
+  top: calc(20px + env(safe-area-inset-top, 0px));
+  right: 10px;
+  z-index: 60;
+  width: 36px;
+  height: 36px;
+  border: none;
+  border-radius: 50%;
+  background: rgba(255, 250, 240, 0.18);
+  color: #fffaf0;
+  font-size: 16px;
+  line-height: 1;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.wrapped-story .ws-close:active {
+  background: rgba(255, 250, 240, 0.32);
+}
+
+/* ── Slides ────────────────────────────────────────────────────────────── */
+
+.wrapped-story .ws-slide {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  text-align: center;
+  padding: calc(64px + env(safe-area-inset-top, 0px)) 26px
+    calc(64px + env(safe-area-inset-bottom, 0px));
+  gap: 14px;
+  color: #fffaf0;
+}
+
+.wrapped-story .ws-slide > * {
+  opacity: 0;
+  animation: ws-pop 0.6s cubic-bezier(0.2, 0.9, 0.3, 1.2) forwards;
+}
+
+.wrapped-story .ws-slide > *:nth-child(1) { animation-delay: 0.1s; }
+.wrapped-story .ws-slide > *:nth-child(2) { animation-delay: 0.45s; }
+.wrapped-story .ws-slide > *:nth-child(3) { animation-delay: 0.8s; }
+.wrapped-story .ws-slide > *:nth-child(4) { animation-delay: 1.15s; }
+.wrapped-story .ws-slide > *:nth-child(5) { animation-delay: 1.5s; }
+
+@keyframes ws-pop {
+  from {
+    opacity: 0;
+    transform: translateY(26px) scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* Bakgrunnstoner */
+.wrapped-story .ws-slide--navy {
+  background: radial-gradient(circle at 20% 15%, #2c54a8 0%, #1f3e7e 45%, #121e3a 100%);
+}
+
+.wrapped-story .ws-slide--gold {
+  background: radial-gradient(circle at 80% 10%, #fff3c4 0%, #ffdc68 40%, #ffc83d 100%);
+  color: #121e3a;
+}
+
+.wrapped-story .ws-slide--pink {
+  background: radial-gradient(circle at 30% 85%, #ff9ecb 0%, #ff7eb6 45%, #b3306f 100%);
+}
+
+.wrapped-story .ws-slide--mint {
+  background: radial-gradient(circle at 75% 20%, #b8ffe9 0%, #6fe3c1 45%, #157a5c 100%);
+  color: #121e3a;
+}
+
+.wrapped-story .ws-slide--night {
+  background: radial-gradient(circle at 50% 0%, #34406e 0%, #121e3a 60%, #05080f 100%);
+}
+
+/* ── Typografi ─────────────────────────────────────────────────────────── */
+
+.wrapped-story .ws-eyebrow {
+  font-family: 'Bricolage Grotesque', 'Inter', 'Segoe UI', sans-serif;
+  font-weight: 700;
+  font-size: 13px;
+  text-transform: uppercase;
+  letter-spacing: 0.18em;
+  color: inherit;
+  opacity: 0.85;
+  margin: 0;
+}
+
+.wrapped-story .ws-big {
+  font-family: 'Bricolage Grotesque', 'Inter', 'Segoe UI', sans-serif;
+  font-weight: 800;
+  font-size: clamp(72px, 26vw, 130px);
+  line-height: 0.95;
+  letter-spacing: -0.03em;
+  color: inherit;
+}
+
+.wrapped-story .ws-big--date {
+  font-size: clamp(48px, 16vw, 86px);
+}
+
+.wrapped-story .ws-headline {
+  font-family: 'Bricolage Grotesque', 'Inter', 'Segoe UI', sans-serif;
+  font-weight: 800;
+  font-size: clamp(26px, 7.5vw, 38px);
+  line-height: 1.12;
+  letter-spacing: -0.03em;
+  color: inherit;
+  margin: 0;
+}
+
+.wrapped-story .ws-sub {
+  font-size: 16px;
+  line-height: 1.5;
+  max-width: 32ch;
+  color: inherit;
+  opacity: 0.92;
+  margin: 0;
+}
+
+.wrapped-story .ws-sub--small {
+  font-size: 13px;
+}
+
+.wrapped-story .ws-rope {
+  font-size: 46px;
+  filter: drop-shadow(0 6px 14px rgba(0, 0, 0, 0.25));
+  animation:
+    ws-pop 0.6s cubic-bezier(0.2, 0.9, 0.3, 1.2) forwards,
+    ws-sway 3s ease-in-out 1.2s infinite;
+}
+
+@keyframes ws-sway {
+  0%, 100% { transform: rotate(-6deg); }
+  50% { transform: rotate(6deg); }
+}
+
+/* ── Kategorisøyler ────────────────────────────────────────────────────── */
+
+.wrapped-story .ws-bars {
+  width: 100%;
+  max-width: 320px;
+  display: grid;
+  gap: 9px;
+  text-align: left;
+}
+
+.wrapped-story .ws-bar-row {
+  display: grid;
+  grid-template-columns: 92px 1fr 30px;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  color: inherit;
+}
+
+.wrapped-story .ws-bar-label,
+.wrapped-story .ws-bar-count {
+  color: inherit;
+}
+
+.wrapped-story .ws-bar-track {
+  height: 14px;
+  border-radius: 99px;
+  background: rgba(18, 30, 58, 0.15);
+  overflow: hidden;
+  display: block;
+}
+
+.wrapped-story .ws-bar-fill {
+  display: block;
+  height: 100%;
+  border-radius: 99px;
+  background: #1f3e7e;
+  transform: scaleX(0);
+  transform-origin: left;
+  animation: ws-grow 0.9s ease-out forwards;
+}
+
+@keyframes ws-grow {
+  to {
+    transform: scaleX(1);
+  }
+}
+
+/* ── Toppliste ─────────────────────────────────────────────────────────── */
+
+.wrapped-story .ws-toplist {
+  width: 100%;
+  max-width: 340px;
+  display: grid;
+  gap: 10px;
+  text-align: left;
+}
+
+.wrapped-story .ws-toplist-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: rgba(18, 30, 58, 0.16);
+  border: 1px solid rgba(18, 30, 58, 0.2);
+  border-radius: 14px;
+  padding: 10px 14px;
+}
+
+.wrapped-story .ws-toplist-rank {
+  font-family: 'Bricolage Grotesque', 'Inter', 'Segoe UI', sans-serif;
+  font-weight: 800;
+  font-size: 21px;
+  width: 26px;
+  flex-shrink: 0;
+  color: #1f3e7e;
+}
+
+.wrapped-story .ws-toplist-name {
+  font-weight: 700;
+  font-size: 14px;
+  line-height: 1.3;
+  flex: 1;
+  color: inherit;
+}
+
+.wrapped-story .ws-toplist-count {
+  font-size: 12px;
+  font-weight: 600;
+  opacity: 0.75;
+  flex-shrink: 0;
+  color: inherit;
+}
+
+/* ── Bildecollage ──────────────────────────────────────────────────────── */
+
+.wrapped-story .ws-collage {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 6px;
+  width: 100%;
+  max-width: 340px;
+}
+
+.wrapped-story .ws-collage img {
+  width: 100%;
+  aspect-ratio: 1;
+  object-fit: cover;
+  border-radius: 12px;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.35);
+  opacity: 0;
+  animation: ws-pop 0.55s cubic-bezier(0.2, 0.9, 0.3, 1.2) forwards;
+}
+
+.wrapped-story .ws-collage img:first-child {
+  grid-column: span 2;
+  grid-row: span 2;
+}
+
+.wrapped-story .ws-collage--single {
+  grid-template-columns: 1fr;
+  max-width: 280px;
+}
+
+.wrapped-story .ws-collage--single img:first-child {
+  grid-column: auto;
+  grid-row: auto;
+}
+
+/* ── Loopens øyeblikk ──────────────────────────────────────────────────── */
+
+.wrapped-story .ws-moment {
+  margin: 0;
+  width: 100%;
+  max-width: 320px;
+  background: rgba(255, 250, 240, 0.12);
+  border: 1px solid rgba(255, 250, 240, 0.2);
+  border-radius: 18px;
+  padding: 10px;
+  display: grid;
+  gap: 10px;
+}
+
+.wrapped-story .ws-moment img {
+  width: 100%;
+  max-height: 320px;
+  object-fit: cover;
+  border-radius: 12px;
+}
+
+.wrapped-story .ws-moment figcaption {
+  display: grid;
+  gap: 2px;
+  text-align: left;
+  padding: 0 6px 6px;
+}
+
+.wrapped-story .ws-moment figcaption strong {
+  font-size: 15px;
+  color: inherit;
+}
+
+.wrapped-story .ws-moment figcaption span {
+  font-size: 13px;
+  opacity: 0.85;
+  color: inherit;
+}
+
+.wrapped-story .ws-moment-stars {
+  font-weight: 700;
+}
+
+/* ── Persona-kort ──────────────────────────────────────────────────────── */
+
+.wrapped-story .ws-card {
+  width: 100%;
+  max-width: 330px;
+  background: #fffaf0;
+  color: #121e3a;
+  border-radius: 22px;
+  padding: 24px 22px;
+  box-shadow: 0 18px 50px rgba(0, 0, 0, 0.45);
+  display: grid;
+  gap: 8px;
+}
+
+.wrapped-story .ws-card-emoji {
+  font-size: 54px;
+  line-height: 1;
+}
+
+.wrapped-story .ws-card-name {
+  font-family: 'Bricolage Grotesque', 'Inter', 'Segoe UI', sans-serif;
+  font-weight: 800;
+  font-size: 30px;
+  letter-spacing: -0.03em;
+  color: #1f3e7e;
+}
+
+.wrapped-story .ws-card-text {
+  font-size: 14px;
+  line-height: 1.5;
+  color: #121e3a;
+  margin: 0;
+}
+
+.wrapped-story .ws-card-badge {
+  font-size: 12px;
+  font-weight: 700;
+  color: #1f3e7e;
+  margin: 0;
+}
+
+.wrapped-story .ws-card-stats {
+  display: flex;
+  justify-content: space-around;
+  margin-top: 8px;
+  padding-top: 14px;
+  border-top: 2px dashed rgba(31, 62, 126, 0.25);
+}
+
+.wrapped-story .ws-card-stats div {
+  display: grid;
+  gap: 2px;
+}
+
+.wrapped-story .ws-card-stats strong {
+  font-family: 'Bricolage Grotesque', 'Inter', 'Segoe UI', sans-serif;
+  font-size: 21px;
+  color: #1f3e7e;
+}
+
+.wrapped-story .ws-card-stats small {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: rgba(18, 30, 58, 0.7);
+}
+
+.wrapped-story .ws-card-brand {
+  margin-top: 10px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: rgba(31, 62, 126, 0.65);
+}
+
+/* ── Tap-soner og hint ─────────────────────────────────────────────────── */
+
+.wrapped-story .ws-tap {
+  position: absolute;
+  top: 70px;
+  bottom: 0;
+  border: none;
+  background: transparent;
+  padding: 0;
+  z-index: 30;
+  cursor: pointer;
+}
+
+.wrapped-story .ws-tap--left {
+  left: 0;
+  width: 35%;
+}
+
+.wrapped-story .ws-tap--right {
+  right: 0;
+  width: 65%;
+}
+
+.wrapped-story .ws-hint {
+  position: absolute;
+  bottom: calc(16px + env(safe-area-inset-bottom, 0px));
+  left: 0;
+  right: 0;
+  text-align: center;
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: #fffaf0;
+  opacity: 0;
+  animation: ws-pulse 2.4s ease-in-out 2s infinite;
+  pointer-events: none;
+  z-index: 40;
+  margin: 0;
+}
+
+@keyframes ws-pulse {
+  0%, 100% { opacity: 0; }
+  50% { opacity: 0.7; }
+}
+
+/* ── Konfetti ──────────────────────────────────────────────────────────── */
+
+.wrapped-story .ws-confetti {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+  z-index: 20;
+}
+
+.wrapped-story .ws-confetti span {
+  position: absolute;
+  top: -14px;
+  width: 9px;
+  height: 14px;
+  border-radius: 2px;
+  animation-name: ws-drop;
+  animation-timing-function: linear;
+  animation-fill-mode: forwards;
+}
+
+@keyframes ws-drop {
+  to {
+    transform: translateY(110vh) rotate(720deg);
+  }
+}
+
+/* ── Redusert bevegelse ────────────────────────────────────────────────── */
+
+@media (prefers-reduced-motion: reduce) {
+  .wrapped-story .ws-slide > *,
+  .wrapped-story .ws-collage img,
+  .wrapped-story .ws-bar-fill {
+    animation: none;
+    opacity: 1;
+    transform: none;
+  }
+
+  .wrapped-story .ws-rope {
+    animation: none;
+    opacity: 1;
+  }
+
+  .wrapped-story .ws-progress span.is-active::after {
+    animation: none;
+    transform: scaleX(1);
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   Inngangskort på dashbordet
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.app-theme .db-wrapped-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  border: none;
+  border-radius: 18px;
+  padding: 14px 16px;
+  cursor: pointer;
+  text-align: left;
+  background:
+    radial-gradient(circle at 85% 15%, rgba(255, 250, 240, 0.35), transparent 45%),
+    linear-gradient(120deg, #1f3e7e 0%, #2c54a8 55%, #ffc83d 140%);
+  color: #fffaf0;
+  box-shadow: 0 10px 26px rgba(31, 62, 126, 0.35);
+  position: relative;
+  overflow: hidden;
+}
+
+.app-theme .db-wrapped-card::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 60px;
+  background: linear-gradient(
+    105deg,
+    transparent 0%,
+    rgba(255, 250, 240, 0.35) 50%,
+    transparent 100%
+  );
+  animation: db-wrapped-shimmer 3.2s ease-in-out infinite;
+}
+
+@keyframes db-wrapped-shimmer {
+  0% { left: -80px; }
+  55%, 100% { left: calc(100% + 20px); }
+}
+
+.app-theme .db-wrapped-card__emoji {
+  font-size: 30px;
+  flex-shrink: 0;
+}
+
+.app-theme .db-wrapped-card__copy {
+  flex: 1;
+  display: grid;
+  gap: 2px;
+}
+
+.app-theme .db-wrapped-card__copy strong {
+  font-family: 'Bricolage Grotesque', 'Inter', 'Segoe UI', sans-serif;
+  font-size: 15px;
+  letter-spacing: -0.02em;
+  color: #fffaf0 !important;
+}
+
+.app-theme .db-wrapped-card__copy span {
+  font-size: 12px;
+  color: rgba(255, 250, 240, 0.85);
+}
+
+.app-theme .db-wrapped-card__cta {
+  flex-shrink: 0;
+  font-family: 'Bricolage Grotesque', 'Inter', 'Segoe UI', sans-serif;
+  font-weight: 700;
+  font-size: 13px;
+  background: #ffdc68;
+  color: #121e3a;
+  border-radius: 99px;
+  padding: 8px 14px;
+  white-space: nowrap;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .app-theme .db-wrapped-card::after {
+    animation: none;
+    display: none;
+  }
+}
