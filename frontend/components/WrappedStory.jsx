@@ -218,6 +218,16 @@ function buildWrappedStats({
   const persona = PERSONAS[totalCount > 0 ? dominantFolder ?? 'Generelle' : 'none'];
   const isNightOwl = nightShare >= 0.4 && timestamps.length >= 5;
 
+  // Trådene — bronsetråd, sølvtråd og gulltråd. Matcher på tittel så
+  // varianter som «Gulltråden» også teller. Egen slide kun ved alle tre.
+  const myTitles = [
+    ...mySubs.map((submission) => submission.knotTitle ?? ''),
+    ...myApprovedKnots.map((knot) => knot.title ?? ''),
+  ].map((title) => title.toLowerCase());
+  const hasThread = (needle) => myTitles.some((title) => title.includes(needle));
+  const hasAllThreads =
+    hasThread('bronsetråd') && hasThread('sølvtråd') && hasThread('gulltråd');
+
   return {
     totalCount,
     points: Number(leader?.points ?? 0),
@@ -238,6 +248,7 @@ function buildWrappedStats({
     loopMoment,
     persona,
     isNightOwl,
+    hasAllThreads,
   };
 }
 
@@ -274,6 +285,10 @@ function buildSlides(stats) {
 
   if (stats.loopMoment) {
     slides.push({ id: 'loop-moment', tone: 'pink' });
+  }
+
+  if (stats.hasAllThreads) {
+    slides.push({ id: 'threads', tone: 'night' });
   }
 
   slides.push({ id: 'persona', tone: 'gold' });
@@ -662,6 +677,26 @@ export function WrappedStory({
                 </span>
               </figcaption>
             </figure>
+          </>
+        );
+
+      case 'threads':
+        return (
+          <>
+            <p className="ws-eyebrow">Den hellige treenigheten</p>
+            <div className="ws-threads" aria-hidden="true">
+              <span>🥉</span>
+              <span>🥈</span>
+              <span>🥇</span>
+            </div>
+            <h2 className="ws-headline">
+              Bronsetråd. Sølvtråd. Gulltråd. Alle tre.
+            </h2>
+            <p className="ws-sub">
+              Det der klarer nesten ingen. Folk kommer til å snakke om deg på
+              gjenforeningsfesten i 2046. Respekt — ekte respekt. Ikke venn deg
+              til at vi er hyggelige.
+            </p>
           </>
         );
 
