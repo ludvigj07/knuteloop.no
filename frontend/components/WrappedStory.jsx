@@ -15,33 +15,42 @@ const PERSONAS = {
   Alkoholknuter: {
     emoji: '🍻',
     name: 'Festgeneralen',
-    text: 'Der det skjedde noe, skjedde det deg. Loopen vet hvem som holdt liv i festen.',
+    text: 'Der det skjedde noe, var du. Der du var, skjedde det noe. Loopen husker alt — dessverre for deg.',
   },
   Sexknuter: {
     emoji: '😏',
     name: 'Sjarmøren',
-    text: 'Vi sier ikke mer enn tallene gjør. Loopen rødmer fortsatt.',
+    text: 'Vi sier ikke mer enn tallene gjør. Og tallene sier MYE.',
   },
   'Fordervett-knuter': {
     emoji: '🦊',
     name: 'Kaosreven',
-    text: 'Rampestrek etter rampestrek — og ingen vet helt hvordan du slapp unna med alt.',
+    text: 'Rampestrek etter rampestrek. Statistisk sett burde du vært utvist. Imponerende.',
   },
   Dobbelknuter: {
     emoji: '🤝',
     name: 'Lagspilleren',
-    text: 'Du tok aldri en knute alene hvis du slapp. Loopen var laget ditt.',
+    text: 'Aldri alene om noe. Medskyldig i alt. Vennene dine kan ikke vitne mot deg — de var der selv.',
   },
   Generelle: {
     emoji: '🧩',
     name: 'Allrounderen',
-    text: 'Litt av alt — og alt med stil. Du var limet i loopen.',
+    text: 'Litt av alt, og alt litt bedre enn de andre. Irriterende, egentlig.',
   },
   none: {
     emoji: '👻',
     name: 'Mysteriet',
-    text: 'Du var her. Det vet vi. Resten er hyllet i mystikk — akkurat sånn du ville ha det.',
+    text: 'Du var her. Det vet vi. Resten nekter loopen å snakke om.',
   },
+};
+
+// Egen spydighet per vinnerkategori på kategori-sliden.
+const CATEGORY_WIN_QUIPS = {
+  Alkoholknuter: 'Alkohol-knuter vant. Sjokk. 🍺',
+  Sexknuter: 'Sex-knuter på topp. Vi dømmer ikke. Litt. 😏',
+  'Fordervett-knuter': 'Rampestrek vant. Håper rektor aldri ser dette. 🙈',
+  Dobbelknuter: 'Dobbel-knuter vant. Du gjør visst ingenting alene. 🤝',
+  Generelle: 'Generelle vant. Trygt. Veldig trygt. 🧷',
 };
 
 const CONFETTI_COLORS = ['#ffdc68', '#ff7eb6', '#6fe3c1', '#fffaf0', '#2c54a8'];
@@ -275,31 +284,31 @@ function totalSlideCopy(stats) {
   const { totalCount } = stats;
   if (totalCount === 0) {
     return {
-      headline: 'Knutene uteble…',
-      sub: 'Men du var med på reisen — og det er fortsatt tid til å sikre den første!',
+      headline: 'Null knuter.',
+      sub: 'Null. Appen funker, altså — vi har sjekket. Fortsatt tid til å redde æren!',
     };
   }
   if (totalCount <= 2) {
     return {
       headline: totalCount === 1 ? '1 knute!' : '2 knuter!',
-      sub: 'Kvalitet over kvantitet. Respekt.',
+      sub: 'Kvalitet over kvantitet. Det er det du sier til deg selv, ihvertfall.',
     };
   }
   if (totalCount >= 25) {
     return {
       headline: `${totalCount} knuter!`,
-      sub: 'Det er rett og slett imponerende. Og bittelitt skummelt.',
+      sub: 'Imponerende. Bekymringsverdig, men imponerende.',
     };
   }
   if (totalCount >= 10) {
     return {
       headline: `${totalCount} knuter!`,
-      sub: 'Solid innsats — loopen merket godt at du var der.',
+      sub: 'Solid. Loopen merket at du var der. Naboene sikkert også.',
     };
   }
   return {
     headline: `${totalCount} knuter!`,
-    sub: 'Godt jobba — hver eneste knute teller.',
+    sub: 'Helt greit. Som en 4-er i gym.',
   };
 }
 
@@ -443,8 +452,8 @@ export function WrappedStory({
               Knutene er talt opp{displayName ? `, ${displayName}` : ''}.
             </h2>
             <p className="ws-sub">
-              Vi har sett i loopen din. Noen av disse tallene burde kanskje aldri
-              sett dagens lys… 👀
+              Vi har sett i loopen din. Du kan ikke slette historikken her,
+              kompis. 👀
             </p>
           </>
         );
@@ -471,8 +480,8 @@ export function WrappedStory({
             <h2 className="ws-headline">av {stats.totalUsers} i loopen</h2>
             <p className="ws-sub">
               {stats.topPercent && stats.topPercent <= 50
-                ? `Det er topp ${stats.topPercent} %. Ikke verst. Ikke verst i det hele tatt.`
-                : 'Plassering er bare et tall — du var med, og det er det som teller.'}
+                ? `Topp ${stats.topPercent} %. Ok, flexer du nå, eller?`
+                : '«Det viktigste er å delta.» Sa ingen russ noensinne. Men du, altså.'}
             </p>
           </>
         );
@@ -484,7 +493,7 @@ export function WrappedStory({
           <>
             <p className="ws-eyebrow">Dine kategorier</p>
             <h2 className="ws-headline">
-              {winner.label}-knuter vant{winner.folder === 'Alkoholknuter' ? '. Sjokk. 🍺' : '! 🏆'}
+              {CATEGORY_WIN_QUIPS[winner.folder] ?? `${winner.label}-knuter vant! 🏆`}
             </h2>
             <div className="ws-bars">
               {stats.categories.slice(0, 5).map((category, position) => (
@@ -519,7 +528,7 @@ export function WrappedStory({
               Siste registrering: {stats.bestDay.timeLabel}.
               {stats.isNightOwl
                 ? ' Og det var ikke et unntak — du er en sertifisert nattugle 🦉'
-                : ' Vi stiller ingen spørsmål. Vi noterer bare.'}
+                : ' Foreldrene dine tror du var «hos en venn».'}
             </p>
           </>
         );
@@ -535,7 +544,7 @@ export function WrappedStory({
               {stats.longestStreak} dager i strekk!
             </h2>
             <p className="ws-sub">
-              Minst én knute hver eneste dag. Dedikasjon? Galskap? Begge deler? Ja.
+              Minst én knute hver eneste dag. Noen har hobbyer. Du har dette.
             </p>
           </>
         );
@@ -546,7 +555,7 @@ export function WrappedStory({
         return (
           <>
             <p className="ws-eyebrow">Året i bilder</p>
-            <h2 className="ws-headline">Dine øyeblikk 📸</h2>
+            <h2 className="ws-headline">Bevismaterialet 📸</h2>
             <div
               className={`ws-collage${shown.length === 1 ? ' ws-collage--single' : ''}`}
             >
@@ -563,8 +572,8 @@ export function WrappedStory({
             </div>
             <p className="ws-sub ws-sub--small">
               {remaining > 0
-                ? `+ ${remaining} til. Dette er bare for deg — del det du selv vil.`
-                : 'Dette er bare for deg — del det du selv vil.'}
+                ? `+ ${remaining} til. Kun synlig for deg. Heldigvis.`
+                : 'Kun synlig for deg. Heldigvis.'}
             </p>
           </>
         );
@@ -574,7 +583,7 @@ export function WrappedStory({
         return (
           <>
             <p className="ws-eyebrow">Loopens favoritter</p>
-            <h2 className="ws-headline">Knutene «alle» tok</h2>
+            <h2 className="ws-headline">Knutene «alle» tok 🐑</h2>
             <div className="ws-toplist">
               {stats.loopTop.map((item, position) => (
                 <div className="ws-toplist-row" key={item.title}>
@@ -643,7 +652,8 @@ export function WrappedStory({
               <div className="ws-card-brand">🪢 Knuteloop Wrapped 2026</div>
             </div>
             <p className="ws-sub ws-sub--small">
-              Ta skjermbilde og del i loopen. De andre må bare tåle det. 💛
+              Ta skjermbilde og del i loopen — eller gjem det for alltid. Vi
+              skjønner begge deler. 💛
             </p>
           </>
         );
