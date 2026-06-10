@@ -218,15 +218,20 @@ function buildWrappedStats({
   const persona = PERSONAS[totalCount > 0 ? dominantFolder ?? 'Generelle' : 'none'];
   const isNightOwl = nightShare >= 0.4 && timestamps.length >= 5;
 
-  // Trådene — bronsetråd, sølvtråd og gulltråd. Matcher på tittel så
-  // varianter som «Gulltråden» også teller. Egen slide kun ved alle tre.
+  // Trådene — hierarki der kun den gjeveste vises: Gull > Sølv > Bronse.
+  // Matcher på tittel så varianter som «Gulltråden» også teller.
   const myTitles = [
     ...mySubs.map((submission) => submission.knotTitle ?? ''),
     ...myApprovedKnots.map((knot) => knot.title ?? ''),
   ].map((title) => title.toLowerCase());
   const hasThread = (needle) => myTitles.some((title) => title.includes(needle));
-  const hasAllThreads =
-    hasThread('bronsetråd') && hasThread('sølvtråd') && hasThread('gulltråd');
+  const threadTier = hasThread('gulltråd')
+    ? 'gull'
+    : hasThread('sølvtråd')
+      ? 'solv'
+      : hasThread('bronsetråd')
+        ? 'bronse'
+        : null;
 
   return {
     totalCount,
@@ -248,9 +253,34 @@ function buildWrappedStats({
     loopMoment,
     persona,
     isNightOwl,
-    hasAllThreads,
+    threadTier,
   };
 }
+
+// Én slide per trådnivå — kun den gjeveste tråden vises.
+const THREAD_SLIDES = {
+  gull: {
+    medal: '🥇',
+    tone: 'gold',
+    eyebrow: 'Den hellige gulltråden',
+    headline: 'GULLTRÅD.',
+    sub: 'Det der klarer nesten ingen. Folk kommer til å snakke om deg på gjenforeningsfesten i 2046. Respekt — ekte respekt. Ikke venn deg til at vi er hyggelige.',
+  },
+  solv: {
+    medal: '🥈',
+    tone: 'night',
+    eyebrow: 'Sølvtråden',
+    headline: 'Sølvtråd!',
+    sub: 'Så nære gull at det nesten gjør vondt, sant? Fortsatt rått — men du kommer til å tenke på den gulltråden i dusjen i mange år. 😌',
+  },
+  bronse: {
+    medal: '🥉',
+    tone: 'navy',
+    eyebrow: 'Bronsetråden',
+    headline: 'Bronsetråd!',
+    sub: 'Pallplass! Ikke toppen av pallen, men pallen. Det er mer enn de fleste kan si — og du har allerede nevnt det på minst tre vors.',
+  },
+};
 
 function buildSlides(stats) {
   const slides = [];
@@ -287,8 +317,8 @@ function buildSlides(stats) {
     slides.push({ id: 'loop-moment', tone: 'pink' });
   }
 
-  if (stats.hasAllThreads) {
-    slides.push({ id: 'threads', tone: 'night' });
+  if (stats.threadTier) {
+    slides.push({ id: 'thread', tone: THREAD_SLIDES[stats.threadTier].tone });
   }
 
   slides.push({ id: 'persona', tone: 'gold' });
@@ -680,25 +710,19 @@ export function WrappedStory({
           </>
         );
 
-      case 'threads':
+      case 'thread': {
+        const thread = THREAD_SLIDES[stats.threadTier];
         return (
           <>
-            <p className="ws-eyebrow">Den hellige treenigheten</p>
+            <p className="ws-eyebrow">{thread.eyebrow}</p>
             <div className="ws-threads" aria-hidden="true">
-              <span>🥉</span>
-              <span>🥈</span>
-              <span>🥇</span>
+              <span>{thread.medal}</span>
             </div>
-            <h2 className="ws-headline">
-              Bronsetråd. Sølvtråd. Gulltråd. Alle tre.
-            </h2>
-            <p className="ws-sub">
-              Det der klarer nesten ingen. Folk kommer til å snakke om deg på
-              gjenforeningsfesten i 2046. Respekt — ekte respekt. Ikke venn deg
-              til at vi er hyggelige.
-            </p>
+            <h2 className="ws-headline">{thread.headline}</h2>
+            <p className="ws-sub">{thread.sub}</p>
           </>
         );
+      }
 
       case 'persona':
         return (

@@ -231,32 +231,24 @@
   50% { transform: rotate(6deg); }
 }
 
-/* ── Trådene (bronse/sølv/gull) ────────────────────────────────────────── */
+/* ── Tråd-medaljen (kun gjeveste nivå vises) ───────────────────────────── */
 
 .wrapped-story .ws-threads {
-  display: flex;
-  gap: 10px;
-  font-size: 52px;
+  font-size: 72px;
   line-height: 1;
 }
 
 .wrapped-story .ws-threads span {
+  display: inline-block;
   opacity: 0;
-  animation: ws-medal 0.55s cubic-bezier(0.2, 0.9, 0.3, 1.4) forwards;
-  filter: drop-shadow(0 6px 16px rgba(255, 220, 104, 0.35));
-}
-
-.wrapped-story .ws-threads span:nth-child(1) { animation-delay: 0.5s; }
-.wrapped-story .ws-threads span:nth-child(2) { animation-delay: 0.85s; }
-.wrapped-story .ws-threads span:nth-child(3) {
-  animation-delay: 1.2s;
-  font-size: 66px;
+  animation: ws-medal 0.65s cubic-bezier(0.2, 0.9, 0.3, 1.4) 0.5s forwards;
+  filter: drop-shadow(0 8px 20px rgba(255, 220, 104, 0.35));
 }
 
 @keyframes ws-medal {
   from {
     opacity: 0;
-    transform: translateY(-40px) scale(0.6);
+    transform: translateY(-46px) scale(0.5) rotate(-12deg);
   }
   to {
     opacity: 1;
