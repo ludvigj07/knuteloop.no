@@ -26,6 +26,14 @@ const DELETE_TOAST_MS = 2800;
 const COMMENT_SWIPE_THRESHOLD_PX = 44;
 const COMMENT_SWIPE_CLOSE_OFFSET_PX = 220;
 const COMMENT_REPORT_REASONS = ['Spam', 'Trakassering', 'Upassende', 'Annet'];
+// Vindusrendering av mobil-reelen: kort innenfor ±HYDRATION_RADIUS fra aktivt
+// kort rendres fullt, resten er tomme skall med samme høyde. Video monteres
+// kun innenfor ±VIDEO_RADIUS (nedlasting starter idet elementet monteres).
+const MOBILE_HYDRATION_RADIUS = 2;
+const MOBILE_VIDEO_RADIUS = 1;
+// Desktop-feeden starter med én batch og henter flere når sentinelen nederst
+// nærmer seg viewporten.
+const DESKTOP_FEED_BATCH_SIZE = 10;
 
 function formatRatingAverage(value) {
   const numericValue = Number(value) || 0;
@@ -151,6 +159,10 @@ function FeedMedia({
   entry,
   variant = 'mobile',
   isActive = false,
+  // Kun kort nær viewporten får montere <video>. Et montert videoelement med
+  // autoplay begynner å laste ned videodata umiddelbart — uten denne gaten
+  // lastet samtlige videoer i feeden samtidig.
+  allowVideoLoad = true,
   audioOn = false,
   onToggleAudio,
 }) {
@@ -219,7 +231,7 @@ function FeedMedia({
         onError={() => setVideoFailed(true)}
       />
     );
-    const mobileVideo = (
+    const mobileVideo = allowVideoLoad ? (
       <MobileVideo
         ref={videoRef}
         className={mediaClass}
@@ -235,6 +247,10 @@ function FeedMedia({
         onAutoplayBlocked={(blocked) => setAutoplayBlocked(blocked)}
         onError={() => setVideoFailed(true)}
       />
+    ) : (
+      <div className="feed-video-standby" aria-hidden="true">
+        <span className="feed-video-standby__icon">{'▶'}</span>
+      </div>
     );
 
     const handleSoundToggle = async () => {
@@ -383,14 +399,6 @@ function FeedMedia({
             >
               {image}
             </div>,
-            <img
-              className="feed-reel-card__media-backdrop"
-              src={entry.imageThumbUrl || entry.imagePreviewUrl}
-              alt=""
-              aria-hidden="true"
-              loading="lazy"
-              decoding="async"
-            />,
           )
         )}
         {lightboxOpen ? (
@@ -638,7 +646,7 @@ function getAnonymousAvatarByEntry(entry) {
 function FeedProfileAvatar({ entry }) {
   const photoUrl = entry.isAnonymous
     ? getAnonymousAvatarByEntry(entry)
-    : entry.studentPhotoUrl;
+    : entry.studentPhotoThumbUrl || entry.studentPhotoUrl;
 
   if (photoUrl) {
     return (
@@ -646,6 +654,8 @@ function FeedProfileAvatar({ entry }) {
         <img
           src={photoUrl}
           alt={entry.isAnonymous ? 'Anonym profilbilde' : `${entry.studentName} profilbilde`}
+          loading="lazy"
+          decoding="async"
         />
       </div>
     );
@@ -659,7 +669,12 @@ function CommentAvatar({ comment, size = 'small' }) {
   if (comment.authorPhotoUrl) {
     return (
       <div className={cls}>
-        <img src={comment.authorPhotoUrl} alt={`${comment.authorName} profilbilde`} />
+        <img
+          src={comment.authorPhotoUrl}
+          alt={`${comment.authorName} profilbilde`}
+          loading="lazy"
+          decoding="async"
+        />
       </div>
     );
   }
@@ -1323,6 +1338,12 @@ function FeedCardMobile({
   onShareCopied,
   audioOn = false,
   onToggleAudio,
+  // Vindusrendering: kort langt unna viewporten rendrer kun det tomme
+  // <article>-skallet. Skallet må alltid rendres (med ref og data-feed-index)
+  // fordi scroll-snap-geometrien, IntersectionObserver-en og
+  // getNearestCardIndex avhenger av at alle kort finnes i DOM med fast høyde.
+  isHydrated = true,
+  allowVideoLoad = true,
 }) {
   const longPress = useLongPressReaction((x, y) => {
     onLongPressReaction?.(x, y);
@@ -1333,6 +1354,19 @@ function FeedCardMobile({
       ? entry.note
       : '';
   const showBottomCopy = !isLightScene;
+
+  if (!isHydrated) {
+    return (
+      <article
+        ref={(node) => registerCardRef(entry.submissionId, node)}
+        className={`feed-reel-card ${
+          isLightScene ? 'feed-reel-card--light-scene' : 'feed-reel-card--media-scene'
+        }`}
+        data-feed-index={index}
+        aria-hidden="true"
+      />
+    );
+  }
 
   return (
     <article
@@ -1350,6 +1384,7 @@ function FeedCardMobile({
         entry={entry}
         variant="mobile"
         isActive={isActive}
+        allowVideoLoad={allowVideoLoad}
         audioOn={audioOn}
         onToggleAudio={onToggleAudio}
       />
@@ -1631,6 +1666,8 @@ export function FeedPage({
     [],
   );
   const [activeMobileIndex, setActiveMobileIndex] = useState(0);
+  const [desktopVisibleCount, setDesktopVisibleCount] = useState(DESKTOP_FEED_BATCH_SIZE);
+  const desktopSentinelRef = useRef(null);
   const [feedAudioOn, setFeedAudioOn] = useState(() => {
     if (typeof window === 'undefined') return false;
     try {
@@ -1701,6 +1738,32 @@ export function FeedPage({
       ),
     [activityLog],
   );
+
+  useEffect(() => {
+    if (!isDesktop) {
+      return undefined;
+    }
+
+    const sentinel = desktopSentinelRef.current;
+
+    if (!sentinel || desktopVisibleCount >= feedEntries.length) {
+      return undefined;
+    }
+
+    const observer = new IntersectionObserver(
+      (observed) => {
+        if (observed.some((item) => item.isIntersecting)) {
+          setDesktopVisibleCount((count) =>
+            Math.min(count + DESKTOP_FEED_BATCH_SIZE, feedEntries.length),
+          );
+        }
+      },
+      { rootMargin: '600px 0px' },
+    );
+
+    observer.observe(sentinel);
+    return () => observer.disconnect();
+  }, [isDesktop, desktopVisibleCount, feedEntries.length]);
 
   function canManageEntry(entry) {
     if (!entry?.submissionId) {
@@ -2219,7 +2282,7 @@ export function FeedPage({
 
       {isDesktop ? (
         <div className="feed-list-v3">
-          {feedEntries.map((entry, index) => (
+          {feedEntries.slice(0, desktopVisibleCount).map((entry, index) => (
             <FeedCardDesktop
               key={entry.id}
               canManage={canManageEntry(entry)}
@@ -2246,6 +2309,13 @@ export function FeedPage({
               onShareCopied={handleShareCopied}
             />
           ))}
+          {desktopVisibleCount < feedEntries.length ? (
+            <div
+              ref={desktopSentinelRef}
+              className="feed-list-v3__sentinel"
+              aria-hidden="true"
+            />
+          ) : null}
         </div>
       ) : (
         <div
@@ -2302,6 +2372,8 @@ export function FeedPage({
               }}
               index={index}
               isActive={activeMobileIndex === index}
+              isHydrated={Math.abs(index - activeMobileIndex) <= MOBILE_HYDRATION_RADIUS}
+              allowVideoLoad={Math.abs(index - activeMobileIndex) <= MOBILE_VIDEO_RADIUS}
               isDeleting={Boolean(deletingBySubmission[entry.submissionId])}
               isRemoving={Boolean(removingBySubmission[entry.submissionId])}
               isReporting={Boolean(reportingBySubmission[entry.submissionId])}
